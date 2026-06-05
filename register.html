@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>NIR AVIV - הרשמה</title>
+<style>
+html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:#0D1B3E;color:#fff;direction:rtl;min-height:100vh;}
+*{box-sizing:border-box;}
+.hdr{background:linear-gradient(135deg,#1A56DB,#0D1B3E);padding:28px 20px 24px;text-align:center;}
+.hdr img{width:80px;height:80px;border-radius:50%;margin-bottom:12px;}
+.hdr h1{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;}
+.hdr p{font-size:14px;color:rgba(255,255,255,.7);margin:0;}
+.ct{padding:20px 16px 40px;}
+.card{background:rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:16px;border:1px solid rgba(255,255,255,.12);}
+.stitle{font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;}
+.ssub{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:18px;}
+.prog{display:flex;gap:6px;margin-bottom:20px;}
+.pd{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.2);}
+.pd.done{background:#1A56DB;}
+.pd.active{background:#60A5FA;}
+.fl{font-size:12px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:5px;}
+.fi{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:15px;outline:none;font-family:inherit;direction:rtl;}
+.fi::placeholder{color:rgba(255,255,255,.35);}
+.fi:focus{border-color:#60A5FA;background:rgba(255,255,255,.15);}
+.fi.err{border-color:#F87171;}
+.fr{margin-bottom:14px;}
+.errmsg{font-size:12px;color:#F87171;margin-top:4px;display:none;}
+.btn-main{width:100%;padding:15px;border-radius:14px;border:none;background:#1A56DB;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-top:8px;box-shadow:0 4px 16px rgba(26,86,219,.4);}
+.btn-main:active{opacity:.9;}
+.btn-back{width:100%;padding:13px;border-radius:14px;border:1px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.8);font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;}
+.step{display:none;}
+.step.active{display:block;}
+.otp-wrap{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+.otp-d{width:56px;height:64px;border-radius:14px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);font-size:26px;font-weight:800;color:#fff;text-align:center;outline:none;font-family:inherit;}
+.otp-d:focus{border-color:#60A5FA;background:rgba(255,255,255,.18);}
+.done-wrap{text-align:center;padding:30px 0;}
+.done-wrap .check{font-size:64px;margin-bottom:16px;}
+.done-wrap h2{font-size:24px;font-weight:800;color:#fff;margin-bottom:8px;}
+.done-wrap p{font-size:15px;color:rgba(255,255,255,.7);}
+select.fi{color:#fff;}
+select.fi option{color:#1A1A2E;background:#fff;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div style="font-size:42px;font-weight:900;color:#fff;letter-spacing:-1px;">NA</div>
+  <h1>NIR AVIV</h1>
+  <p>הרשמה למועדון</p>
+</div>
+<div class="ct">
+
+  <!-- STEP 1: Personal details -->
+  <div class="step active" id="s1">
+    <div class="prog"><div class="pd active" id="p1"></div><div class="pd" id="p2"></div></div>
+    <div class="card">
+      <div class="stitle">&#128100; פרטים אישיים של ההורה</div>
+      <div class="ssub">&#1513;&#1500;&#1489; 1 &#1502;&#1514;&#1493;&#1498; 2</div>
+      <div class="fr">
+        <div class="fl">שם פרטי *</div>
+        <input class="fi" id="fn" placeholder="ישראל"/>
+        <div class="errmsg" id="efn">שדה חובה</div>
+      </div>
+      <div class="fr">
+        <div class="fl">שם משפחה *</div>
+        <input class="fi" id="ln" placeholder="ישראלי"/>
+        <div class="errmsg" id="eln">שדה חובה</div>
+      </div>
+      <div class="fr">
+        <div class="fl">טלפון *</div>
+        <input class="fi" id="ph" type="tel" placeholder="050-0000000" dir="ltr"/>
+        <div class="errmsg" id="eph">מספר לא תקין</div>
+      </div>
+      <div class="fr">
+        <div class="fl">אימייל *</div>
+        <input class="fi" id="em" type="email" placeholder="israel@example.com" dir="ltr"/>
+        <div class="errmsg" id="eem">אימייל לא תקין</div>
+      </div>
+      <div class="fr">
+        <div class="fl">תאריך לידה *</div>
+        <input class="fi" id="dob" type="date"/>
+        <div class="errmsg" id="edob">שדה חובה</div>
+      </div>
+      <button class="btn-main" onclick="step1Next()">המשך &#8594;</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Confirm -->
+  <div class="step" id="s2">
+    <div class="prog"><div class="pd done" id="p1b"></div><div class="pd active" id="p2b"></div></div>
+    <div class="card">
+      <div class="stitle">&#9989; אישור פרטים</div>
+      <div class="ssub">&#1513;&#1500;&#1489; 2 &#1502;&#1514;&#1493;&#1498; 2</div>
+      <div id="summary" style="margin-bottom:18px;"></div>
+      <button class="btn-main" onclick="submitReg()">סיים הרשמה &#10003;</button>
+      <button class="btn-back" onclick="goStep(1)">&#8592; חזור</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Done -->
+  <div class="step" id="s3">
+    <div class="done-wrap">
+      <div class="check">&#127881;</div>
+      <h2>נרשמת בהצלחה!</h2>
+      <p id="done-name"></p>
+      <p style="margin-top:8px;color:rgba(255,255,255,.6);font-size:13px;">כעת תוכל להיכנס לאפליקציית הלקוחות</p>
+      <button class="btn-main" style="margin-top:24px;" onclick="window.location.href='client-app.html'">כניסה לאפליקציה &#8594;</button>
+    </div>
+  </div>
+
+</div>
+<script>
+"use strict";
+var formData={};
+
+function g(id){return document.getElementById(id);}
+function v(id){var e=g(id);return e?e.value.trim():"";}
+function showE(id,msg){var e=g("e"+id);if(e){e.textContent=msg||"\u05e9\u05d3\u05d4 \u05d7\u05d5\u05d1\u05d4";e.style.display="block";}var i=g(id);if(i)i.classList.add("err");}
+function clrE(id){var e=g("e"+id);if(e)e.style.display="none";var i=g(id);if(i)i.classList.remove("err");}
+
+function step1Next(){
+  var ok=true;
+  ["fn","ln","dob"].forEach(function(id){clrE(id);});
+  clrE("ph");clrE("em");
+  var fn2=v("fn");var ln2=v("ln");var ph=v("ph");var em=v("em");var dob=v("dob");var br="";
+  if(!fn2){showE("fn");ok=false;}
+  if(!ln2){showE("ln");ok=false;}
+  if(ph.length<9){showE("ph","\u05d8\u05dc\u05e4\u05d5\u05df \u05dc\u05d0 \u05ea\u05e7\u05d9\u05df");ok=false;}
+  if(!em||em.indexOf("@")<0){showE("em","\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05dc\u05d0 \u05ea\u05e7\u05d9\u05df");ok=false;}
+  if(!dob){showE("dob");ok=false;}
+  
+  if(!ok)return;
+  formData={name:fn2+" "+ln2,phone:ph,email:em,dob:dob};
+  // Build summary
+  var sum=g("summary");
+  sum.innerHTML="";
+  var rows=[["👤 \u05e9\u05dd",formData.name],["📞 \u05d8\u05dc\u05e4\u05d5\u05df",formData.phone],["📧 \u05d0\u05d9\u05de\u05d9\u05d9\u05dc",formData.email],["🗓 \u05ea\u05d0\u05e8\u05d9\u05da \u05dc\u05d9\u05d3\u05d4",formData.dob],["🏢 \u05e1\u05e0\u05d9\u05e3","\u05e1\u05d8\u05d5\u05d3\u05d9\u05d5 "+formData.branch]];
+  rows.forEach(function(r){
+    var rw=document.createElement("div");rw.style.cssText="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:14px;";
+    var lbl=document.createElement("div");lbl.style.cssText="color:rgba(255,255,255,.6);";lbl.textContent=r[0];
+    var val=document.createElement("div");val.style.cssText="color:#fff;font-weight:600;";val.textContent=r[1];
+    rw.appendChild(val);rw.appendChild(lbl);sum.appendChild(rw);
+  });
+  goStep(2);
+}
+
+function submitReg(){
+  // Save to sessionStorage so client app can read it on first login
+  try{
+    var regData={
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+      dob: formData.dob,
+      firstLogin: true,
+      registered: new Date().toISOString()
+    };
+    // Check if email already registered
+    try{
+      var existingClients=JSON.parse(localStorage.getItem("na_clients")||"[]");
+      var emailExists=existingClients.find(function(c){return c.email&&c.email.toLowerCase()===formData.email.toLowerCase();});
+      if(emailExists){alert("\u05de\u05d9\u05d9\u05dc \u05d6\u05d4 \u05db\u05d1\u05e8 \u05e8\u05e9\u05d5\u05dd \u05d1\u05de\u05e2\u05e8\u05db\u05ea. \u05d0\u05e0\u05d0 \u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05de\u05d9\u05d9\u05dc \u05d0\u05d7\u05e8.");return;}
+    }catch(e){}
+    localStorage.setItem("na_new_user", JSON.stringify(regData));
+    sessionStorage.setItem("na_current_user", JSON.stringify(regData));
+  }catch(e){}
+  g("done-name").textContent="\u05e9\u05dc\u05d5\u05dd, "+formData.name+"!";
+  goStep(3);
+}
+
+function goStep(n){
+  [1,2,3].forEach(function(i){
+    var s=g("s"+i);if(s)s.className=i===n?"step active":"step";
+  });
+  window.scrollTo(0,0);
+}
+
+// Fix surrogate pairs in rows array
+(function(){
+  var r=document.querySelectorAll(".fi");
+  r.forEach(function(el){el.addEventListener("input",function(){clrE(el.id);});});
+})();
+</script>
+</body>
+</html>
