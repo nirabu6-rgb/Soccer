@@ -29,7 +29,7 @@ input,button,select{font-family:inherit;}
   <div style="margin-top:24px;width:120px;height:3px;background:#F0F0F0;border-radius:2px;overflow:hidden;"><div id="sbar" style="height:100%;width:0;background:#2563EB;transition:width 1.4s ease;"></div></div>
 </div>
 <!-- MANAGER LOGIN OVERLAY -->
-<div id="mgr-login" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0F172A;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+<div id="mgr-login" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0F172A;z-index:10000;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
   <div style="width:100%;max-width:360px;">
     <div style="text-align:center;margin-bottom:32px;">
       <div style="font-size:48px;font-weight:900;color:#2563EB;letter-spacing:-2px;">NA</div>
@@ -965,7 +965,7 @@ renderNotifs._dismissed={};
   if(!_a||(Date.now()-parseInt(_a))>=(6*30*24*60*60*1000)){
     setTimeout(function(){
       var s=document.getElementById("splash");if(s)s.style.display="none";
-      document.getElementById("mgr-login").style.display="flex";
+      var ml=document.getElementById("mgr-login");if(ml)ml.style.display="flex";
     },1200);
     return; // skip Firestore load entirely until login
   }
