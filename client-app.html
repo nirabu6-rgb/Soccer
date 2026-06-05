@@ -717,6 +717,15 @@ function doClientLogin(){
   var found=clients.find(function(c){
     return (c.phone&&c.phone.replace(/[-\s]/g,"")===ident.replace(/[-\s]/g,""))||(c.email&&c.email.toLowerCase()===ident.toLowerCase());
   });
+  // Also check na_new_user (registered but not yet processed by manager)
+  if(!found){
+    try{
+      var nu=JSON.parse(localStorage.getItem("na_new_user")||"null");
+      if(nu&&((nu.phone&&nu.phone.replace(/[-\s]/g,"")===ident.replace(/[-\s]/g,""))||(nu.email&&nu.email.toLowerCase()===ident.toLowerCase()))){
+        found={name:nu.name,phone:nu.phone,email:nu.email,dob:nu.dob,status:"active",card:0,max:0,plan:"",id:null};
+      }
+    }catch(e){}
+  }
   if(!found){
     err.textContent="לא נמצא לקוח עם פרטים אלו. האם עדיין לא נרשמת?";
     err.style.display="block";
