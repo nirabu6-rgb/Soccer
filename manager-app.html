@@ -989,9 +989,8 @@ renderNotifs._dismissed={};
     setTimeout(function(){var sb=document.getElementById("sbar");if(sb)sb.style.width="100%";},50);
     setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1800);
     // Manager auth check
-    if(!sessionStorage.getItem("na_mgr_auth")){
-      setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";document.getElementById("mgr-login").style.display="flex";},1200);
-    } else {render();}
+    var _a=localStorage.getItem("na_mgr_auth");var _v=_a&&(Date.now()-parseInt(_a))<(6*30*24*60*60*1000);
+    if(!_v){setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";document.getElementById("mgr-login").style.display="flex";},1200);} else {render();}
   }
 })();
 
@@ -1000,7 +999,7 @@ function doMgrLogin(){
   var p=document.getElementById("mgr-pass").value;
   var err=document.getElementById("mgr-err");
   if(u==="NirZion"&&p==="280214!"){
-    sessionStorage.setItem("na_mgr_auth","1");
+    localStorage.setItem("na_mgr_auth",Date.now().toString());
     document.getElementById("mgr-login").style.display="none";
     render();
   } else {
