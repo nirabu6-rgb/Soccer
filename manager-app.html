@@ -682,7 +682,22 @@ function openSessionDetail(s){
   });
 }
 
-function renderSettings(){var ct=document.getElementById("ct");ct.innerHTML="";ct.appendChild(el("div","text-align:center;padding:40px;color:#9CA3AF;","\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea \u05d1\u05e7\u05e8\u05d5\u05d1"));}
+function renderSettings(){
+  var ct=document.getElementById("ct");ct.innerHTML="";
+  var card=document.createElement("div");card.style.cssText="background:#fff;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);";
+  var info=document.createElement("div");info.style.cssText="padding:18px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #F3F4F6;";
+  var av=document.createElement("div");av.style.cssText="width:48px;height:48px;border-radius:50%;background:#2563EB;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0;";av.textContent="N";
+  var inf=document.createElement("div");
+  var nm=document.createElement("div");nm.style.cssText="font-size:16px;font-weight:700;color:#111827;";nm.textContent="NirZion";
+  var rl=document.createElement("div");rl.style.cssText="font-size:13px;color:#9CA3AF;margin-top:2px;";rl.textContent="מנהל מועדון";
+  inf.appendChild(nm);inf.appendChild(rl);info.appendChild(av);info.appendChild(inf);card.appendChild(info);
+  var logoutRow=document.createElement("div");logoutRow.style.cssText="padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;";
+  var ic=document.createElement("span");ic.textContent="🔴";ic.style.fontSize="20px";
+  var tx=document.createElement("span");tx.style.cssText="font-size:15px;font-weight:600;color:#DC2626;";tx.textContent="התנתק";
+  logoutRow.appendChild(ic);logoutRow.appendChild(tx);
+  logoutRow.onclick=function(){if(confirm("להתנתק?")){localStorage.removeItem("na_mgr_auth");window.location.reload();}};
+  card.appendChild(logoutRow);ct.appendChild(card);
+}
 
 function render(){
   if(selC){renderClient(selC);renderNav();return;}
