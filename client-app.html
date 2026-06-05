@@ -154,11 +154,7 @@ var SESS=[
   {id:"s3",group:"\u05d0\u05d9\u05e8\u05d5\u05d1\u05d9",trainer:"\u05dc\u05d9\u05dc\u05da",branch:"\u05e1\u05d8\u05d5\u05d3\u05d9\u05d5 A",time:"18:00",end:"19:00",timeH:18,timeM:0,endH:19,endM:0,dow:[0,1,2,3,4],spots:15,enrolled:10,color:"#059669",booked:false},
   {id:"s4",group:"\u05e4\u05d9\u05dc\u05d0\u05d8\u05d9\u05e1",trainer:"\u05e9\u05e8\u05d4",branch:"\u05e1\u05d8\u05d5\u05d3\u05d9\u05d5 A",time:"10:00",end:"11:00",timeH:10,timeM:0,endH:11,endM:0,dow:[1,4],spots:8,enrolled:5,color:"#C2570A",booked:false}
 ];
-var HIST=[
-  {group:"\u05db\u05d5\u05e9\u05e8 \u05d1\u05d5\u05d2\u05e8\u05d9\u05dd",date:"16/05",time:"07:00",attended:true},
-  {group:"\u05db\u05d5\u05e9\u05e8 \u05d1\u05d5\u05d2\u05e8\u05d9\u05dd",date:"14/05",time:"07:00",attended:true},
-  {group:"\u05db\u05d5\u05e9\u05e8 \u05d1\u05d5\u05d2\u05e8\u05d9\u05dd",date:"12/05",time:"07:00",attended:false}
-];
+var HIST=[];
 
 function el(tag,css,txt){var e=document.createElement(tag);if(css)e.style.cssText=css;if(txt!==undefined)e.textContent=txt;return e;}
 function div(css){return el("div",css);}
