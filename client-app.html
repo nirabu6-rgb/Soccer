@@ -55,6 +55,10 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
         <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">טלפון או אימייל</div>
         <input id="cl-ident" type="text" placeholder="050-0000000 או email@example.com" dir="ltr" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit;box-sizing:border-box;"/>
       </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">סיסמה</div>
+        <input id="cl-pass" type="password" placeholder="••••••••" dir="ltr" autocomplete="current-password" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit;box-sizing:border-box;"/>
+      </div>
       <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;">
         <input id="cl-remember" type="checkbox" style="width:18px;height:18px;accent-color:#1A56DB;flex-shrink:0;"/>
         <span style="font-size:14px;color:rgba(255,255,255,.7);">זכור אותי</span>
@@ -771,9 +775,11 @@ updateHeader();
 
 function doClientLogin(){
   var ident=document.getElementById("cl-ident").value.trim();
+  var pass=document.getElementById("cl-pass").value;
   var err=document.getElementById("cl-err");
   err.style.display="none";
   if(!ident){err.textContent="נא להזין טלפון או אימייל";err.style.display="block";return;}
+  if(!pass){err.textContent="נא להזין סיסמה";err.style.display="block";return;}
   var loginBtn=document.querySelector("#cl-login .login-btn");
   if(loginBtn){loginBtn.disabled=true;loginBtn.textContent="מחפש...";}
   var ident_norm=ident.replace(/[-\s]/g,"");
@@ -786,6 +792,13 @@ function doClientLogin(){
     results.forEach(function(snap){if(!snap.empty&&!found){var d=snap.docs[0];found=Object.assign({id:d.id},d.data());}});
     if(!found){
       err.textContent="לא נמצא לקוח עם פרטים אלו. האם עדיין לא נרשמת?";
+      err.style.display="block";
+      if(loginBtn){loginBtn.disabled=false;loginBtn.textContent="כניסה";}
+      return;
+    }
+    // Check password (allow login if no password set yet - backwards compat)
+    if(found.password&&found.password!==pass){
+      err.textContent="סיסמה שגויה";
       err.style.display="block";
       if(loginBtn){loginBtn.disabled=false;loginBtn.textContent="כניסה";}
       return;

@@ -83,6 +83,16 @@ select.fi option{color:#1A1A2E;background:#fff;}
         <input class="fi" id="dob" type="date"/>
         <div class="errmsg" id="edob">שדה חובה</div>
       </div>
+      <div class="fr">
+        <div class="fl">סיסמה * <span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:400;">(לפחות 4 תווים)</span></div>
+        <input class="fi" id="pw" type="password" placeholder="בחר סיסמה" dir="ltr" autocomplete="new-password"/>
+        <div class="errmsg" id="epw">סיסמה חייבת להכיל לפחות 4 תווים</div>
+      </div>
+      <div class="fr">
+        <div class="fl">אימות סיסמה *</div>
+        <input class="fi" id="pw2" type="password" placeholder="חזור על הסיסמה" dir="ltr" autocomplete="new-password"/>
+        <div class="errmsg" id="epw2">הסיסמאות אינן תואמות</div>
+      </div>
       <button class="btn-main" onclick="step1Next()">המשך &#8594;</button>
     </div>
   </div>
@@ -125,7 +135,7 @@ function clrE(id){var e=g("e"+id);if(e)e.style.display="none";var i=g(id);if(i)i
 
 function step1Next(){
   var ok=true;
-  ["fn","ln","dob"].forEach(function(id){clrE(id);});
+  ["fn","ln","dob","pw","pw2"].forEach(function(id){clrE(id);});
   clrE("ph");clrE("em");
   var fn2=v("fn");var ln2=v("ln");var ph=v("ph");var em=v("em");var dob=v("dob");var br="";
   if(!fn2){showE("fn");ok=false;}
@@ -134,8 +144,11 @@ function step1Next(){
   if(!em||em.indexOf("@")<0){showE("em","\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05dc\u05d0 \u05ea\u05e7\u05d9\u05df");ok=false;}
   if(!dob){showE("dob");ok=false;}
   
+  var pw=v("pw");var pw2=v("pw2");
+  if(pw.length<4){showE("pw","סיסמה חייבת להכיל לפחות 4 תווים");ok=false;}
+  if(pw!==pw2){showE("pw2","הסיסמאות אינן תואמות");ok=false;}
   if(!ok)return;
-  formData={name:fn2+" "+ln2,phone:ph,email:em,dob:dob};
+  formData={name:fn2+" "+ln2,phone:ph,email:em,dob:dob,password:pw};
   // Build summary
   var sum=g("summary");
   sum.innerHTML="";
@@ -154,7 +167,7 @@ function submitReg(){
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent="שומר...";}
   var now=new Date();
   var regData={
-    name:formData.name,phone:formData.phone,email:formData.email,dob:formData.dob,
+    name:formData.name,phone:formData.phone,email:formData.email,dob:formData.dob,password:formData.password||"",
     status:"active",card:0,max:0,debt:0,plan:"",branch:"",
     arch:false,isNew:true,isMinor:false,parentId:null,minors:[],
     joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
