@@ -86,6 +86,18 @@ var USER={name:"",plan:"",card:0,max:0,status:"active",branch:"",children:[],pho
       var ud=JSON.parse(cur);
       if(ud&&ud.name){USER.name=ud.name;USER.phone=ud.phone||"";USER.email=ud.email||"";USER.dob=ud.dob||"";}
     }
+    // Persist user from session to na_clients if missing (handles session-only users)
+    if(USER.name||USER.phone||USER.email){
+      try{
+        var _cls=JSON.parse(localStorage.getItem("na_clients")||"[]");
+        var _ex=_cls.find(function(c){return (USER.phone&&c.phone===USER.phone)||(USER.email&&c.email===USER.email);});
+        if(!_ex){
+          var _now=new Date();
+          _cls.unshift({id:"c"+Date.now(),name:USER.name,phone:USER.phone,email:USER.email,dob:USER.dob,status:"active",card:0,max:0,debt:0,plan:"",arch:false,isMinor:false,parentId:null,minors:[],joinDate:_now.getDate()+"/"+(+_now.getMonth()+1)+"/"+_now.getFullYear(),isNew:true});
+          localStorage.setItem("na_clients",JSON.stringify(_cls));
+        }
+      }catch(e){}
+    }
     var allCL=localStorage.getItem("na_clients");
     if(allCL){
       ALL_CLIENTS=JSON.parse(allCL);
@@ -728,6 +740,30 @@ updateHeader();
   render();
 })();
 
+function ensureClientPersisted(userData){
+  try{
+    var cls=JSON.parse(localStorage.getItem("na_clients")||"[]");
+    var exists=cls.find(function(c){
+      return (userData.phone&&c.phone===userData.phone)||(userData.email&&c.email===userData.email);
+    });
+    if(!exists){
+      var now=new Date();
+      cls.unshift({
+        id:"c"+Date.now(),
+        name:userData.name||"",
+        phone:userData.phone||"",
+        email:userData.email||"",
+        dob:userData.dob||"",
+        status:"active",card:0,max:0,debt:0,plan:"",arch:false,
+        isMinor:false,parentId:null,minors:[],
+        joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
+        isNew:true
+      });
+      localStorage.setItem("na_clients",JSON.stringify(cls));
+    }
+  }catch(e){}
+}
+
 function doClientLogin(){
   var ident=document.getElementById("cl-ident").value.trim();
   var err=document.getElementById("cl-err");
@@ -752,6 +788,8 @@ function doClientLogin(){
     err.style.display="block";
     return;
   }
+  // Persist user to na_clients if not already there (so future logins work even after session expires)
+  ensureClientPersisted(found);
   var userData={name:found.name,phone:found.phone,email:found.email,dob:found.dob};
   var remember=document.getElementById("cl-remember").checked;
   try{
@@ -761,7 +799,8 @@ function doClientLogin(){
   document.getElementById("cl-login").style.display="none";
   // reload user data
   if(userData.name){USER.name=userData.name;USER.phone=userData.phone||"";USER.email=userData.email||"";USER.dob=userData.dob||"";}
-  var me=clients.find(function(c){return c.phone===USER.phone||c.email===USER.email;});
+  var updatedClients=[];try{updatedClients=JSON.parse(localStorage.getItem("na_clients")||"[]");}catch(e){}
+  var me=updatedClients.find(function(c){return c.phone===USER.phone||c.email===USER.email;});
   if(me){
     CURRENT_CLIENT_ID=me.id;
     USER.status=me.arch?"arch":(me.status||"active");
