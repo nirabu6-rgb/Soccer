@@ -26,6 +26,26 @@ input,button,select{font-family:inherit;}
   <div style="font-size:13px;color:#9CA3AF;margin-top:4px;">ניהול עסק</div>
   <div style="margin-top:24px;width:120px;height:3px;background:#F0F0F0;border-radius:2px;overflow:hidden;"><div id="sbar" style="height:100%;width:0;background:#2563EB;transition:width 1.4s ease;"></div></div>
 </div>
+<!-- MANAGER LOGIN OVERLAY -->
+<div id="mgr-login" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0F172A;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:48px;font-weight:900;color:#2563EB;letter-spacing:-2px;">NA</div>
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-top:8px;">ניר אביב</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:4px;">כניסה למנהל</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">שם משתמש</div>
+      <input id="mgr-user" type="text" autocomplete="username" placeholder="שם משתמש" dir="ltr" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:16px;outline:none;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">סיסמה</div>
+      <input id="mgr-pass" type="password" autocomplete="current-password" placeholder="••••••••" dir="ltr" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:16px;outline:none;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <div id="mgr-err" style="display:none;font-size:13px;color:#F87171;margin-bottom:12px;text-align:center;">שם משתמש או סיסמה שגויים</div>
+    <button onclick="doMgrLogin()" style="width:100%;padding:15px;border-radius:14px;border:none;background:#2563EB;color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4);">כניסה</button>
+  </div>
+</div>
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:8px;">
     <button onclick="goNotif()" style="background:#F4F6FB;border:none;border-radius:10px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;">🔔<span id="bdot" style="display:none;position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:#EF4444;border:1px solid #fff;"></span></button>
@@ -942,10 +962,30 @@ renderNotifs._dismissed={};
   document.getElementById("hbrand").textContent=T.brand;
   function updateClock(){var n=new Date();var tl=document.getElementById("time-lbl");if(tl)tl.textContent=(n.getHours()<10?"0":"")+n.getHours()+":"+(n.getMinutes()<10?"0":"")+n.getMinutes();var dl=document.getElementById("dt-lbl");if(dl){var days=["\u05e8\u05d0\u05e9\u05d5\u05df","\u05e9\u05e0\u05d9","\u05e9\u05dc\u05d9\u05e9\u05d9","\u05e8\u05d1\u05d9\u05e2\u05d9","\u05d7\u05de\u05d9\u05e9\u05d9","\u05e9\u05d9\u05e9\u05d9","\u05e9\u05d1\u05ea"];dl.textContent=days[n.getDay()]+" "+n.getDate()+"/"+(n.getMonth()+1);}}
   updateClock();setInterval(updateClock,30000);
-  setTimeout(function(){var sb=document.getElementById("sbar");if(sb)sb.style.width="100%";},50);
-  setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1800);
-  render();
+  // Manager auth gate
+  if(!sessionStorage.getItem("na_mgr_auth")){
+    setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";document.getElementById("mgr-login").style.display="flex";},1200);
+  } else {
+    setTimeout(function(){var sb=document.getElementById("sbar");if(sb)sb.style.width="100%";},50);
+    setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1800);
+    render();
+  }
 })();
+
+function doMgrLogin(){
+  var u=document.getElementById("mgr-user").value.trim();
+  var p=document.getElementById("mgr-pass").value;
+  var err=document.getElementById("mgr-err");
+  if(u==="NirZion"&&p==="280214!"){
+    sessionStorage.setItem("na_mgr_auth","1");
+    document.getElementById("mgr-login").style.display="none";
+    render();
+  } else {
+    err.style.display="block";
+    document.getElementById("mgr-pass").value="";
+  }
+}
+document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("mgr-login").style.display!=="none")doMgrLogin();});
 
 </script>
 </body>

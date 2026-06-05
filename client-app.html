@@ -27,6 +27,30 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
   </div>
 </div>
 
+<!-- CLIENT LOGIN OVERLAY -->
+<div id="cl-login" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0D1B3E;z-index:10000;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="width:90px;height:90px;border-radius:50%;background:#1A56DB;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#fff;margin:0 auto 16px;box-shadow:0 6px 24px rgba(0,0,0,.4);">NA</div>
+      <div style="font-size:22px;font-weight:800;color:#fff;">NIR AVIV</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:4px;">אזור לקוחות</div>
+    </div>
+    <div id="cl-login-form">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">טלפון או אימייל</div>
+        <input id="cl-ident" type="text" placeholder="050-0000000 או email@example.com" dir="ltr" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:15px;outline:none;font-family:inherit;box-sizing:border-box;"/>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;cursor:pointer;">
+        <input id="cl-remember" type="checkbox" style="width:18px;height:18px;accent-color:#1A56DB;flex-shrink:0;"/>
+        <span style="font-size:14px;color:rgba(255,255,255,.7);">זכור אותי</span>
+      </label>
+      <div id="cl-err" style="display:none;font-size:13px;color:#F87171;margin-bottom:12px;text-align:center;"></div>
+      <button onclick="doClientLogin()" style="width:100%;padding:15px;border-radius:14px;border:none;background:#1A56DB;color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(26,86,219,.4);margin-bottom:12px;">כניסה</button>
+      <button onclick="window.location.href='register.html'" style="width:100%;padding:13px;border-radius:14px;border:none;background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);font-size:15px;font-weight:600;cursor:pointer;">הרשמה למועדון</button>
+    </div>
+  </div>
+</div>
+
 <div class="hdr">
   <div style="display:flex;align-items:center;justify-content:space-between;">
     <div></div>
@@ -647,7 +671,7 @@ function openUserMenu(){
   logoutRow.onclick=function(){
     try{localStorage.removeItem("na_current_user");sessionStorage.removeItem("na_current_user");}catch(e){}
     document.body.removeChild(sh);
-    window.location.href="register.html";
+    window.location.reload();
   };
   menu.appendChild(logoutRow);
   sh.appendChild(menu);
@@ -669,9 +693,55 @@ var _grEl=document.getElementById("hgreeting");
 if(_grEl)_grEl.textContent=_gr+" \uD83D\uDC4B";
 var _grEl2=document.getElementById("greeting-lbl");
 if(_grEl2)_grEl2.textContent=_gr+" "+USER.name;
-// Hide splash
-setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1500);
-render();
+// Auth gate
+(function(){
+  var cur=sessionStorage.getItem("na_current_user")||localStorage.getItem("na_current_user");
+  if(!cur){
+    setTimeout(function(){
+      var s=document.getElementById("splash");if(s)s.style.display="none";
+      var cl=document.getElementById("cl-login");if(cl){cl.style.display="flex";}
+    },1200);
+    return;
+  }
+  setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1500);
+  render();
+})();
+
+function doClientLogin(){
+  var ident=document.getElementById("cl-ident").value.trim();
+  var err=document.getElementById("cl-err");
+  err.style.display="none";
+  if(!ident){err.textContent="נא להזין טלפון או אימייל";err.style.display="block";return;}
+  var clients=[];
+  try{clients=JSON.parse(localStorage.getItem("na_clients")||"[]");}catch(e){}
+  var found=clients.find(function(c){
+    return (c.phone&&c.phone.replace(/[-\s]/g,"")===ident.replace(/[-\s]/g,""))||(c.email&&c.email.toLowerCase()===ident.toLowerCase());
+  });
+  if(!found){
+    err.textContent="לא נמצא לקוח עם פרטים אלו. האם עדיין לא נרשמת?";
+    err.style.display="block";
+    return;
+  }
+  var userData={name:found.name,phone:found.phone,email:found.email,dob:found.dob};
+  var remember=document.getElementById("cl-remember").checked;
+  try{
+    sessionStorage.setItem("na_current_user",JSON.stringify(userData));
+    if(remember)localStorage.setItem("na_current_user",JSON.stringify(userData));
+  }catch(e){}
+  document.getElementById("cl-login").style.display="none";
+  // reload user data
+  if(userData.name){USER.name=userData.name;USER.phone=userData.phone||"";USER.email=userData.email||"";USER.dob=userData.dob||"";}
+  var me=clients.find(function(c){return c.phone===USER.phone||c.email===USER.email;});
+  if(me){
+    CURRENT_CLIENT_ID=me.id;
+    USER.status=me.arch?"arch":(me.status||"active");
+    USER.card=me.card||0;USER.max=me.max||0;USER.plan=me.plan||"";USER.branch=me.branch||"";
+  }
+  var hb=document.getElementById("hbrand");if(hb)hb.textContent=T.brand;
+  var gl=document.getElementById("greeting-lbl");if(gl)gl.textContent=USER.name;
+  render();
+}
+document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("cl-login").style.display!=="none")doClientLogin();});
 
 </script>
 </body>
