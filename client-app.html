@@ -4,6 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>NIR AVIV</title>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="NIR AVIV"/>
+<meta name="theme-color" content="#1A56DB"/>
+<link rel="manifest" href="manifest.json"/>
 <style>
 :root{--blue:#1A56DB;--blue-dark:#1240A0;--bg:#F2F2F7;--card:#fff;--label:#1C1C1E;--label2:#3C3C43;--label3:#8E8E93;--sep:rgba(60,60,67,.12);--nav-h:56px;}
 html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--label);direction:rtl;-webkit-tap-highlight-color:transparent;}
@@ -801,6 +807,7 @@ function doClientLogin(){
   });
 }
 document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("cl-login").style.display!=="none")doClientLogin();});
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}
 
 </script>
 </body>
