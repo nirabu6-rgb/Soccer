@@ -1,0 +1,22 @@
+{
+  "name": "NIR AVIV מנהל",
+  "short_name": "NIR AVIV מנהל",
+  "description": "אזור מנהל - ניר אביב",
+  "start_url": "/manager-app.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D1B3E",
+  "theme_color": "#0D1B3E",
+  "icons": [
+    {
+      "src": "logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

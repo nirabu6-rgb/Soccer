@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="NIR AVIV"/>
 <meta name="theme-color" content="#1A56DB"/>
 <link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="logo.jpeg"/>
+<link rel="icon" type="image/jpeg" href="logo.jpeg"/>
 <style>
 :root{--blue:#1A56DB;--blue-dark:#1240A0;--bg:#F2F2F7;--card:#fff;--label:#1C1C1E;--label2:#3C3C43;--label3:#8E8E93;--sep:rgba(60,60,67,.12);--nav-h:56px;}
 html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--label);direction:rtl;-webkit-tap-highlight-color:transparent;}
@@ -817,6 +819,40 @@ function doClientLogin(){
 document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("cl-login").style.display!=="none")doClientLogin();});
 if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}
 
+// Install prompt
+var _installPrompt=null;
+window.addEventListener("beforeinstallprompt",function(e){
+  e.preventDefault();
+  _installPrompt=e;
+  var bar=document.getElementById("install-bar");
+  if(bar)bar.style.display="flex";
+});
+window.addEventListener("appinstalled",function(){
+  var bar=document.getElementById("install-bar");
+  if(bar)bar.style.display="none";
+});
+function doInstall(){
+  if(!_installPrompt)return;
+  _installPrompt.prompt();
+  _installPrompt.userChoice.then(function(){_installPrompt=null;document.getElementById("install-bar").style.display="none";});
+}
+
+// iOS detection
+(function(){
+  var isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone=window.navigator.standalone===true;
+  if(isIos&&!isStandalone){
+    var bar=document.getElementById("install-bar");
+    if(bar){bar.style.display="flex";document.getElementById("install-btn").onclick=null;document.getElementById("install-btn").textContent="הוסף למסך הבית ← Share ← Add to Home Screen";}
+  }
+})();
 </script>
+
+<div id="install-bar" style="display:none;position:fixed;bottom:70px;left:12px;right:12px;background:#1A56DB;color:#fff;border-radius:14px;padding:12px 16px;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+  <img src="logo.jpeg" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;"/>
+  <span style="flex:1;font-size:14px;font-weight:600;">הוסף את האפליקציה למסך הבית</span>
+  <button id="install-btn" onclick="doInstall()" style="background:#fff;color:#1A56DB;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;">הוסף</button>
+  <button onclick="document.getElementById('install-bar').style.display='none'" style="background:transparent;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;padding:0 4px;">✕</button>
+</div>
 </body>
 </html>
