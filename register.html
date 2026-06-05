@@ -173,8 +173,12 @@ function submitReg(){
       goStep(3);
     })
     .catch(function(err){
-      console.error(err);
-      alert("שגיאה בשמירת הנתונים. בדוק חיבור לאינטרנט ונסה שנית.");
+      console.error("Firebase error:",err);
+      var msg="שגיאה: ";
+      if(err.code==="permission-denied")msg="אין הרשאה לכתוב ל-Firestore. עדכן את Rules בקונסול Firebase.";
+      else if(err.code==="unavailable"||err.message&&err.message.indexOf("network")>=0)msg="שגיאת חיבור. בדוק אינטרנט ונסה שנית.";
+      else msg="שגיאה: "+(err.message||err.code||"לא ידוע");
+      alert(msg);
       if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}
     });
 }
