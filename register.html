@@ -41,6 +41,8 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
 select.fi{color:#fff;}
 select.fi option{color:#1A1A2E;background:#fff;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="hdr">
@@ -111,6 +113,9 @@ select.fi option{color:#1A1A2E;background:#fff;}
 </div>
 <script>
 "use strict";
+var firebaseConfig={apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+var db=firebase.firestore();
 var formData={};
 
 function g(id){return document.getElementById(id);}
@@ -145,27 +150,33 @@ function step1Next(){
 }
 
 function submitReg(){
-  // Save to sessionStorage so client app can read it on first login
-  try{
-    var regData={
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      dob: formData.dob,
-      firstLogin: true,
-      registered: new Date().toISOString()
-    };
-    // Check if email already registered
-    try{
-      var existingClients=JSON.parse(localStorage.getItem("na_clients")||"[]");
-      var emailExists=existingClients.find(function(c){return c.email&&c.email.toLowerCase()===formData.email.toLowerCase();});
-      if(emailExists){alert("\u05de\u05d9\u05d9\u05dc \u05d6\u05d4 \u05db\u05d1\u05e8 \u05e8\u05e9\u05d5\u05dd \u05d1\u05de\u05e2\u05e8\u05db\u05ea. \u05d0\u05e0\u05d0 \u05d4\u05e9\u05ea\u05de\u05e9 \u05d1\u05de\u05d9\u05d9\u05dc \u05d0\u05d7\u05e8.");return;}
-    }catch(e){}
-    localStorage.setItem("na_new_user", JSON.stringify(regData));
-    sessionStorage.setItem("na_current_user", JSON.stringify(regData));
-  }catch(e){}
-  g("done-name").textContent="\u05e9\u05dc\u05d5\u05dd, "+formData.name+"!";
-  goStep(3);
+  var submitBtn=document.querySelector(".btn-main");
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent="שומר...";}
+  var now=new Date();
+  var regData={
+    name:formData.name,phone:formData.phone,email:formData.email,dob:formData.dob,
+    status:"active",card:0,max:0,debt:0,plan:"",branch:"",
+    arch:false,isNew:true,isMinor:false,parentId:null,minors:[],
+    joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
+    registered:now.toISOString()
+  };
+  db.collection("clients").where("email","==",formData.email.toLowerCase()).get()
+    .then(function(snap){
+      if(!snap.empty){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+      return db.collection("clients").add(regData);
+    })
+    .then(function(docRef){
+      if(!docRef)return;
+      var sessionData={name:regData.name,phone:regData.phone,email:regData.email,dob:regData.dob,firestoreId:docRef.id};
+      try{sessionStorage.setItem("na_current_user",JSON.stringify(sessionData));localStorage.setItem("na_current_user",JSON.stringify(sessionData));}catch(e){}
+      g("done-name").textContent="שלום, "+formData.name+"!";
+      goStep(3);
+    })
+    .catch(function(err){
+      console.error(err);
+      alert("שגיאה בשמירת הנתונים. בדוק חיבור לאינטרנט ונסה שנית.");
+      if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}
+    });
 }
 
 function goStep(n){

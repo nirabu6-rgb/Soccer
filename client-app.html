@@ -23,6 +23,8 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
 .card-row .rv{font-size:15px;font-weight:600;color:var(--label);}
 .sec-hdr{font-size:13px;font-weight:600;color:var(--label3);text-transform:uppercase;letter-spacing:.4px;padding:0 4px;margin:20px 0 6px;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div id="splash" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0D1B3E;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;">
@@ -52,7 +54,7 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
         <span style="font-size:14px;color:rgba(255,255,255,.7);">זכור אותי</span>
       </label>
       <div id="cl-err" style="display:none;font-size:13px;color:#F87171;margin-bottom:12px;text-align:center;"></div>
-      <button onclick="doClientLogin()" style="width:100%;padding:15px;border-radius:14px;border:none;background:#1A56DB;color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(26,86,219,.4);margin-bottom:12px;">כניסה</button>
+      <button onclick="doClientLogin()" class="login-btn" style="width:100%;padding:15px;border-radius:14px;border:none;background:#1A56DB;color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 16px rgba(26,86,219,.4);margin-bottom:12px;">כניסה</button>
       <button onclick="window.location.href='register.html'" style="width:100%;padding:13px;border-radius:14px;border:none;background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);font-size:15px;font-weight:600;cursor:pointer;">הרשמה למועדון</button>
     </div>
   </div>
@@ -73,6 +75,9 @@ html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,B
 <div class="ct" id="ct"></div>
 <div id="nav"></div>
 <script>
+var firebaseConfig={apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+var db=firebase.firestore();
 var tab="home";
 var T={brand:"\u05e0\u05d9\u05e8 \u05d0\u05d1\u05d9\u05d1",sub:"\u05d0\u05d6\u05d5\u05e8 \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",home:"\u05d1\u05d9\u05ea",schedule:"\u05d9\u05d5\u05de\u05df",mycard:"\u05db\u05e8\u05d8\u05d9\u05e1\u05d9\u05d9\u05d4",contact:"\u05e6\u05d5\u05e8 \u05e7\u05e9\u05e8"};
 // Load user from localStorage (set by register.html)
@@ -736,78 +741,64 @@ updateHeader();
     },1200);
     return;
   }
-  setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},1500);
-  render();
+  var ud=JSON.parse(cur);
+  // Refresh from Firestore if we have a Firestore ID or phone/email
+  var q=null;
+  if(ud.firestoreId){q=db.collection("clients").doc(ud.firestoreId).get();}
+  else if(ud.phone){q=db.collection("clients").where("phone","==",ud.phone).limit(1).get();}
+  else if(ud.email){q=db.collection("clients").where("email","==",ud.email).limit(1).get();}
+  function showApp(){setTimeout(function(){var s=document.getElementById("splash");if(s)s.style.display="none";},400);updateHeader();render();}
+  if(q){
+    q.then(function(res){
+      var doc=res.docs?res.docs[0]:res;
+      if(doc&&doc.exists){
+        var d=doc.data();
+        CURRENT_CLIENT_ID=doc.id;
+        USER.status=d.arch?"arch":(d.status||"active");
+        USER.card=d.card||0;USER.max=d.max||0;USER.plan=d.plan||"";USER.branch=d.branch||"";
+      }
+      showApp();
+    }).catch(function(){showApp();});
+  } else {showApp();}
 })();
 
-function ensureClientPersisted(userData){
-  try{
-    var cls=JSON.parse(localStorage.getItem("na_clients")||"[]");
-    var exists=cls.find(function(c){
-      return (userData.phone&&c.phone===userData.phone)||(userData.email&&c.email===userData.email);
-    });
-    if(!exists){
-      var now=new Date();
-      cls.unshift({
-        id:"c"+Date.now(),
-        name:userData.name||"",
-        phone:userData.phone||"",
-        email:userData.email||"",
-        dob:userData.dob||"",
-        status:"active",card:0,max:0,debt:0,plan:"",arch:false,
-        isMinor:false,parentId:null,minors:[],
-        joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
-        isNew:true
-      });
-      localStorage.setItem("na_clients",JSON.stringify(cls));
-    }
-  }catch(e){}
-}
 
 function doClientLogin(){
   var ident=document.getElementById("cl-ident").value.trim();
   var err=document.getElementById("cl-err");
   err.style.display="none";
   if(!ident){err.textContent="נא להזין טלפון או אימייל";err.style.display="block";return;}
-  var clients=[];
-  try{clients=JSON.parse(localStorage.getItem("na_clients")||"[]");}catch(e){}
-  var found=clients.find(function(c){
-    return (c.phone&&c.phone.replace(/[-\s]/g,"")===ident.replace(/[-\s]/g,""))||(c.email&&c.email.toLowerCase()===ident.toLowerCase());
-  });
-  // Also check na_new_user (registered but not yet processed by manager)
-  if(!found){
-    try{
-      var nu=JSON.parse(localStorage.getItem("na_new_user")||"null");
-      if(nu&&((nu.phone&&nu.phone.replace(/[-\s]/g,"")===ident.replace(/[-\s]/g,""))||(nu.email&&nu.email.toLowerCase()===ident.toLowerCase()))){
-        found={name:nu.name,phone:nu.phone,email:nu.email,dob:nu.dob,status:"active",card:0,max:0,plan:"",id:null};
-      }
-    }catch(e){}
-  }
-  if(!found){
-    err.textContent="לא נמצא לקוח עם פרטים אלו. האם עדיין לא נרשמת?";
+  var loginBtn=document.querySelector("#cl-login .login-btn");
+  if(loginBtn){loginBtn.disabled=true;loginBtn.textContent="מחפש...";}
+  var ident_norm=ident.replace(/[-\s]/g,"");
+  Promise.all([
+    db.collection("clients").where("phone","==",ident).limit(1).get(),
+    db.collection("clients").where("phone","==",ident_norm).limit(1).get(),
+    db.collection("clients").where("email","==",ident.toLowerCase()).limit(1).get()
+  ]).then(function(results){
+    var found=null;
+    results.forEach(function(snap){if(!snap.empty&&!found){var d=snap.docs[0];found=Object.assign({id:d.id},d.data());}});
+    if(!found){
+      err.textContent="לא נמצא לקוח עם פרטים אלו. האם עדיין לא נרשמת?";
+      err.style.display="block";
+      if(loginBtn){loginBtn.disabled=false;loginBtn.textContent="כניסה";}
+      return;
+    }
+    var remember=document.getElementById("cl-remember").checked;
+    var userData={name:found.name,phone:found.phone||"",email:found.email||"",dob:found.dob||"",firestoreId:found.id};
+    try{sessionStorage.setItem("na_current_user",JSON.stringify(userData));if(remember)localStorage.setItem("na_current_user",JSON.stringify(userData));}catch(e){}
+    document.getElementById("cl-login").style.display="none";
+    USER.name=found.name;USER.phone=found.phone||"";USER.email=found.email||"";USER.dob=found.dob||"";
+    CURRENT_CLIENT_ID=found.id;
+    USER.status=found.arch?"arch":(found.status||"active");
+    USER.card=found.card||0;USER.max=found.max||0;USER.plan=found.plan||"";USER.branch=found.branch||"";
+    updateHeader();render();
+  }).catch(function(e){
+    console.error(e);
+    err.textContent="שגיאת חיבור. בדוק אינטרנט ונסה שנית.";
     err.style.display="block";
-    return;
-  }
-  // Persist user to na_clients if not already there (so future logins work even after session expires)
-  ensureClientPersisted(found);
-  var userData={name:found.name,phone:found.phone,email:found.email,dob:found.dob};
-  var remember=document.getElementById("cl-remember").checked;
-  try{
-    sessionStorage.setItem("na_current_user",JSON.stringify(userData));
-    if(remember)localStorage.setItem("na_current_user",JSON.stringify(userData));
-  }catch(e){}
-  document.getElementById("cl-login").style.display="none";
-  // reload user data
-  if(userData.name){USER.name=userData.name;USER.phone=userData.phone||"";USER.email=userData.email||"";USER.dob=userData.dob||"";}
-  var updatedClients=[];try{updatedClients=JSON.parse(localStorage.getItem("na_clients")||"[]");}catch(e){}
-  var me=updatedClients.find(function(c){return c.phone===USER.phone||c.email===USER.email;});
-  if(me){
-    CURRENT_CLIENT_ID=me.id;
-    USER.status=me.arch?"arch":(me.status||"active");
-    USER.card=me.card||0;USER.max=me.max||0;USER.plan=me.plan||"";USER.branch=me.branch||"";
-  }
-  updateHeader();
-  render();
+    if(loginBtn){loginBtn.disabled=false;loginBtn.textContent="כניסה";}
+  });
 }
 document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("cl-login").style.display!=="none")doClientLogin();});
 
