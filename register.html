@@ -180,8 +180,8 @@ function submitReg(){
     db.collection("clients").where("phone","==",phoneNorm).get()
   ]).then(function(results){
     function activeDoc(snap){return snap.docs.find(function(d){return !d.data().arch;});}
-    var existByEmail=activeDoc(results[0]);
-    var existByPhone=activeDoc(results[1])||activeDoc(results[2]);
+    var existByEmail=!results[0].empty;
+    var existByPhone=!results[1].empty||!results[2].empty;
     if(existByEmail||existByPhone){
       if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}
       var msg=existByEmail?"מייל זה כבר רשום במערכת.":"מספר הטלפון כבר רשום במערכת.";
