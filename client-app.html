@@ -14,23 +14,23 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"/>
 <link rel="icon" type="image/png" sizes="512x512" href="apple-touch-icon.png"/>
 <style>
-:root{--blue:#1A56DB;--blue-dark:#1240A0;--bg:#F2F2F7;--card:#fff;--label:#1C1C1E;--label2:#3C3C43;--label3:#8E8E93;--sep:rgba(60,60,67,.12);--nav-h:56px;}
+:root{--blue:#0057B8;--blue-dark:#003A8C;--blue-light:#E8F0FD;--bg:#EEF1F8;--card:#fff;--label:#0A1628;--label2:#3D4F6E;--label3:#7A8EAA;--sep:rgba(10,22,40,.08);--nav-h:58px;--shadow:0 2px 12px rgba(0,0,0,.07);}
 html,body{color-scheme:light only;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--label);direction:rtl;-webkit-tap-highlight-color:transparent;}
 *{box-sizing:border-box;}
-.hdr{background:rgba(255,255,255,.82);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--sep);padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));position:sticky;top:0;z-index:20;}
-.ct{padding:16px;padding-bottom:calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));}
-#nav{position:fixed;bottom:0;left:0;right:0;background:rgba(249,249,249,.94);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--sep);display:flex;z-index:100;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding:0;padding-bottom:env(safe-area-inset-bottom);align-items:stretch;}
+.hdr{background:#fff;border-bottom:1px solid var(--sep);padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));position:sticky;top:0;z-index:20;box-shadow:0 1px 6px rgba(0,0,0,.06);}
+.ct{padding:0;padding-bottom:calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));}
+#nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--sep);display:flex;z-index:100;height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding:0;padding-bottom:env(safe-area-inset-bottom);align-items:stretch;box-shadow:0 -2px 12px rgba(0,0,0,.05);}
 #nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:none;cursor:pointer;color:var(--label3);padding:6px 0;min-height:44px;}
 #nav button .ic{font-size:22px;line-height:1;}
 #nav button .lb{font-size:10px;font-weight:600;letter-spacing:.1px;}
 #nav button.on{color:var(--blue);}
-#nav button.on .ic{transform:scale(1.08);}
-.card{background:var(--card);border-radius:16px;padding:0;margin-bottom:12px;overflow:hidden;}
-.card-row{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--sep);}
+#nav button.on .lb{color:var(--blue);}
+.card{background:var(--card);border-radius:14px;padding:0;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--sep);}
 .card-row:last-child{border-bottom:none;}
 .card-row .rl{font-size:13px;color:var(--label3);display:flex;align-items:center;gap:6px;}
 .card-row .rv{font-size:15px;font-weight:600;color:var(--label);}
-.sec-hdr{font-size:13px;font-weight:600;color:var(--label3);text-transform:uppercase;letter-spacing:.4px;padding:0 4px;margin:20px 0 6px;}
+.sec-hdr{font-size:11px;font-weight:700;color:var(--label3);text-transform:uppercase;letter-spacing:.6px;padding:0 4px;margin:18px 0 8px;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -173,20 +173,21 @@ function renderHome(){
   }
   var pct=USER.max>0?Math.round(USER.card/USER.max*100):0;
   var stLabel=USER.status==="active"?"פעיל":USER.status==="frozen"?"מוקפא":"לא פעיל";
-  var card=div("background:linear-gradient(135deg,var(--blue) 0%,var(--blue-dark) 100%);border-radius:22px;padding:22px 22px 18px;margin-bottom:16px;box-shadow:0 8px 24px rgba(26,86,219,.28);position:relative;overflow:hidden;");
-  var shimmer=div("position:absolute;top:-40px;left:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;");
-  card.appendChild(shimmer);
-  var ctop=div("display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;");
-  var cinfo=div("");
-  ap(cinfo,el("div","font-size:12px;color:rgba(255,255,255,.65);font-weight:500;margin-bottom:4px;","כרטיסיית חבר מועדון"),
-          el("div","font-size:32px;font-weight:800;color:#fff;line-height:1;letter-spacing:-1px;",USER.card+"/"+USER.max));
-  var cbadge=el("div","background:rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:#fff;",stLabel);
-  ap(ctop,cbadge,cinfo);card.appendChild(ctop);
-  var cpb=div("background:rgba(255,255,255,.2);border-radius:6px;height:6px;overflow:hidden;margin-bottom:8px;");
-  cpb.appendChild(div("height:100%;border-radius:6px;background:#fff;width:"+pct+"%;"));
+  var card=div("background:linear-gradient(160deg,#001E5A 0%,#0057B8 60%,#1A8FD1 100%);border-radius:0 0 28px 28px;padding:24px 20px 28px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 6px 24px rgba(0,60,140,.3);");
+  card.appendChild(div("position:absolute;top:-50px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;"));
+  card.appendChild(div("position:absolute;bottom:-20px;left:10px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;"));
+  ap(card,el("div","font-size:11px;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:.5px;margin-bottom:8px;","כרטיסיית חבר מועדון"));
+  var cinfo=div("margin-bottom:4px;");
+  ap(cinfo,el("div","font-size:46px;font-weight:800;color:#fff;line-height:1;letter-spacing:-2px;",USER.card+"/"+USER.max));
+  card.appendChild(cinfo);
+  ap(card,el("div","font-size:13px;color:rgba(255,255,255,.65);margin-bottom:18px;",USER.plan+(USER.branch?" · "+USER.branch:"")));
+  var cpb=div("background:rgba(255,255,255,.2);border-radius:6px;height:5px;overflow:hidden;margin-bottom:18px;");
+  cpb.appendChild(div("height:100%;border-radius:6px;background:rgba(255,255,255,.9);width:"+pct+"%;"));
   card.appendChild(cpb);
-  ap(card,el("div","font-size:12px;color:rgba(255,255,255,.65);",USER.plan+(USER.branch?" · "+USER.branch:"")));
+  var cbadge=el("div","display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#fff;",stLabel);
+  card.appendChild(cbadge);
   ct.appendChild(card);
+  var wrap=div("padding:0 16px;");ct.appendChild(wrap);var ct=wrap;
   var today=new Date().getDay();
   var branchSess=SESS.filter(function(s){return s.branch===USER.branch;});
   var foundNext=false;
