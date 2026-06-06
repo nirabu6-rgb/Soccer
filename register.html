@@ -180,8 +180,14 @@ function submitReg(){
     db.collection("clients").where("phone","==",phoneNorm).get()
   ]).then(function(results){
     function activeDoc(snap){return snap.docs.find(function(d){return !d.data().arch;});}
-    if(activeDoc(results[0])){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
-    if(activeDoc(results[1])||activeDoc(results[2])){alert("מספר הטלפון הזה כבר רשום במערכת.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+    var existByEmail=activeDoc(results[0]);
+    var existByPhone=activeDoc(results[1])||activeDoc(results[2]);
+    if(existByEmail||existByPhone){
+      if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}
+      var msg=existByEmail?"מייל זה כבר רשום במערכת.":"מספר הטלפון כבר רשום במערכת.";
+      if(confirm(msg+"\nהאם ברצונך לעבור למסך הכניסה?")){window.location.href="client-app.html";}
+      return null;
+    }
       return db.collection("clients").add(regData);
     })
     .then(function(docRef){
