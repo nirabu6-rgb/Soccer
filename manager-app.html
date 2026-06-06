@@ -108,7 +108,7 @@ function ap(){var p=arguments[0];for(var i=1;i<arguments.length;i++)if(arguments
 function showToast(msg){var t=div("position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:999;white-space:nowrap;");t.textContent=msg;document.body.appendChild(t);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},2200);}
 function calcAge(dob){if(!dob)return "?";var b=new Date(dob),n=new Date();var y=n.getFullYear()-b.getFullYear();var m=n.getMonth()-b.getMonth();if(m<0){y--;m+=12;}if(n.getDate()<b.getDate()&&m>0)m--;if(n.getDate()<b.getDate()&&m===0){y--;m=11;}return y+"."+m;}
 function saveClients(){try{localStorage.setItem("na_clients",JSON.stringify(CL));}catch(e){}
-try{var _b=db.batch();CL.forEach(function(c){if(c.id)_b.set(db.collection("clients").doc(c.id),c);});_b.commit().catch(function(e){console.error("Firestore:",e);});}catch(e){}}
+try{var _b=db.batch();CL.forEach(function(c){if(c.id){var doc=Object.assign({},c);if(cPurch[c.id])doc.purchases=cPurch[c.id];_b.set(db.collection("clients").doc(c.id),doc);}});_b.commit().catch(function(e){console.error("Firestore:",e);});}catch(e){}}
 
 function openSheet(buildFn){
   var ov=div("position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;");
@@ -996,7 +996,7 @@ renderNotifs._dismissed={};
 
 (function(){
   db.collection("clients").get().then(function(snap){
-    snap.forEach(function(doc){var c=Object.assign({id:doc.id},doc.data());if(!CL.find(function(x){return x.id===c.id;}))CL.push(c);});
+    snap.forEach(function(doc){var d=doc.data();var c=Object.assign({id:doc.id},d);if(!CL.find(function(x){return x.id===c.id;}))CL.push(c);if(d.purchases&&d.purchases.length)cPurch[doc.id]=d.purchases;});
     try{var loc=JSON.parse(localStorage.getItem("na_clients")||"[]");loc.forEach(function(c){if(c.id&&!CL.find(function(x){return x.id===c.id;}))CL.push(c);});}catch(e){}
     finishInit();
   }).catch(function(err){

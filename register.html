@@ -167,15 +167,19 @@ function submitReg(){
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent="שומר...";}
   var now=new Date();
   var regData={
-    name:formData.name,phone:formData.phone,email:formData.email,dob:formData.dob,password:formData.password||"",
+    name:formData.name,phone:formData.phone,email:(formData.email||"").toLowerCase(),dob:formData.dob,password:formData.password||"",
     status:"active",card:0,max:0,debt:0,plan:"",branch:"",
     arch:false,isNew:true,isMinor:false,parentId:null,minors:[],
     joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
     registered:now.toISOString()
   };
-  db.collection("clients").where("email","==",formData.email.toLowerCase()).get()
-    .then(function(snap){
-      if(!snap.empty){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+  Promise.all([
+    db.collection("clients").where("email","==",formData.email.toLowerCase()).limit(1).get(),
+    db.collection("clients").where("phone","==",formData.phone).limit(1).get()
+  ]).then(function(results){
+    var snap=results[0],snapPhone=results[1];
+    if(!snap.empty){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+    if(!snapPhone.empty){alert("מספר הטלפון הזה כבר רשום במערכת.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
       return db.collection("clients").add(regData);
     })
     .then(function(docRef){

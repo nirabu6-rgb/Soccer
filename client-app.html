@@ -186,6 +186,11 @@ function renderHome(){
   card.appendChild(cpb);
   var cbadge=el("div","display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#fff;",stLabel);
   card.appendChild(cbadge);
+  if((USER.children&&USER.children.length>0)||USER.isChild){
+    var swBtn=el("button","float:left;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;margin-top:0;","⇄ החלף חשבון");
+    swBtn.onclick=function(){openFamilySwitcher();};
+    card.appendChild(swBtn);
+  }
   ct.appendChild(card);
   var wrap=div("padding:0 16px;");ct.appendChild(wrap);var ct=wrap;
   var today=new Date().getDay();
@@ -761,13 +766,35 @@ updateHeader();
         CURRENT_CLIENT_ID=doc.id;
         USER.status=d.arch?"arch":(d.status||"active");
         USER.card=d.card||0;USER.max=d.max||0;USER.plan=d.plan||"";USER.branch=d.branch||"";
-      }
-      showApp();
+        setupClientListener(doc.id);
+        loadChildren(doc.id,function(){showApp();});
+      } else {showApp();}
     }).catch(function(){showApp();});
   } else {showApp();}
 })();
 
 
+var _clientUnsub=null;
+function setupClientListener(docId){
+  if(_clientUnsub){try{_clientUnsub();}catch(e){}_clientUnsub=null;}
+  _clientUnsub=db.collection("clients").doc(docId).onSnapshot(function(doc){
+    if(!doc.exists)return;
+    var d=doc.data();
+    USER.status=d.arch?"arch":(d.status||"active");
+    USER.card=d.card||0;USER.max=d.max||0;USER.plan=d.plan||"";USER.branch=d.branch||"";
+    if(d.purchases&&d.purchases.length){HIST=d.purchases.map(function(p){return {group:p.item||"",date:p.date||"",time:"",attended:true,rem:p.rem,amount:p.amount,expiry:p.expiry,cancelled:p.cancelled};});}
+    updateHeader();render();
+  },function(){});
+}
+function loadChildren(parentId,cb){
+  db.collection("clients").where("parentId","==",parentId).get().then(function(snap){
+    var kids=[];
+    snap.forEach(function(doc){kids.push(Object.assign({id:doc.id},doc.data()));});
+    USER.children=kids.map(function(k){return {id:k.id,name:k.name,status:k.arch?"arch":(k.status||"active"),card:k.card||0,max:k.max||0,plan:k.plan||"",branch:k.branch||USER.branch,dob:k.dob||""};});
+    kids.forEach(function(k){if(!ALL_CLIENTS.find(function(c){return c.id===k.id;}))ALL_CLIENTS.push(k);});
+    if(cb)cb();
+  }).catch(function(){if(cb)cb();});
+}
 function doClientLogin(){
   var ident=document.getElementById("cl-ident").value.trim();
   var pass=document.getElementById("cl-pass").value;
@@ -806,7 +833,8 @@ function doClientLogin(){
     CURRENT_CLIENT_ID=found.id;
     USER.status=found.arch?"arch":(found.status||"active");
     USER.card=found.card||0;USER.max=found.max||0;USER.plan=found.plan||"";USER.branch=found.branch||"";
-    updateHeader();render();
+    setupClientListener(found.id);
+    loadChildren(found.id,function(){updateHeader();render();});
   }).catch(function(e){
     console.error(e);
     err.textContent="שגיאת חיבור. בדוק אינטרנט ונסה שנית.";
