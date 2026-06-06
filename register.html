@@ -173,13 +173,15 @@ function submitReg(){
     joinDate:now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear(),
     registered:now.toISOString()
   };
+  var phoneNorm=formData.phone.replace(/[-\s]/g,"");
   Promise.all([
-    db.collection("clients").where("email","==",formData.email.toLowerCase()).limit(1).get(),
-    db.collection("clients").where("phone","==",formData.phone).limit(1).get()
+    db.collection("clients").where("email","==",formData.email.toLowerCase()).get(),
+    db.collection("clients").where("phone","==",formData.phone).get(),
+    db.collection("clients").where("phone","==",phoneNorm).get()
   ]).then(function(results){
-    var snap=results[0],snapPhone=results[1];
-    if(!snap.empty){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
-    if(!snapPhone.empty){alert("מספר הטלפון הזה כבר רשום במערכת.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+    function activeDoc(snap){return snap.docs.find(function(d){return !d.data().arch;});}
+    if(activeDoc(results[0])){alert("מייל זה כבר רשום במערכת. אנא השתמש במייל אחר.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
+    if(activeDoc(results[1])||activeDoc(results[2])){alert("מספר הטלפון הזה כבר רשום במערכת.");if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="סיים הרשמה ✓";}return null;}
       return db.collection("clients").add(regData);
     })
     .then(function(docRef){
