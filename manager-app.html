@@ -997,7 +997,7 @@ renderNotifs._dismissed={};
 (function(){
   db.collection("clients").get().then(function(snap){
     snap.forEach(function(doc){var d=doc.data();var c=Object.assign({id:doc.id},d);if(!CL.find(function(x){return x.id===c.id;}))CL.push(c);if(d.purchases&&d.purchases.length)cPurch[doc.id]=d.purchases;});
-    try{var loc=JSON.parse(localStorage.getItem("na_clients")||"[]");loc.forEach(function(c){if(c.id&&!CL.find(function(x){return x.id===c.id;}))CL.push(c);});}catch(e){}
+    try{localStorage.setItem("na_clients",JSON.stringify(CL));}catch(e){}
     finishInit();
   }).catch(function(err){
     console.error("Firestore load failed:",err);
