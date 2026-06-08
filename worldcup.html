@@ -1057,24 +1057,28 @@ function renderPrize() {
 }
 
 // ===================== INIT =====================
-window.addEventListener('load', function() {
-  setTimeout(function() {
-    var splash = document.getElementById('splash');
-    splash.classList.add('hide');
-    setTimeout(function(){ splash.style.display='none'; }, 400);
+function hideSplashAndStart() {
+  var splash = document.getElementById('splash');
+  if (!splash || splash.style.display === 'none') return;
+  splash.classList.add('hide');
+  setTimeout(function(){ splash.style.display='none'; }, 400);
+  var session = localStorage.getItem('wc_session');
+  if (session) {
+    try {
+      ME = JSON.parse(session);
+      if (ME.uid && ME.name && ME.groupCode) {
+        startApp();
+        return;
+      }
+    } catch(e) {}
+  }
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
 
-    var session = localStorage.getItem('wc_session');
-    if (session) {
-      try {
-        ME = JSON.parse(session);
-        if (ME.uid && ME.name && ME.groupCode) {
-          startApp();
-          return;
-        }
-      } catch(e) {}
-    }
-    document.getElementById('loginScreen').classList.remove('hidden');
-  }, 1200);
+// Force show after 2.5s no matter what
+setTimeout(hideSplashAndStart, 2500);
+window.addEventListener('load', function() {
+  setTimeout(hideSplashAndStart, 600);
 });
 </script>
 </body>
