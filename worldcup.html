@@ -339,9 +339,18 @@ input[type=number]{-moz-appearance:textfield}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 // ===================== FIREBASE =====================
-var firebaseConfig = {apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
+// Start splash timeout immediately - before any Firebase code
+setTimeout(function(){
+  var s=document.getElementById('splash');
+  if(s&&s.style.display!=='none'){s.classList.add('hide');setTimeout(function(){s.style.display='none';},400);var ls=document.getElementById('loginScreen');if(ls)ls.classList.remove('hidden');}
+}, 3000);
+
+var db = null;
+try {
+  var firebaseConfig = {apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(e) { console.error('Firebase init error:', e); }
 
 // ===================== DATA =====================
 var GROUPS = {
@@ -578,6 +587,7 @@ function startApp() {
 
 // ===================== FIREBASE SUBSCRIPTIONS =====================
 function subscribeData() {
+  if (!db) { renderAll(); return; }
   // Results
   if (unsubResults) unsubResults();
   unsubResults = db.collection('wc_results').onSnapshot(function(snap) {
@@ -628,6 +638,7 @@ function subscribeData() {
 
 // ===================== SAVE BET =====================
 function saveBet(gameId, h, a) {
+  if (!db) return;
   var docId = ME.groupCode + '_' + ME.uid + '_' + gameId;
   db.collection('wc_bets').doc(docId).set({
     groupCode: ME.groupCode, uid: ME.uid, gameId: gameId,
