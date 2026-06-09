@@ -130,7 +130,7 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .top-scorer-input{width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:1rem;outline:none;transition:border-color .2s}
 .top-scorer-input:focus{border-color:var(--blue)}
 .autocomplete-wrap{position:relative}
-.autocomplete-list{position:absolute;bottom:100%;right:0;left:0;background:#fff;border:1.5px solid var(--blue);border-radius:12px;box-shadow:0 -6px 24px rgba(0,0,0,.15);z-index:100;max-height:260px;overflow-y:scroll;-webkit-overflow-scrolling:touch;margin-bottom:6px}
+.autocomplete-list{position:fixed;background:#fff;border:1.5px solid var(--blue);border-radius:12px;box-shadow:0 -6px 24px rgba(0,0,0,.18);z-index:9999;max-height:250px;overflow-y:scroll;-webkit-overflow-scrolling:touch}
 .autocomplete-item{padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--sep);direction:rtl}
 .autocomplete-item:last-child{border-bottom:none}
 .autocomplete-item:active{background:#EBF3FF}
@@ -1149,13 +1149,25 @@ function setupScorerAutocomplete(inputId) {
   var list = document.getElementById('scorerAutocomplete');
   if (!inp || !list) return;
 
-  inp.addEventListener('input', function() {
-    var q = inp.value.trim();
-    if (q.length < 2) { list.style.display = 'none'; return; }
-    var matches = PLAYERS_LIST.filter(function(p) {
-      return p.name.indexOf(q) !== -1;
-    }).slice(0, 8);
-    if (matches.length === 0) { list.style.display = 'none'; return; }
+  function positionList() {
+    var r = inp.getBoundingClientRect();
+    var listH = Math.min(250, list.scrollHeight);
+    var spaceAbove = r.top;
+    var spaceBelow = window.innerHeight - r.bottom;
+    list.style.left = r.left + 'px';
+    list.style.width = r.width + 'px';
+    if (spaceAbove > spaceBelow) {
+      // open upward
+      list.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+      list.style.top = 'auto';
+    } else {
+      // open downward
+      list.style.top = (r.bottom + 4) + 'px';
+      list.style.bottom = 'auto';
+    }
+  }
+
+  function showList(matches) {
     list.innerHTML = matches.map(function(p) {
       return '<div class="autocomplete-item" data-name="'+p.name+'">'+
         '<span class="ac-flag">'+p.flag+'</span>'+
@@ -1163,6 +1175,7 @@ function setupScorerAutocomplete(inputId) {
         '</div>';
     }).join('');
     list.style.display = 'block';
+    positionList();
     list.querySelectorAll('.autocomplete-item').forEach(function(item) {
       item.addEventListener('mousedown', function(e) { e.preventDefault(); });
       item.addEventListener('click', function() {
@@ -1170,14 +1183,27 @@ function setupScorerAutocomplete(inputId) {
         list.style.display = 'none';
       });
     });
+  }
+
+  inp.addEventListener('input', function() {
+    var q = inp.value.trim();
+    if (q.length < 2) { list.style.display = 'none'; return; }
+    var matches = PLAYERS_LIST.filter(function(p) {
+      return p.name.indexOf(q) !== -1;
+    }).slice(0, 12);
+    if (matches.length === 0) { list.style.display = 'none'; return; }
+    showList(matches);
   });
 
   inp.addEventListener('blur', function() {
-    setTimeout(function(){ list.style.display = 'none'; }, 150);
+    setTimeout(function(){ list.style.display = 'none'; }, 200);
   });
   inp.addEventListener('focus', function() {
     if (inp.value.trim().length >= 2) inp.dispatchEvent(new Event('input'));
   });
+  window.addEventListener('scroll', function() {
+    if (list.style.display !== 'none') positionList();
+  }, true);
 }
 
 // ===================== RENDER WORLD TAB =====================
