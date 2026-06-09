@@ -263,6 +263,7 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
         <div id="groupWorldPicks"></div>
+        <div id="worldResultEntry"></div>
       </div>
     </div>
 
@@ -521,6 +522,10 @@ function calcPlayerPointsDetailed(uid) {
       }
     }
   });
+  // World bets
+  var wbet = ALL_WORLD_BETS[uid];
+  if (wbet && WORLD_RESULT.champion && wbet.champion === WORLD_RESULT.champion) total += 10;
+  if (wbet && WORLD_RESULT.topScorer && wbet.topScorer && wbet.topScorer.trim().toLowerCase() === WORLD_RESULT.topScorer.trim().toLowerCase()) total += 8;
   return {total:total, exact:exact, correct:correct, bonus:bonusPts};
 }
 
@@ -621,8 +626,8 @@ function subscribeData() {
     renderAll();
   }, function(err){ console.error('players err', err); });
 
-  // World result
-  db.collection('wc_world_result').doc('main').get().then(function(doc) {
+  // World result (real-time)
+  db.collection('wc_world_result').doc('main').onSnapshot(function(doc) {
     if (doc.exists) WORLD_RESULT = doc.data();
     renderAll();
   });
@@ -981,6 +986,40 @@ function renderWorldTab() {
     });
   };
 
+  // World result entry (always visible after lock)
+  var wreDiv = document.getElementById('worldResultEntry');
+  if (locked) {
+    var wChamp = WORLD_RESULT.champion || '';
+    var wScorer = WORLD_RESULT.topScorer || '';
+    var wreHtml = '<div class="card" style="margin-top:12px">';
+    wreHtml += '<div class="card-header"><div class="card-title">📋 הכנסת תוצאה אמיתית</div></div>';
+    wreHtml += '<div class="card-body">';
+    wreHtml += '<div style="margin-bottom:10px">';
+    wreHtml += '<div style="font-size:.8rem;color:var(--label3);font-weight:600;margin-bottom:6px">🏆 האלופה האמיתית</div>';
+    wreHtml += '<select id="worldChampResult" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:.9rem;outline:none">';
+    wreHtml += '<option value="">-- בחר אלופה --</option>';
+    TEAMS.forEach(function(t) {
+      wreHtml += '<option value="'+t.name+'"'+(t.name===wChamp?' selected':'')+'>'+t.flag+' '+t.name+'</option>';
+    });
+    wreHtml += '</select></div>';
+    wreHtml += '<div style="margin-bottom:10px">';
+    wreHtml += '<div style="font-size:.8rem;color:var(--label3);font-weight:600;margin-bottom:6px">👟 מלך השערים האמיתי</div>';
+    wreHtml += '<input type="text" id="worldScorerResult" class="top-scorer-input" placeholder="שם השחקן" value="'+wScorer+'">';
+    wreHtml += '</div>';
+    wreHtml += '<button class="save-world-btn" id="saveWorldResult">שמור תוצאות 💾</button>';
+    wreHtml += '</div></div>';
+    wreDiv.innerHTML = wreHtml;
+    document.getElementById('saveWorldResult').addEventListener('click', function() {
+      var c = document.getElementById('worldChampResult').value;
+      var s = document.getElementById('worldScorerResult').value.trim();
+      db.collection('wc_world_result').doc('main').set({champion:c, topScorer:s, ts:Date.now()}).then(function() {
+        showToast('תוצאות המונדיאל נשמרו ✓');
+      });
+    });
+  } else {
+    wreDiv.innerHTML = '';
+  }
+
   // Group picks (shown when locked)
   var gpDiv = document.getElementById('groupWorldPicks');
   if (locked && PLAYERS.length > 0) {
@@ -1039,9 +1078,11 @@ function renderLeaderboard() {
     return;
   }
 
+  var pool = PLAYERS.length * 200;
+  var prizes = [Math.floor(pool*.70), Math.floor(pool*.20), Math.floor(pool*.10)];
   var medals = ['🥇','🥈','🥉'];
   var html = '<table class="lb-table"><thead><tr>';
-  html += '<th>#</th><th>שם</th><th>נק\'</th><th>פירוט</th>';
+  html += '<th>#</th><th>שם</th><th>נק\'</th><th>פירוט</th><th>פרס</th>';
   html += '</tr></thead><tbody>';
   ranked.forEach(function(p, i) {
     var isME = p.uid === ME.uid;
@@ -1050,6 +1091,7 @@ function renderLeaderboard() {
     html += '<td class="player-name">'+p.name+(isME?' (אני)':'')+'</td>';
     html += '<td class="pts-total">'+p.total+'</td>';
     html += '<td><div class="pts-breakdown">⭐'+p.exact+' ✓'+p.correct+' +'+p.bonus+'</div></td>';
+    html += '<td style="font-size:.82rem;font-weight:700;color:var(--gold)">'+(i<3?prizes[i].toLocaleString()+' ₪':'—')+'</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
