@@ -836,28 +836,6 @@ function calcGamePoints(bet, result) {
   return bonus;
 }
 
-function calcPlayerPoints(uid) {
-  var total = 0, exact = 0, correct = 0, bonus = 0;
-  GAMES.forEach(function(game) {
-    var result = RESULTS[game.id];
-    if (!result) return;
-    var bet = (ALL_BETS[uid] && ALL_BETS[uid][game.id]) ? ALL_BETS[uid][game.id] : null;
-    if (!bet) return;
-    var pts = calcGamePoints(bet, result);
-    total += pts;
-    if (pts >= 6) { exact++; bonus += (pts - 5); }
-    else if (pts >= 2) { correct++; if (pts % 1 === 1 || pts === 3 || pts === 2) { /* bonus counted below */ } }
-    // Recalculate breakdown
-    var bh=+bet.h, ba=+bet.a, rh=+result.h, ra=+result.a;
-    var bBonus = (bh===rh || ba===ra) ? 1 : 0;
-    if (bh===rh && ba===ra) { exact = exact; }
-    else {
-      var bw2 = bh>ba?1:bh<ba?-1:0, rw2 = rh>ra?1:rh<ra?-1:0;
-      if (bw2===rw2 && bBonus) bonus++;
-    }
-  });
-  return {total:total, exact:exact, correct:correct, bonus:bonus};
-}
 
 function calcPlayerPointsDetailed(uid) {
   var total = 0, exact = 0, correct = 0, bonusPts = 0;
@@ -959,6 +937,7 @@ function subscribeData() {
   // Results
   if (unsubResults) unsubResults();
   unsubResults = db.collection('wc_results').onSnapshot(function(snap) {
+    RESULTS = {};
     snap.forEach(function(doc) { RESULTS[doc.id] = doc.data(); });
     renderAll();
   }, function(err){ console.error('results err', err); });
@@ -967,6 +946,7 @@ function subscribeData() {
   if (unsubBets) unsubBets();
   unsubBets = db.collection('wc_bets').where('groupCode','==',ME.groupCode).onSnapshot(function(snap) {
     ALL_BETS = {};
+    MY_BETS = {};
     snap.forEach(function(doc) {
       var d = doc.data();
       if (!ALL_BETS[d.uid]) ALL_BETS[d.uid] = {};
