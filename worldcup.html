@@ -129,6 +129,14 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .team-tile:active{transform:scale(.96)}
 .top-scorer-input{width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:1rem;outline:none;transition:border-color .2s}
 .top-scorer-input:focus{border-color:var(--blue)}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid var(--blue);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:100;max-height:220px;overflow-y:auto;margin-top:4px}
+.autocomplete-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}
+.autocomplete-item:last-child{border-bottom:none}
+.autocomplete-item:active,.autocomplete-item.hover{background:#EBF3FF}
+.ac-name{font-size:.92rem;font-weight:700;color:var(--label)}
+.ac-team{font-size:.78rem;color:var(--label3);margin-top:1px}
+.ac-flag{font-size:1.2rem;flex-shrink:0;margin-right:8px}
 .save-world-btn{width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:12px;transition:opacity .2s}
 .save-world-btn:active{opacity:.85}
 .save-world-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -258,7 +266,10 @@ input[type=number]{-moz-appearance:textfield}
           </div>
           <div class="card-body">
             <div id="myScorerPick" class="current-pick" style="display:none"></div>
-            <input type="text" id="topScorerInput" class="top-scorer-input" placeholder="שם השחקן (לדוגמה: מבאפה)">
+            <div class="autocomplete-wrap">
+              <input type="text" id="topScorerInput" class="top-scorer-input" placeholder="התחל להקליד שם שחקן..." autocomplete="off">
+              <div class="autocomplete-list" id="scorerAutocomplete" style="display:none"></div>
+            </div>
             <button class="save-world-btn" id="saveWorldBtn">שמור הימורים 🌍</button>
           </div>
         </div>
@@ -420,6 +431,68 @@ var TEAMS = [
   {name:'עיראק',flag:'🇮🇶'},{name:'אל סלבדור',flag:'🇸🇻'},
   {name:'סרביה',flag:'🇷🇸'},{name:"אלג'יריה",flag:'🇩🇿'},
   {name:'אוזבקיסטן',flag:'🇺🇿'},{name:'ניו זילנד',flag:'🇳🇿'}
+];
+
+// ===================== PLAYERS LIST =====================
+var PLAYERS_LIST = [
+  // ארה"ב 🇺🇸
+  {name:'פולישיץ\' כריסטיאן',team:'ארה"ב',flag:'🇺🇸'},{name:'ויה טימותי',team:'ארה"ב',flag:'🇺🇸'},{name:'מקיני ג\'ובאן',team:'ארה"ב',flag:'🇺🇸'},{name:'ריינה ג\'יאניוס',team:'ארה"ב',flag:'🇺🇸'},{name:'ווא\' ליאם',team:'ארה"ב',flag:'🇺🇸'},
+  // פנמה 🇵🇦
+  {name:'מורנו אדמיר',team:'פנמה',flag:'🇵🇦'},{name:'פנה גבריאל',team:'פנמה',flag:'🇵🇦'},
+  // אורוגוואי 🇺🇾
+  {name:'נונייס דרווין',team:'אורוגוואי',flag:'🇺🇾'},{name:'בנטנקור רודריגו',team:'אורוגוואי',flag:'🇺🇾'},{name:'ולברדה פדרו',team:'אורוגוואי',flag:'🇺🇾'},{name:'סואריס לואיס',team:'אורוגוואי',flag:'🇺🇾'},
+  // מקסיקו 🇲🇽
+  {name:'חירמן לואיס',team:'מקסיקו',flag:'🇲🇽'},{name:'אנטונה אדנר',team:'מקסיקו',flag:'🇲🇽'},{name:'לוסאנו הירוינג',team:'מקסיקו',flag:'🇲🇽'},
+  // פולין 🇵🇱
+  {name:'לבנדובסקי רוברט',team:'פולין',flag:'🇵🇱'},{name:'ז\'ילינסקי פיוטר',team:'פולין',flag:'🇵🇱'},
+  // מרוקו 🇲🇦
+  {name:'זיאש האכים',team:'מרוקו',flag:'🇲🇦'},{name:'בונו יאסין',team:'מרוקו',flag:'🇲🇦'},{name:'אמראבט סופיאן',team:'מרוקו',flag:'🇲🇦'},{name:'אונאחי אזדין',team:'מרוקו',flag:'🇲🇦'},
+  // קנדה 🇨🇦
+  {name:'דייוויס אלפונסו',team:'קנדה',flag:'🇨🇦'},{name:'דוקסה ג\'ונתן',team:'קנדה',flag:'🇨🇦'},{name:'לרין קייל',team:'קנדה',flag:'🇨🇦'},
+  // פורטוגל 🇵🇹
+  {name:'רונאלדו כריסטיאנו',team:'פורטוגל',flag:'🇵🇹'},{name:'פליקס ז\'ואאו',team:'פורטוגל',flag:'🇵🇹'},{name:'ברנרדו סילבה',team:'פורטוגל',flag:'🇵🇹'},{name:'ראפאל לאאו',team:'פורטוגל',flag:'🇵🇹'},{name:'רואבן נווש',team:'פורטוגל',flag:'🇵🇹'},{name:'ויטיניה',team:'פורטוגל',flag:'🇵🇹'},
+  // ניגריה 🇳🇬
+  {name:'אוסימן ויקטור',team:'ניגריה',flag:'🇳🇬'},{name:'לוקמן אדמולה',team:'ניגריה',flag:'🇳🇬'},
+  // ספרד 🇪🇸
+  {name:'יאמאל למין',team:'ספרד',flag:'🇪🇸'},{name:'מוראטה אלברו',team:'ספרד',flag:'🇪🇸'},{name:'פדרי',team:'ספרד',flag:'🇪🇸'},{name:'גאווי',team:'ספרד',flag:'🇪🇸'},{name:'ניקו וויליאמס',team:'ספרד',flag:'🇪🇸'},{name:'מורנו איאגו',team:'ספרד',flag:'🇪🇸'},
+  // יפן 🇯🇵
+  {name:'מיטומה קאורו',team:'יפן',flag:'🇯🇵'},{name:'דואן ריוטארו',team:'יפן',flag:'🇯🇵'},{name:'קואיטו הארוקי',team:'יפן',flag:'🇯🇵'},
+  // סנגל 🇸🇳
+  {name:'מאנה סאדיו',team:'סנגל',flag:'🇸🇳'},{name:'דיאלו אמאדו',team:'סנגל',flag:'🇸🇳'},
+  // צרפת 🇫🇷
+  {name:'מבאפה קיליאן',team:'צרפת',flag:'🇫🇷'},{name:'גריזמן אנטואן',team:'צרפת',flag:'🇫🇷'},{name:'דמבלה אוסמן',team:'צרפת',flag:'🇫🇷'},{name:'קאמאבינגה אדוארדו',team:'צרפת',flag:'🇫🇷'},{name:'טואראם מרקוס',team:'צרפת',flag:'🇫🇷'},{name:'ראביו אדריאן',team:'צרפת',flag:'🇫🇷'},
+  // קולומביה 🇨🇴
+  {name:'חמס לואיס דיאז',team:'קולומביה',flag:'🇨🇴'},{name:'קואדראדו חואן',team:'קולומביה',flag:'🇨🇴'},{name:'ראדה ז\'יימס',team:'קולומביה',flag:'🇨🇴'},
+  // אנגליה 🏴󠁧󠁢󠁥󠁮󠁧󠁿
+  {name:'קיין הארי',team:'אנגליה',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},{name:'סאקה בוקאיו',team:'אנגליה',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},{name:'בלינגהם ג\'וד',team:'אנגליה',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},{name:'פאולסון קול',team:'אנגליה',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},{name:'טרנט אלכסנדר-ארנולד',team:'אנגליה',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+  // גרמניה 🇩🇪
+  {name:'מוסיאלה ג\'מאל',team:'גרמניה',flag:'🇩🇪'},{name:'הברץ קאי',team:'גרמניה',flag:'🇩🇪'},{name:'גנבי ליאון',team:'גרמניה',flag:'🇩🇪'},{name:'פירץ פלוריאן',team:'גרמניה',flag:'🇩🇪'},{name:'ורץ ג\'וני',team:'גרמניה',flag:'🇩🇪'},
+  // ארגנטינה 🇦🇷
+  {name:'מסי ליאו',team:'ארגנטינה',flag:'🇦🇷'},{name:'לאוטארו מרטינז',team:'ארגנטינה',flag:'🇦🇷'},{name:'דה פול רודריגו',team:'ארגנטינה',flag:'🇦🇷'},{name:'מק אייסטר אלחסאן',team:'ארגנטינה',flag:'🇦🇷'},{name:'אלברז חוליאן',team:'ארגנטינה',flag:'🇦🇷'},
+  // הולנד 🇳🇱
+  {name:'גקפו קודי',team:'הולנד',flag:'🇳🇱'},{name:'דומפריס דנזל',team:'הולנד',flag:'🇳🇱'},{name:'ברגוויין סטיבן',team:'הולנד',flag:'🇳🇱'},{name:'ואן דייק וירג\'יל',team:'הולנד',flag:'🇳🇱'},
+  // קוריאה הדרומית 🇰🇷
+  {name:'סון הונג-מין',team:'קוריאה הדרומית',flag:'🇰🇷'},{name:'לי גאנג-אין',team:'קוריאה הדרומית',flag:'🇰🇷'},
+  // ברזיל 🇧🇷
+  {name:'ויניסיוס ג\'וניור',team:'ברזיל',flag:'🇧🇷'},{name:'רודריגו',team:'ברזיל',flag:'🇧🇷'},{name:'אנדריק',team:'ברזיל',flag:'🇧🇷'},{name:'פקה',team:'ברזיל',flag:'🇧🇷'},{name:'ראפינייה',team:'ברזיל',flag:'🇧🇷'},
+  // שוויץ 🇨🇭
+  {name:'שאקירי שאקרם',team:'שוויץ',flag:'🇨🇭'},{name:'אמביה בריל',team:'שוויץ',flag:'🇨🇭'},
+  // איטליה 🇮🇹
+  {name:'קיסה פדרו',team:'איטליה',flag:'🇮🇹'},{name:'ברארה נרזוגלו',team:'איטליה',flag:'🇮🇹'},{name:'פלורינץ\' לורנצו',team:'איטליה',flag:'🇮🇹'},{name:'ראטיקה ניקולו',team:'איטליה',flag:'🇮🇹'},
+  // בלגיה 🇧🇪
+  {name:'דה ברויינה קווין',team:'בלגיה',flag:'🇧🇪'},{name:'לוקאקו רומלו',team:'בלגיה',flag:'🇧🇪'},{name:'דוקו ג\'רמי',team:'בלגיה',flag:'🇧🇪'},{name:'טיאלמן לאנגסטון',team:'בלגיה',flag:'🇧🇪'},
+  // קרואטיה 🇭🇷
+  {name:'מודריץ\' לוקה',team:'קרואטיה',flag:'🇭🇷'},{name:'פרישיץ\' איבן',team:'קרואטיה',flag:'🇭🇷'},{name:'קוואראצ\'ה מרקו',team:'קרואטיה',flag:'🇭🇷'},
+  // דנמרק 🇩🇰
+  {name:'הויבייאר כריסטיאן',team:'דנמרק',flag:'🇩🇰'},{name:'בראיתוויט מרטין',team:'דנמרק',flag:'🇩🇰'},{name:'מייל יוספה',team:'דנמרק',flag:'🇩🇰'},
+  // ערב הסעודית 🇸🇦
+  {name:'אל-דאואסארי סאלם',team:'ערב הסעודית',flag:'🇸🇦'},{name:'אל-שהראני יאסר',team:'ערב הסעודית',flag:'🇸🇦'},
+  // אוסטריה 🇦🇹
+  {name:'זבית\'ש מארקו',team:'אוסטריה',flag:'🇦🇹'},{name:'גריגריץ\' קונרד',team:'אוסטריה',flag:'🇦🇹'},
+  // מצרים 🇪🇬
+  {name:'סאלח מוחמד',team:'מצרים',flag:'🇪🇬'},{name:'טריזגה עמר',team:'מצרים',flag:'🇪🇬'},
+  // סרביה 🇷🇸
+  {name:'מיטרוביץ\' אלכסנדר',team:'סרביה',flag:'🇷🇸'},{name:'ולאהוביץ\' דושאן',team:'סרביה',flag:'🇷🇸'},{name:'טאדיץ\' דושאן',team:'סרביה',flag:'🇷🇸'},
 ];
 
 // ===================== STATE =====================
@@ -584,6 +657,7 @@ function startApp() {
   document.getElementById('groupBadge').textContent = ME.groupCode;
   buildFilterBar();
   buildTeamsGrid();
+  setupScorerAutocomplete('topScorerInput');
   subscribeData();
   setupNav();
   startTimerInterval();
@@ -925,6 +999,43 @@ function renderTeamsGrid(search) {
       grid.querySelectorAll('.team-tile').forEach(function(t){ t.classList.remove('selected'); });
       tile.classList.add('selected');
     });
+  });
+}
+
+// ===================== AUTOCOMPLETE =====================
+function setupScorerAutocomplete(inputId) {
+  var inp = document.getElementById(inputId);
+  var list = document.getElementById('scorerAutocomplete');
+  if (!inp || !list) return;
+
+  inp.addEventListener('input', function() {
+    var q = inp.value.trim();
+    if (q.length < 2) { list.style.display = 'none'; return; }
+    var matches = PLAYERS_LIST.filter(function(p) {
+      return p.name.indexOf(q) !== -1;
+    }).slice(0, 8);
+    if (matches.length === 0) { list.style.display = 'none'; return; }
+    list.innerHTML = matches.map(function(p) {
+      return '<div class="autocomplete-item" data-name="'+p.name+'">'+
+        '<span class="ac-flag">'+p.flag+'</span>'+
+        '<div><div class="ac-name">'+p.name+'</div><div class="ac-team">'+p.team+'</div></div>'+
+        '</div>';
+    }).join('');
+    list.style.display = 'block';
+    list.querySelectorAll('.autocomplete-item').forEach(function(item) {
+      item.addEventListener('mousedown', function(e) { e.preventDefault(); });
+      item.addEventListener('click', function() {
+        inp.value = item.dataset.name;
+        list.style.display = 'none';
+      });
+    });
+  });
+
+  inp.addEventListener('blur', function() {
+    setTimeout(function(){ list.style.display = 'none'; }, 150);
+  });
+  inp.addEventListener('focus', function() {
+    if (inp.value.trim().length >= 2) inp.dispatchEvent(new Event('input'));
   });
 }
 
