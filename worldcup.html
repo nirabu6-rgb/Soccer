@@ -130,13 +130,14 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .top-scorer-input{width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:1rem;outline:none;transition:border-color .2s}
 .top-scorer-input:focus{border-color:var(--blue)}
 .autocomplete-wrap{position:relative}
-.autocomplete-list{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid var(--blue);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:100;max-height:220px;overflow-y:auto;margin-top:4px}
-.autocomplete-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep)}
+.autocomplete-list{position:absolute;top:100%;right:0;left:0;background:#fff;border:1.5px solid var(--blue);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:100;max-height:240px;overflow-y:auto;margin-top:6px}
+.autocomplete-item{padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--sep);direction:rtl}
 .autocomplete-item:last-child{border-bottom:none}
-.autocomplete-item:active,.autocomplete-item.hover{background:#EBF3FF}
-.ac-name{font-size:.92rem;font-weight:700;color:var(--label)}
-.ac-team{font-size:.78rem;color:var(--label3);margin-top:1px}
-.ac-flag{font-size:1.2rem;flex-shrink:0;margin-right:8px}
+.autocomplete-item:active{background:#EBF3FF}
+.ac-flag{font-size:1.6rem;flex-shrink:0;line-height:1}
+.ac-text{flex:1;min-width:0}
+.ac-name{font-size:.95rem;font-weight:700;color:var(--label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-team{font-size:.78rem;color:var(--label3);margin-top:2px;font-weight:500}
 .save-world-btn{width:100%;padding:13px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:12px;transition:opacity .2s}
 .save-world-btn:active{opacity:.85}
 .save-world-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -1018,7 +1019,7 @@ function setupScorerAutocomplete(inputId) {
     list.innerHTML = matches.map(function(p) {
       return '<div class="autocomplete-item" data-name="'+p.name+'">'+
         '<span class="ac-flag">'+p.flag+'</span>'+
-        '<div><div class="ac-name">'+p.name+'</div><div class="ac-team">'+p.team+'</div></div>'+
+        '<div class="ac-text"><div class="ac-name">'+p.name+'</div><div class="ac-team">'+p.team+'</div></div>'+
         '</div>';
     }).join('');
     list.style.display = 'block';
