@@ -1853,10 +1853,15 @@ function showProfileModal(uid) {
   document.getElementById('profileName').textContent = player.name;
   var content = '';
   var wbet = ALL_WORLD_BETS[uid];
+  var isMe = uid === ME.uid;
+  var worldLocked = isWorldBetLocked();
 
-  if (isWorldBetLocked() && wbet) {
-    content += '<div class="profile-section">';
-    content += '<div class="profile-section-title">הימורי טורניר</div>';
+  // World bets section — always show for own profile, show for others only after lock
+  content += '<div class="profile-section">';
+  content += '<div class="profile-section-title">הימורי טורניר</div>';
+  if (!worldLocked && !isMe) {
+    content += '<div style="background:#FEF3C7;border-radius:10px;padding:10px 12px;font-size:.83rem;color:#92400E;font-weight:600">🔒 יוחשפו אחרי נעילת הימורי המונדיאל (11/6 בשעה 21:30)</div>';
+  } else if (wbet && (wbet.champion || wbet.finalist1 || wbet.topScorer)) {
     if (wbet.champion) {
       var ct = TEAMS.find(function(t){ return t.name === wbet.champion; });
       var champPts = (WORLD_RESULT.champion && wbet.champion === WORLD_RESULT.champion) ? '+10 נק\'' : '';
@@ -1879,9 +1884,11 @@ function showProfileModal(uid) {
       var scorerPts = (WORLD_RESULT.topScorer && wbet.topScorer && wbet.topScorer.trim().toLowerCase() === WORLD_RESULT.topScorer.trim().toLowerCase()) ? '+8 נק\'' : '';
       content += '<div class="profile-bet-row"><span class="profile-game-name">👟 מלך שערים: '+wbet.topScorer+'</span><span class="profile-score" style="color:var(--green)">'+scorerPts+'</span></div>';
     }
-    content += '</div>';
-    content += '<div class="section-sep"></div>';
+  } else {
+    content += '<div style="color:var(--label3);font-size:.85rem;text-align:center;padding:12px 0">לא הוזנו הימורי טורניר</div>';
   }
+  content += '</div>';
+  content += '<div class="section-sep"></div>';
 
   // Game bets section
   content += '<div class="profile-section">';
