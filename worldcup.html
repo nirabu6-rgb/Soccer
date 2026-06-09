@@ -233,6 +233,7 @@ input[type=number]{-moz-appearance:textfield}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="topbar-badge" id="groupBadge"></span>
+        <button class="logout-btn" id="rulesBtn">📋 חוקים</button>
         <button class="logout-btn" id="logoutBtn">יציאה</button>
       </div>
     </div>
@@ -344,6 +345,45 @@ input[type=number]{-moz-appearance:textfield}
     <button class="nav-btn" data-tab="2"><span class="ico">🏆</span>טבלה</button>
     <button class="nav-btn" data-tab="3"><span class="ico">💰</span>פרס</button>
   </nav>
+</div>
+
+<!-- Rules Modal -->
+<div id="rulesModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 36px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:1.15rem;font-weight:800;color:var(--label)">📋 חוקים ושיטת ניקוד</div>
+      <button id="rulesClose" style="background:var(--bg);border:none;border-radius:50%;width:32px;height:32px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+
+    <div style="font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:10px">⚽ ניחוש תוצאות משחקים</div>
+    <div style="background:var(--bg);border-radius:12px;overflow:hidden;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--sep)"><span style="color:var(--label);font-weight:600">תוצאה מדויקת</span><span style="font-weight:800;color:var(--green)">5 נקודות</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--sep)"><span style="color:var(--label);font-weight:600">ניצחון נכון (לא מדויק)</span><span style="font-weight:800;color:var(--blue)">2 נקודות</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--sep)"><span style="color:var(--label);font-weight:600">תיקו נכון (לא מדויק)</span><span style="font-weight:800;color:var(--blue)">3 נקודות</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px"><span style="color:var(--label);font-weight:600">בונוס — שער אחד נכון</span><span style="font-weight:800;color:var(--gold)">+1 נקודה</span></div>
+    </div>
+
+    <div style="font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:10px">🌍 הימורי מונדיאל</div>
+    <div style="background:var(--bg);border-radius:12px;overflow:hidden;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--sep)"><span style="color:var(--label);font-weight:600">🏆 אלופה נכונה</span><span style="font-weight:800;color:var(--green)">10 נקודות</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px"><span style="color:var(--label);font-weight:600">👟 מלך השערים נכון</span><span style="font-weight:800;color:var(--green)">8 נקודות</span></div>
+    </div>
+
+    <div style="font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:10px">🔒 נעילה</div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:.85rem;color:var(--label2);line-height:1.7">
+      • ניחוש על כל משחק ננעל <strong>30 דקות לפני הקיקאוף</strong><br>
+      • הימורי מונדיאל (אלופה + מלך שערים) ננעלים <strong>11/6 בשעה 21:30</strong><br>
+      • ניחושי כולם גלויים <strong>רק לאחר הנעילה</strong>
+    </div>
+
+    <div style="font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:10px">💰 פרס</div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px 14px;font-size:.85rem;color:var(--label2);line-height:1.7">
+      • כל שחקן משלם <strong>200 ₪</strong><br>
+      • 🥇 מקום ראשון — <strong>70%</strong> מהקופה<br>
+      • 🥈 מקום שני — <strong>20%</strong> מהקופה<br>
+      • 🥉 מקום שלישי — <strong>10%</strong> מהקופה
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -789,6 +829,16 @@ function doLogout() {
 }
 
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
+document.getElementById('rulesBtn').addEventListener('click', function(){
+  var m = document.getElementById('rulesModal');
+  m.style.display = 'flex';
+});
+document.getElementById('rulesClose').addEventListener('click', function(){
+  document.getElementById('rulesModal').style.display = 'none';
+});
+document.getElementById('rulesModal').addEventListener('click', function(e){
+  if (e.target === this) this.style.display = 'none';
+});
 
 // ===================== APP START =====================
 function startApp() {
