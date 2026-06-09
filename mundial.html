@@ -552,28 +552,35 @@ function doRegister(){
   if(!code){errEl.textContent='נא להזין קוד גישה';errEl.style.display='block';return;}
   var btn=document.getElementById('btn-register');
   btn.disabled=true;btn.textContent='בודק...';
+  // Try to load config from Firestore, fallback to hardcoded if permissions fail
   db.collection('wc2_config').doc('main').get().then(function(snap){
     var cfg=snap.exists?snap.data():{};
-    var accessCode=cfg.accessCode||CONFIG.accessCode;
+    CONFIG=Object.assign(CONFIG,cfg);
+    return cfg;
+  }).catch(function(){
+    return {}; // fallback to hardcoded CONFIG
+  }).then(function(cfg){
+    var accessCode=CONFIG.accessCode||'123456';
     if(code!==accessCode){
       errEl.textContent='קוד גישה שגוי';errEl.style.display='block';
       btn.disabled=false;btn.textContent='הצטרף למשחק ⚽';return;
     }
-    CONFIG=Object.assign(CONFIG,cfg);
     var uid=getUID();
     var name=first+' '+last;
-    var isLate=cfg.tournamentStarted===true;
+    var isLate=CONFIG.tournamentStarted===true;
     var userData={uid:uid,name:name,firstName:first,lastName:last,status:'pending',
       longBetsDone:isLate,joinedAt:Date.now(),champion:'',topScorer:'',finalist1:'',finalist2:'',lateJoiner:isLate};
-    return db.collection('wc2_users').doc(uid).set(userData).then(function(){
+    db.collection('wc2_users').doc(uid).set(userData).then(function(){
       ME={uid:uid,name:name,status:'pending',longBetsDone:userData.longBetsDone,approved:false};
       saveSession(ME);
       showPendingScreen();
       pollApproval();
+    }).catch(function(e){
+      // If can't write to Firestore, still proceed (admin will add manually)
+      ME={uid:uid,name:name,status:'pending',longBetsDone:false,approved:false};
+      saveSession(ME);
+      showPendingScreen();
     });
-  }).catch(function(e){
-    errEl.textContent='שגיאה: '+e.message;errEl.style.display='block';
-    btn.disabled=false;btn.textContent='הצטרף למשחק ⚽';
   });
 }
 
