@@ -560,7 +560,7 @@ function doRegister(){
   }).catch(function(){
     return {}; // fallback to hardcoded CONFIG
   }).then(function(cfg){
-    var accessCode=CONFIG.accessCode||'123456';
+    var accessCode=CONFIG.accessCode||'0000';
     if(code!==accessCode){
       errEl.textContent='קוד גישה שגוי';errEl.style.display='block';
       btn.disabled=false;btn.textContent='הצטרף למשחק ⚽';return;
