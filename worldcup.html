@@ -277,29 +277,42 @@ input[type=number]{-moz-appearance:textfield}
     <div class="tab" id="tabWorld">
       <div class="world-section">
         <div id="worldLockNotice"></div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🏆 מי תהיה האלופה?</div>
-          </div>
-          <div class="card-body">
-            <div id="myChampionPick" class="current-pick" style="display:none"></div>
-            <div class="search-field">
-              <input type="text" id="champSearch" placeholder="חפש מדינה...">
+        <div id="worldCompactView"></div>
+        <div id="worldFullForm" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🏆 מי תהיה האלופה?</div>
             </div>
-            <div class="teams-grid" id="teamsGrid"></div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:12px">
-          <div class="card-header">
-            <div class="card-title">👟 מלך השערים</div>
-          </div>
-          <div class="card-body">
-            <div id="myScorerPick" class="current-pick" style="display:none"></div>
-            <div class="autocomplete-wrap">
-              <input type="text" id="topScorerInput" class="top-scorer-input" placeholder="התחל להקליד שם שחקן..." autocomplete="off">
-              <div class="autocomplete-list" id="scorerAutocomplete" style="display:none"></div>
+            <div class="card-body">
+              <div id="myChampionPick" class="current-pick" style="display:none"></div>
+              <div class="search-field">
+                <input type="text" id="champSearch" placeholder="חפש מדינה...">
+              </div>
+              <div class="teams-grid" id="teamsGrid"></div>
             </div>
-            <button class="save-world-btn" id="saveWorldBtn">שמור הימורים 🌍</button>
+          </div>
+          <div class="card" style="margin-top:12px">
+            <div class="card-header">
+              <div class="card-title">🏟️ שתי הקבוצות בגמר</div>
+            </div>
+            <div class="card-body">
+              <div style="font-size:.8rem;color:var(--label3);margin-bottom:10px">בחר בדיוק 2 נבחרות שיגיעו לגמר</div>
+              <div id="myFinalistsPick" class="current-pick" style="display:none"></div>
+              <div class="teams-grid" id="finalistsGrid"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px">
+            <div class="card-header">
+              <div class="card-title">👟 מלך השערים</div>
+            </div>
+            <div class="card-body">
+              <div id="myScorerPick" class="current-pick" style="display:none"></div>
+              <div class="autocomplete-wrap">
+                <input type="text" id="topScorerInput" class="top-scorer-input" placeholder="התחל להקליד שם שחקן..." autocomplete="off">
+                <div class="autocomplete-list" id="scorerAutocomplete" style="display:none"></div>
+              </div>
+              <button class="save-world-btn" id="saveWorldBtn">שמור הימורים 🌍</button>
+            </div>
           </div>
         </div>
         <div id="groupWorldPicks"></div>
@@ -1005,6 +1018,9 @@ function startApp() {
   buildTeamsGrid();
   setupScorerAutocomplete('topScorerInput','scorerAutocomplete');
   setupScorerAutocomplete('obScorerInput','obScorerAutocomplete');
+  // Update ob save btn when scorer typed
+  var obScorer = document.getElementById('obScorerInput');
+  if (obScorer) obScorer.addEventListener('input', function(){ updateObSaveBtn(); });
   subscribeData();
   setupNav();
   startTimerInterval();
@@ -1429,56 +1445,115 @@ function renderWorldTab() {
   var player = PLAYERS.find(function(p){ return p.uid === ME.uid; });
   var myChamp = player ? (player.champion||'') : '';
   var myScorer = player ? (player.topScorer||'') : '';
+  var myFinalist1 = player ? (player.finalist1||'') : '';
+  var myFinalist2 = player ? (player.finalist2||'') : '';
 
-  // Current champion pick
-  var champDiv = document.getElementById('myChampionPick');
-  if (myChamp) {
-    var team = TEAMS.find(function(t){ return t.name === myChamp; });
-    champDiv.style.display = 'flex';
-    champDiv.innerHTML = '<div><div class="cp-label">הבחירה הנוכחית שלי</div><div class="cp-val">'+(team?team.flag+' ':'')+myChamp+'</div></div>';
+  var compactView = document.getElementById('worldCompactView');
+  var fullForm = document.getElementById('worldFullForm');
+
+  if (!locked) {
+    var hasPicks = myChamp && myScorer && myFinalist1 && myFinalist2;
+    if (hasPicks && !editingWorldBets) {
+      // Show compact summary
+      fullForm.style.display = 'none';
+      var champTeam = TEAMS.find(function(t){ return t.name === myChamp; });
+      var fin1Team = TEAMS.find(function(t){ return t.name === myFinalist1; });
+      var fin2Team = TEAMS.find(function(t){ return t.name === myFinalist2; });
+      var cHtml = '';
+      cHtml += '<div class="compact-pick-card">';
+      cHtml += '<div><div class="compact-pick-label">🏆 אלופה</div>';
+      cHtml += '<div class="compact-pick-val">'+(champTeam?champTeam.flag+' ':'')+myChamp+'</div></div>';
+      cHtml += '<button class="change-btn" onclick="editingWorldBets=true;renderWorldTab()">שנה</button>';
+      cHtml += '</div>';
+      cHtml += '<div class="compact-pick-card">';
+      cHtml += '<div><div class="compact-pick-label">🏟️ נבחרות לגמר</div>';
+      cHtml += '<div class="compact-pick-val">'+(fin1Team?fin1Team.flag+' ':'')+myFinalist1+' &amp; '+(fin2Team?fin2Team.flag+' ':'')+myFinalist2+'</div></div>';
+      cHtml += '<button class="change-btn" onclick="editingWorldBets=true;renderWorldTab()">שנה</button>';
+      cHtml += '</div>';
+      cHtml += '<div class="compact-pick-card">';
+      cHtml += '<div><div class="compact-pick-label">👟 מלך השערים</div>';
+      cHtml += '<div class="compact-pick-val">'+myScorer+'</div></div>';
+      cHtml += '<button class="change-btn" onclick="editingWorldBets=true;renderWorldTab()">שנה</button>';
+      cHtml += '</div>';
+      compactView.innerHTML = cHtml;
+    } else {
+      // Show full form
+      compactView.innerHTML = '';
+      fullForm.style.display = 'block';
+
+      // Current champion pick
+      var champDiv = document.getElementById('myChampionPick');
+      if (myChamp) {
+        var team = TEAMS.find(function(t){ return t.name === myChamp; });
+        champDiv.style.display = 'flex';
+        champDiv.innerHTML = '<div><div class="cp-label">הבחירה הנוכחית שלי</div><div class="cp-val">'+(team?team.flag+' ':'')+myChamp+'</div></div>';
+      } else {
+        champDiv.style.display = 'none';
+      }
+
+      // Current finalists pick
+      var finDiv = document.getElementById('myFinalistsPick');
+      if (myFinalist1 || myFinalist2) {
+        var ft1 = TEAMS.find(function(t){ return t.name === myFinalist1; });
+        var ft2 = TEAMS.find(function(t){ return t.name === myFinalist2; });
+        finDiv.style.display = 'flex';
+        finDiv.innerHTML = '<div><div class="cp-label">הבחירות הנוכחיות שלי לגמר</div><div class="cp-val">'+(ft1?ft1.flag+' ':'')+myFinalist1+(myFinalist2?' ו-'+(ft2?ft2.flag+' ':'')+myFinalist2:'')+'</div></div>';
+      } else {
+        finDiv.style.display = 'none';
+      }
+
+      // Current scorer pick
+      var scorerDiv = document.getElementById('myScorerPick');
+      if (myScorer) {
+        scorerDiv.style.display = 'flex';
+        scorerDiv.innerHTML = '<div><div class="cp-label">מלך השערים הנוכחי שלי</div><div class="cp-val">👟 '+myScorer+'</div></div>';
+      } else {
+        scorerDiv.style.display = 'none';
+      }
+
+      // Top scorer input
+      var scorerInput = document.getElementById('topScorerInput');
+      scorerInput.value = myScorer;
+      scorerInput.disabled = false;
+
+      // Save button
+      var saveBtn = document.getElementById('saveWorldBtn');
+      saveBtn.disabled = false;
+
+      // Rebuild teams grids with current selection
+      renderTeamsGrid(document.getElementById('champSearch').value.trim());
+      renderFinalistsGrid();
+
+      // Save world btn listener
+      saveBtn.onclick = function() {
+        var champ = selectedChampion || myChamp;
+        var fin1 = selectedFinalist1 || myFinalist1;
+        var fin2 = selectedFinalist2 || myFinalist2;
+        var scorer = scorerInput.value.trim();
+        if (!champ) { showToast('בחר מדינה אלופה'); return; }
+        if (!fin1 || !fin2) { showToast('בחר 2 נבחרות לגמר'); return; }
+        db.collection('wc_players').doc(ME.uid).set({
+          champion: champ, topScorer: scorer, finalist1: fin1, finalist2: fin2
+        }, {merge:true}).then(function() {
+          editingWorldBets = false;
+          showToast('הימורי המונדיאל נשמרו ✓');
+          renderWorldTab();
+        });
+      };
+    }
   } else {
-    champDiv.style.display = 'none';
+    // Locked
+    compactView.innerHTML = '';
+    fullForm.style.display = 'none';
   }
-
-  // Current scorer pick
-  var scorerDiv = document.getElementById('myScorerPick');
-  if (myScorer) {
-    scorerDiv.style.display = 'flex';
-    scorerDiv.innerHTML = '<div><div class="cp-label">מלך השערים הנוכחי שלי</div><div class="cp-val">👟 '+myScorer+'</div></div>';
-  } else {
-    scorerDiv.style.display = 'none';
-  }
-
-  // Top scorer input
-  var scorerInput = document.getElementById('topScorerInput');
-  scorerInput.value = myScorer;
-  scorerInput.disabled = locked;
-
-  // Save button
-  var saveBtn = document.getElementById('saveWorldBtn');
-  saveBtn.disabled = locked;
-
-  // Rebuild teams grid with current selection
-  renderTeamsGrid(document.getElementById('champSearch').value.trim());
-
-  // Save world btn listener
-  saveBtn.onclick = function() {
-    if (locked) return;
-    var champ = selectedChampion || myChamp;
-    var scorer = scorerInput.value.trim();
-    if (!champ) { showToast('בחר מדינה אלופה'); return; }
-    db.collection('wc_players').doc(ME.uid).set({
-      champion: champ, topScorer: scorer
-    }, {merge:true}).then(function() {
-      showToast('הימורי המונדיאל נשמרו ✓');
-    });
-  };
 
   // World result entry (always visible after lock)
   var wreDiv = document.getElementById('worldResultEntry');
   if (locked) {
     var wChamp = WORLD_RESULT.champion || '';
     var wScorer = WORLD_RESULT.topScorer || '';
+    var wFin1 = WORLD_RESULT.finalist1 || '';
+    var wFin2 = WORLD_RESULT.finalist2 || '';
     var wreHtml = '<div class="card" style="margin-top:12px">';
     wreHtml += '<div class="card-header"><div class="card-title">📋 הכנסת תוצאה אמיתית</div></div>';
     wreHtml += '<div class="card-body">';
@@ -1491,6 +1566,22 @@ function renderWorldTab() {
     });
     wreHtml += '</select></div>';
     wreHtml += '<div style="margin-bottom:10px">';
+    wreHtml += '<div style="font-size:.8rem;color:var(--label3);font-weight:600;margin-bottom:6px">🏟️ נבחרת גמר 1</div>';
+    wreHtml += '<select id="worldFin1Result" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:.9rem;outline:none">';
+    wreHtml += '<option value="">-- בחר נבחרת --</option>';
+    TEAMS.forEach(function(t) {
+      wreHtml += '<option value="'+t.name+'"'+(t.name===wFin1?' selected':'')+'>'+t.flag+' '+t.name+'</option>';
+    });
+    wreHtml += '</select></div>';
+    wreHtml += '<div style="margin-bottom:10px">';
+    wreHtml += '<div style="font-size:.8rem;color:var(--label3);font-weight:600;margin-bottom:6px">🏟️ נבחרת גמר 2</div>';
+    wreHtml += '<select id="worldFin2Result" style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--sep);background:#fff;font-size:.9rem;outline:none">';
+    wreHtml += '<option value="">-- בחר נבחרת --</option>';
+    TEAMS.forEach(function(t) {
+      wreHtml += '<option value="'+t.name+'"'+(t.name===wFin2?' selected':'')+'>'+t.flag+' '+t.name+'</option>';
+    });
+    wreHtml += '</select></div>';
+    wreHtml += '<div style="margin-bottom:10px">';
     wreHtml += '<div style="font-size:.8rem;color:var(--label3);font-weight:600;margin-bottom:6px">👟 מלך השערים האמיתי</div>';
     wreHtml += '<input type="text" id="worldScorerResult" class="top-scorer-input" placeholder="שם השחקן" value="'+wScorer+'">';
     wreHtml += '</div>';
@@ -1499,8 +1590,10 @@ function renderWorldTab() {
     wreDiv.innerHTML = wreHtml;
     document.getElementById('saveWorldResult').addEventListener('click', function() {
       var c = document.getElementById('worldChampResult').value;
+      var f1 = document.getElementById('worldFin1Result').value;
+      var f2 = document.getElementById('worldFin2Result').value;
       var s = document.getElementById('worldScorerResult').value.trim();
-      db.collection('wc_world_result').doc('main').set({champion:c, topScorer:s, ts:Date.now()}).then(function() {
+      db.collection('wc_world_result').doc('main').set({champion:c, topScorer:s, finalist1:f1, finalist2:f2, ts:Date.now()}).then(function() {
         showToast('תוצאות המונדיאל נשמרו ✓');
       });
     });
@@ -1524,6 +1617,18 @@ function renderWorldTab() {
       html += '</div>';
     });
     html += '</div>';
+    html += '<div class="group-picks" style="margin-top:12px"><h4>נבחרות לגמר</h4>';
+    PLAYERS.forEach(function(p) {
+      var wbet = ALL_WORLD_BETS[p.uid];
+      if (!wbet || (!wbet.finalist1 && !wbet.finalist2)) return;
+      var ft1 = TEAMS.find(function(t){ return t.name === wbet.finalist1; });
+      var ft2 = TEAMS.find(function(t){ return t.name === wbet.finalist2; });
+      html += '<div class="group-pick-row">';
+      html += '<div class="gpr-name">'+(p.uid===ME.uid?'⭐ ':'')+p.name+'</div>';
+      html += '<div class="gpr-pick">'+(wbet.finalist1?(ft1?ft1.flag+' ':'')+wbet.finalist1:'')+(wbet.finalist2?' | '+(ft2?ft2.flag+' ':'')+wbet.finalist2:'')+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
     html += '<div class="group-picks" style="margin-top:12px"><h4>מלך השערים</h4>';
     PLAYERS.forEach(function(p) {
       var wbet = ALL_WORLD_BETS[p.uid];
@@ -1539,6 +1644,42 @@ function renderWorldTab() {
   } else {
     gpDiv.innerHTML = '';
   }
+}
+
+// ===================== FINALISTS GRID =====================
+function renderFinalistsGrid() {
+  var grid = document.getElementById('finalistsGrid');
+  if (!grid) return;
+  var html = '';
+  TEAMS.forEach(function(team) {
+    var isFin1 = team.name === selectedFinalist1;
+    var isFin2 = team.name === selectedFinalist2;
+    var cls = 'team-tile finalist-tile' + (isFin1 || isFin2 ? ' selected' : '');
+    html += '<div class="'+cls+'" data-team="'+team.name+'">';
+    html += '<span class="tf">'+team.flag+'</span>';
+    html += '<span class="tn">'+team.name+'</span>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+  grid.querySelectorAll('.team-tile').forEach(function(tile) {
+    tile.addEventListener('click', function() {
+      if (isWorldBetLocked()) { showToast('ההימורים נסגרו'); return; }
+      var name = tile.dataset.team;
+      if (selectedFinalist1 === name) {
+        selectedFinalist1 = '';
+      } else if (selectedFinalist2 === name) {
+        selectedFinalist2 = '';
+      } else if (!selectedFinalist1) {
+        selectedFinalist1 = name;
+      } else if (!selectedFinalist2) {
+        selectedFinalist2 = name;
+      } else {
+        showToast('כבר בחרת 2 נבחרות. לחץ על נבחרת לביטול');
+        return;
+      }
+      renderFinalistsGrid();
+    });
+  });
 }
 
 // ===================== RENDER LEADERBOARD =====================
@@ -1576,7 +1717,7 @@ function renderLeaderboard() {
     var isME = p.uid === ME.uid;
     html += '<tr'+(isME?' class="me"':'')+'>';
     html += '<td class="rank-badge">'+(i<3?medals[i]:i+1)+'</td>';
-    html += '<td class="player-name">'+p.name+(isME?' (אני)':'')+'</td>';
+    html += '<td class="player-name" style="cursor:pointer;text-decoration:underline dotted" onclick="showProfileModal(\''+p.uid+'\')">' + p.name+(isME?' (אני)':'')+'</td>';
     html += '<td class="pts-total">'+p.total+'</td>';
     html += '<td><div class="pts-breakdown">⭐'+p.exact+' ✓'+p.correct+' +'+p.bonus+'</div></td>';
     html += '<td style="font-size:.82rem;font-weight:700;color:var(--gold)">'+(i<3?prizes[i].toLocaleString()+' ₪':'—')+'</td>';
@@ -1596,6 +1737,201 @@ function renderPrize() {
   document.getElementById('prize2').textContent = Math.floor(pool * 0.20).toLocaleString() + ' ₪';
   document.getElementById('prize3').textContent = Math.floor(pool * 0.10).toLocaleString() + ' ₪';
 }
+
+// ===================== ONBOARDING =====================
+function checkOnboarding() {
+  if (isWorldBetLocked()) return;
+  var done = localStorage.getItem('wc_onboarded_'+ME.uid);
+  if (done) return;
+  var player = PLAYERS.find(function(p){ return p.uid===ME.uid; });
+  if (player && player.champion && player.finalist1 && player.finalist2 && player.topScorer) {
+    localStorage.setItem('wc_onboarded_'+ME.uid,'1');
+    return;
+  }
+  showOnboardingModal();
+}
+
+function showOnboardingModal() {
+  var modal = document.getElementById('onboardingModal');
+  modal.style.display = 'block';
+  renderObTeamsGrid('');
+  renderObFinalistGrid();
+  updateObSaveBtn();
+  document.getElementById('obSaveBtn').onclick = function() {
+    var champ = document.getElementById('onboardingModal').dataset.selectedChamp || '';
+    var scorer = document.getElementById('obScorerInput').value.trim();
+    if (!champ || !selectedFinalist1 || !selectedFinalist2 || !scorer) {
+      showToast('יש למלא את כל השדות');
+      return;
+    }
+    db.collection('wc_players').doc(ME.uid).set({
+      champion: champ, topScorer: scorer,
+      finalist1: selectedFinalist1, finalist2: selectedFinalist2
+    }, {merge:true}).then(function() {
+      localStorage.setItem('wc_onboarded_'+ME.uid,'1');
+      document.getElementById('onboardingModal').style.display = 'none';
+      selectedChampion = champ;
+      showToast('הימורי הטורניר נשמרו ✓');
+      renderWorldTab();
+    });
+  };
+}
+
+function renderObTeamsGrid(search) {
+  var grid = document.getElementById('obTeamsGrid');
+  if (!grid) return;
+  var filtered = search ? TEAMS.filter(function(t){ return t.name.indexOf(search) !== -1; }) : TEAMS;
+  var modal = document.getElementById('onboardingModal');
+  var currentChamp = modal.dataset.selectedChamp || '';
+  var html = '';
+  filtered.forEach(function(team) {
+    var sel = team.name === currentChamp ? ' selected' : '';
+    html += '<div class="team-tile'+sel+'" data-team="'+team.name+'" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)">';
+    html += '<span class="tf">'+team.flag+'</span>';
+    html += '<span class="tn" style="color:rgba(255,255,255,.9)">'+team.name+'</span>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+  grid.querySelectorAll('.team-tile').forEach(function(tile) {
+    tile.addEventListener('click', function() {
+      modal.dataset.selectedChamp = tile.dataset.team;
+      grid.querySelectorAll('.team-tile').forEach(function(t){ t.classList.remove('selected'); });
+      tile.classList.add('selected');
+      updateObSaveBtn();
+    });
+  });
+}
+
+function renderObFinalistGrid() {
+  var grid = document.getElementById('obFinalistGrid');
+  if (!grid) return;
+  var html = '';
+  TEAMS.forEach(function(team) {
+    var isFin1 = team.name === selectedFinalist1;
+    var isFin2 = team.name === selectedFinalist2;
+    var baseStyle = 'background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)';
+    var cls = 'team-tile finalist-tile' + (isFin1 || isFin2 ? ' selected' : '');
+    html += '<div class="'+cls+'" data-team="'+team.name+'" style="'+baseStyle+'">';
+    html += '<span class="tf">'+team.flag+'</span>';
+    html += '<span class="tn" style="color:rgba(255,255,255,.9)">'+team.name+'</span>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+  grid.querySelectorAll('.team-tile').forEach(function(tile) {
+    tile.addEventListener('click', function() {
+      var name = tile.dataset.team;
+      if (selectedFinalist1 === name) {
+        selectedFinalist1 = '';
+      } else if (selectedFinalist2 === name) {
+        selectedFinalist2 = '';
+      } else if (!selectedFinalist1) {
+        selectedFinalist1 = name;
+      } else if (!selectedFinalist2) {
+        selectedFinalist2 = name;
+      } else {
+        showToast('כבר בחרת 2 נבחרות. לחץ לביטול');
+        return;
+      }
+      renderObFinalistGrid();
+      updateObSaveBtn();
+    });
+  });
+}
+
+function updateObSaveBtn() {
+  var modal = document.getElementById('onboardingModal');
+  var champ = modal ? modal.dataset.selectedChamp || '' : '';
+  var scorer = document.getElementById('obScorerInput') ? document.getElementById('obScorerInput').value.trim() : '';
+  var btn = document.getElementById('obSaveBtn');
+  if (btn) btn.disabled = !(champ && selectedFinalist1 && selectedFinalist2 && scorer);
+}
+
+// ===================== PROFILE MODAL =====================
+function showProfileModal(uid) {
+  var player = PLAYERS.find(function(p){ return p.uid === uid; });
+  if (!player) return;
+  document.getElementById('profileName').textContent = player.name;
+  var content = '';
+  var wbet = ALL_WORLD_BETS[uid];
+
+  if (isWorldBetLocked() && wbet) {
+    content += '<div class="profile-section">';
+    content += '<div class="profile-section-title">הימורי טורניר</div>';
+    if (wbet.champion) {
+      var ct = TEAMS.find(function(t){ return t.name === wbet.champion; });
+      var champPts = (WORLD_RESULT.champion && wbet.champion === WORLD_RESULT.champion) ? '+10 נק\'' : '';
+      content += '<div class="profile-bet-row"><span class="profile-game-name">🏆 אלופה: '+(ct?ct.flag+' ':'')+wbet.champion+'</span><span class="profile-score" style="color:var(--green)">'+champPts+'</span></div>';
+    }
+    if (wbet.finalist1 || wbet.finalist2) {
+      var ft1 = TEAMS.find(function(t){ return t.name === wbet.finalist1; });
+      var ft2 = TEAMS.find(function(t){ return t.name === wbet.finalist2; });
+      var finPts = '';
+      if (WORLD_RESULT.finalist1 && WORLD_RESULT.finalist2) {
+        var realF = [WORLD_RESULT.finalist1, WORLD_RESULT.finalist2];
+        var myF = [wbet.finalist1||'', wbet.finalist2||''];
+        var mc = myF.filter(function(f){ return f && realF.indexOf(f) !== -1; }).length;
+        if (mc === 2) finPts = '+10 נק\'';
+        else if (mc === 1) finPts = '+5 נק\'';
+      }
+      content += '<div class="profile-bet-row"><span class="profile-game-name">🏟️ גמר: '+(ft1?ft1.flag+' ':'')+wbet.finalist1+' | '+(ft2?ft2.flag+' ':'')+wbet.finalist2+'</span><span class="profile-score" style="color:var(--green)">'+finPts+'</span></div>';
+    }
+    if (wbet.topScorer) {
+      var scorerPts = (WORLD_RESULT.topScorer && wbet.topScorer && wbet.topScorer.trim().toLowerCase() === WORLD_RESULT.topScorer.trim().toLowerCase()) ? '+8 נק\'' : '';
+      content += '<div class="profile-bet-row"><span class="profile-game-name">👟 מלך שערים: '+wbet.topScorer+'</span><span class="profile-score" style="color:var(--green)">'+scorerPts+'</span></div>';
+    }
+    content += '</div>';
+    content += '<div class="section-sep"></div>';
+  }
+
+  // Game bets section
+  content += '<div class="profile-section">';
+  content += '<div class="profile-section-title">הימורי משחקים</div>';
+  var lockedGames = GAMES.filter(function(g){ return isLocked(g); });
+  var playerBets = ALL_BETS[uid] || {};
+  var hasBets = false;
+  var byDate = {};
+  lockedGames.forEach(function(game) {
+    var bet = playerBets[game.id];
+    if (!bet) return;
+    hasBets = true;
+    if (!byDate[game.date]) byDate[game.date] = [];
+    byDate[game.date].push({game:game, bet:bet});
+  });
+  if (!hasBets) {
+    content += '<div style="color:var(--label3);font-size:.85rem;text-align:center;padding:12px 0">אין הימורים על משחקים שנסגרו עדיין</div>';
+  } else {
+    Object.keys(byDate).sort().forEach(function(date) {
+      var d = new Date(date+'T12:00:00');
+      content += '<div style="font-size:.75rem;font-weight:700;color:var(--label3);padding:8px 0 4px">'+d.getDate()+'/'+('0'+(d.getMonth()+1)).slice(-2)+'</div>';
+      byDate[date].forEach(function(item) {
+        var result = RESULTS[item.game.id];
+        var pts = result ? calcGamePoints(item.bet, result) : null;
+        content += '<div class="profile-bet-row">';
+        content += '<span class="profile-game-name">'+item.game.home+' נ\' '+item.game.away+'</span>';
+        content += '<span class="profile-score">'+item.bet.h+'-'+item.bet.a;
+        if (result) content += ' <span style="color:var(--label3);font-size:.75rem">('+result.h+'-'+result.a+')</span>';
+        content += '</span>';
+        if (pts !== null) {
+          var pc = pts >= 5 ? 'var(--green)' : pts >= 2 ? 'var(--blue)' : 'var(--label3)';
+          content += '<span style="font-size:.8rem;font-weight:700;color:'+pc+';margin-right:6px">+'+pts+'</span>';
+        }
+        content += '</div>';
+      });
+    });
+  }
+  content += '</div>';
+
+  document.getElementById('profileContent').innerHTML = content;
+  document.getElementById('profileModal').classList.add('open');
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').classList.remove('open');
+}
+
+document.getElementById('profileModal').addEventListener('click', function(e) {
+  if (e.target === this) closeProfileModal();
+});
 
 // ===================== INIT =====================
 function hideSplashAndStart() {
