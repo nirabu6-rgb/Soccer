@@ -191,6 +191,34 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .empty-state .ei{font-size:2.5rem;display:block;margin-bottom:8px}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
 input[type=number]{-moz-appearance:textfield}
+
+/* Onboarding */
+#onboardingModal{position:fixed;inset:0;background:linear-gradient(160deg,#001E5A 0%,#0057B8 60%,#1A8FD1 100%);z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 16px 40px}
+.ob-section{background:rgba(255,255,255,.1);border-radius:16px;padding:16px;margin-bottom:16px}
+.ob-title{color:#fff;font-size:1rem;font-weight:700;margin-bottom:12px}
+.ob-save-btn{width:100%;padding:14px;border-radius:12px;border:none;background:#10B981;color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer;margin-top:8px;transition:opacity .2s}
+.ob-save-btn:disabled{opacity:.4;cursor:not-allowed}
+.finalist-tile.selected{border-color:#10B981!important;background:#ECFDF5!important}
+.finalist-tile.selected .tn{color:#059669!important}
+
+/* Profile Modal */
+#profileModal{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
+#profileModal.open{display:flex}
+.profile-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.profile-header{padding:20px 16px 12px;border-bottom:1px solid var(--sep);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.profile-name{font-size:1.1rem;font-weight:800;color:var(--label)}
+.profile-section{padding:14px 16px}
+.profile-section-title{font-size:.82rem;font-weight:700;color:var(--label3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.profile-bet-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--sep)}
+.profile-bet-row:last-child{border-bottom:none}
+.profile-game-name{font-size:.82rem;font-weight:600;color:var(--label);flex:1}
+.profile-score{font-size:.9rem;font-weight:800;color:var(--label);letter-spacing:1px}
+
+/* Compact world picks */
+.compact-pick-card{background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.compact-pick-label{font-size:.75rem;color:var(--label3);font-weight:600;margin-bottom:3px}
+.compact-pick-val{font-size:.95rem;font-weight:700;color:var(--label)}
+.change-btn{background:#F0F4FA;border:none;color:var(--blue);font-size:.8rem;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -487,7 +515,7 @@ input[type=number]{-moz-appearance:textfield}
   <!-- Nav -->
   <nav class="nav" id="mainNav">
     <button class="nav-btn active" data-tab="0"><span class="ico">⚽</span>משחקים</button>
-    <button class="nav-btn" data-tab="1"><span class="ico">🌍</span>הימורי WC</button>
+    <button class="nav-btn" data-tab="1"><span class="ico">🌍</span>הימורים</button>
     <button class="nav-btn" data-tab="2"><span class="ico">🏆</span>טבלה</button>
     <button class="nav-btn" data-tab="3"><span class="ico">💰</span>פרס</button>
     <button class="nav-btn" data-tab="4"><span class="ico">📋</span>חוקים</button>
@@ -495,6 +523,46 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 
 <div id="toast"></div>
+
+<!-- Onboarding Modal -->
+<div id="onboardingModal" style="display:none">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:3rem;margin-bottom:8px">⚽</div>
+    <div style="color:#fff;font-size:1.4rem;font-weight:800">הימורי הטורניר</div>
+    <div style="color:rgba(255,255,255,.75);font-size:.92rem;margin-top:4px">חובה למלא לפני תחילת המונדיאל</div>
+  </div>
+  <div class="ob-section">
+    <div class="ob-title">🏆 בחר אלופה</div>
+    <div class="search-field" style="margin-bottom:12px">
+      <input type="text" id="obChampSearch" placeholder="חפש מדינה..." style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)" oninput="renderObTeamsGrid(this.value.trim())">
+    </div>
+    <div class="teams-grid" id="obTeamsGrid"></div>
+  </div>
+  <div class="ob-section">
+    <div class="ob-title">🏟️ בחר 2 נבחרות לגמר</div>
+    <div style="color:rgba(255,255,255,.65);font-size:.8rem;margin-bottom:10px">בחר בדיוק 2 נבחרות שיגיעו לגמר</div>
+    <div class="teams-grid" id="obFinalistGrid"></div>
+  </div>
+  <div class="ob-section">
+    <div class="ob-title">👟 מלך השערים</div>
+    <div class="autocomplete-wrap">
+      <input type="text" id="obScorerInput" class="top-scorer-input" placeholder="התחל להקליד שם שחקן..." autocomplete="off" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)">
+      <div class="autocomplete-list" id="obScorerAutocomplete" style="display:none"></div>
+    </div>
+  </div>
+  <button class="ob-save-btn" id="obSaveBtn" disabled>שמור והמשך ✓</button>
+</div>
+
+<!-- Profile Modal -->
+<div id="profileModal">
+  <div class="profile-sheet">
+    <div class="profile-header">
+      <div class="profile-name" id="profileName"></div>
+      <button style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--label3)" onclick="closeProfileModal()">✕</button>
+    </div>
+    <div id="profileContent"></div>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -790,12 +858,15 @@ var RESULTS = {};
 var MY_BETS = {};
 var ALL_BETS = {};
 var PLAYERS = [];
-var WORLD_RESULT = {champion:'', topScorer:''};
+var WORLD_RESULT = {champion:'', topScorer:'', finalist1:'', finalist2:''};
 var ALL_WORLD_BETS = {};
 
 var currentFilter = 'all';
 var currentTab = 0;
 var selectedChampion = '';
+var selectedFinalist1 = '';
+var selectedFinalist2 = '';
+var editingWorldBets = false;
 var timerInterval = null;
 var unsubResults = null;
 var unsubBets = null;
@@ -866,6 +937,14 @@ function calcPlayerPointsDetailed(uid) {
   var wbet = ALL_WORLD_BETS[uid];
   if (wbet && WORLD_RESULT.champion && wbet.champion === WORLD_RESULT.champion) total += 10;
   if (wbet && WORLD_RESULT.topScorer && wbet.topScorer && wbet.topScorer.trim().toLowerCase() === WORLD_RESULT.topScorer.trim().toLowerCase()) total += 8;
+  // Finalists scoring
+  if (wbet && WORLD_RESULT.finalist1 && WORLD_RESULT.finalist2) {
+    var realFinalists = [WORLD_RESULT.finalist1, WORLD_RESULT.finalist2];
+    var myFinalists = [wbet.finalist1||'', wbet.finalist2||''];
+    var matchCount = myFinalists.filter(function(f){ return f && realFinalists.indexOf(f) !== -1; }).length;
+    if (matchCount === 2) total += 10;
+    else if (matchCount === 1) total += 5;
+  }
   return {total:total, exact:exact, correct:correct, bonus:bonusPts};
 }
 
@@ -924,11 +1003,13 @@ function startApp() {
   document.getElementById('groupBadge').textContent = ME.groupCode;
   buildFilterBar();
   buildTeamsGrid();
-  setupScorerAutocomplete('topScorerInput');
+  setupScorerAutocomplete('topScorerInput','scorerAutocomplete');
+  setupScorerAutocomplete('obScorerInput','obScorerAutocomplete');
   subscribeData();
   setupNav();
   startTimerInterval();
   setTimeout(function(){ renderAll(); }, 300);
+  setTimeout(function(){ checkOnboarding(); }, 1500);
 }
 
 // ===================== FIREBASE SUBSCRIPTIONS =====================
@@ -964,8 +1045,9 @@ function subscribeData() {
     snap.forEach(function(doc) {
       var d = doc.data();
       PLAYERS.push(d);
-      ALL_WORLD_BETS[d.uid] = {champion: d.champion||'', topScorer: d.topScorer||''};
+      ALL_WORLD_BETS[d.uid] = {champion: d.champion||'', topScorer: d.topScorer||'', finalist1: d.finalist1||'', finalist2: d.finalist2||''};
     });
+    checkOnboarding();
     renderAll();
   }, function(err){ console.error('players err', err); });
 
@@ -1272,9 +1354,9 @@ function renderTeamsGrid(search) {
 }
 
 // ===================== AUTOCOMPLETE =====================
-function setupScorerAutocomplete(inputId) {
+function setupScorerAutocomplete(inputId, listId) {
   var inp = document.getElementById(inputId);
-  var list = document.getElementById('scorerAutocomplete');
+  var list = document.getElementById(listId || 'scorerAutocomplete');
   if (!inp || !list) return;
 
   function positionList() {
