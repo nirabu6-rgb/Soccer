@@ -227,13 +227,13 @@ body{height:100%;height:-webkit-fill-available;font-family:'Segoe UI',Arial,sans
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-ttl"><span id="mExpTtl">➕ הוצאה חדשה</span><button class="mcls" onclick="cm('mExp')">✕</button></div>
-    <div class="fg"><label class="fl">תיאור</label><input type="text" id="eDesc" class="fi" placeholder="לדוגמה: קניות"></div>
+    <div class="fg"><label class="fl">חנות / תיאור</label><input type="text" id="eStore" class="fi" placeholder="לדוגמה: שופרסל, מכבי, קסטרו..." oninput="autoDetectCat(this.value)"></div>
     <div class="frow">
       <div class="fg"><label class="fl">סכום (₪)</label><input type="number" id="eAmt" class="fi" placeholder="0" min="0"></div>
       <div class="fg"><label class="fl">תאריך</label><input type="date" id="eDate" class="fi"></div>
     </div>
-    <div class="fg"><label class="fl">קטגוריה</label><div class="cat-scroll" id="eCatPills"></div></div>
     <div class="fg"><label class="fl">אמצעי תשלום</label><div class="cat-scroll" id="ePayPills"></div></div>
+    <div class="fg"><label class="fl">קטגוריה <span id="eCatHint" style="font-weight:400;color:var(--blue);font-size:.75rem"></span></label><div class="cat-scroll" id="eCatPills"></div></div>
     <div class="brow" id="eBtns"><button class="bp bd" onclick="saveExp()">שמור</button></div>
   </div>
 </div>
@@ -333,6 +333,20 @@ var editId=null;
 var selIncCat='salary', selExpCat='food', selFixCat='bills', selIncWho='p1';
 var selIncPay='cash', selExpPay='credit';
 var PAY_METHODS=[{id:'credit',label:'אשראי',ico:'💳'},{id:'cash',label:'מזומן',ico:'💵'},{id:'transfer',label:'העברה',ico:'🏦'}];
+var STORE_RULES=[
+  {cat:'food',words:['שופרסל','רמי לוי','ויקטורי','מגה','יינות ביתן','סופר','פרש מרקט','קארפור','אושר עד','יוחננוף','מחסני השוק','ספייס','הרשות','סיטי','מזון','סנטרל פארק','מסעדה','קפה','פיצה','מקדונלד','בורגר','שוורמה','פלאפל','סושי','חומוס']},
+  {cat:'pharma',words:['סופר-פארם','super-pharm','superpharma','נייר','פארם','בית מרקחת','רוקח','כללית','נשר פארם','good pharm']},
+  {cat:'insurance',words:['ביטוח','הפניקס','מגדל','כלל','הראל','מנורה','שלמה','איי.די.איי','AIG','menora','migdal']},
+  {cat:'health',words:['מכבי','קופת חולים','לאומית','כללית','שירותי בריאות','רופא','מרפאה','בית חולים','אסותא','הדסה','שניידר','מאיר']},
+  {cat:'sport',words:['ספורט','מכון כושר','גולמס','ספורטו','fitness','gym','adidas','nike','ריצה','שחייה','פוטבול','כדורגל','כדורסל','טניס','עממי']},
+  {cat:'car',words:['דלק','סונול','פז','elf','תדלוק','חניה','רכב','טסט','ביטוח רכב','כביש 6','מכולית','אוטו','פנצ']},
+  {cat:'clothes',words:['קסטרו','h&m','זארה','fox','גולף','קפיטל','שטראוס','ביגוד','נעליים','bershka','pull','mango','adika','terminal','כותנה']},
+  {cat:'edu',words:['גן','צהרון','חינוך','בית ספר','אוניברסיטה','מכללה','ספרים','קורס','לימוד','ulpan']},
+  {cat:'bills',words:['חשמל','מים','גז','ועד','ארנונה','בזק','hot','yes','012','cellcom','partner','orange','מנוי','בניין']},
+  {cat:'fun',words:['קולנוע','סינמה','בידור','אמאזון','netflix','spotify','disney','apple','google play','steam','בילוי','פארק','אטרקציה','קונצרט','תיאטרון']},
+  {cat:'rent',words:['שכירות','שכ"ד','משכנתא','שכד','דירה']},
+  {cat:'kids',words:['ילדים','צעצוע','toys','baby','תינוק','ממבו','ksp','kiddo']}
+];
 
 // ─── INIT ───
 setTimeout(function(){var s=document.getElementById('splash');if(s&&s.style.display!=='none'){s.style.display='none';document.getElementById('loginScreen').style.display='flex';}},3000);
@@ -571,44 +585,84 @@ function nextMonth(){var n=addM(viewYM,1);if(n<=thisMonth()){viewYM=n;render();}
 
 // ─── EXPENSES TAB ───
 function renderExpenses(c){
+  var curYM2=thisMonth();
+  // Summary bar for this month
+  var monthExp=EXPENSES.filter(function(x){return x.date.startsWith(viewYM);});
+  var monthTotal=monthExp.reduce(function(s,x){return s+(+x.amount||0);},0);
+  var fxTotal=FIXED.filter(function(f){return f.active!==false;}).reduce(function(s,f){return s+(+f.amount||0);},0);
+  var insTotal=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=0&&d<x.n;}).reduce(function(s,x){return s+(+x.amountPer||0);},0);
+
   var html='';
-  // Month navigator
-  html+='<div class="month-nav">'+
-    '<button class="month-nav-btn" onclick="prevMonth()">›</button>'+
-    '<span class="month-nav-lbl">'+fmtM(viewYM)+'</span>'+
-    '<button class="month-nav-btn" onclick="nextMonth()">‹</button>'+
+
+  // Top action bar
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<button class="month-nav-btn" style="background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:8px 12px" onclick="prevMonth()">›</button>'+
+    '<div style="flex:1;text-align:center;font-weight:800;font-size:.95rem">'+fmtM(viewYM)+'</div>'+
+    '<button class="month-nav-btn" style="background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:8px 12px" onclick="nextMonth()">‹</button>'+
   '</div>';
 
-  // Type filter
-  html+='<div class="chips">'+
-    '<div class="chip'+(expType==='all'?' on':'')+'" onclick="setExpType(\'all\')">הכול</div>'+
-    '<div class="chip'+(expType==='variable'?' on':'')+'" onclick="setExpType(\'variable\')">משתנות</div>'+
-    '<div class="chip'+(expType==='fixed'?' on':'')+'" onclick="setExpType(\'fixed\')">קבועות</div>'+
-    '<div class="chip'+(expType==='installment'?' on':'')+'" onclick="setExpType(\'installment\')">תשלומים</div>'+
+  // Summary strip
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--red)" onclick="setExpCat(\'all\');setExpType(\'variable\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">משתנות</div><div style="font-weight:800;color:var(--red);font-size:.95rem">'+fmtA(monthTotal)+'</div></div>';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--gold)" onclick="setExpType(\'fixed\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">קבועות</div><div style="font-weight:800;color:var(--gold);font-size:.95rem">'+fmtA(fxTotal)+'</div></div>';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--blue)" onclick="setExpType(\'installment\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">תשלומים</div><div style="font-weight:800;color:var(--blue);font-size:.95rem">'+fmtA(insTotal)+'</div></div>';
+  html+='</div>';
+
+  // Add expense button
+  html+='<button class="add-btn" style="width:100%;padding:12px;justify-content:center;display:flex;font-size:.88rem;background:var(--red);margin-bottom:14px;border-radius:12px" onclick="openAddExp()">＋ הוסף הוצאה</button>';
+
+  // Type tabs
+  html+='<div class="seg-bar" style="margin-bottom:10px">'+
+    '<button class="seg-btn'+(expType==='variable'||expType==='all'?' active':'')+'" onclick="setExpType(\'variable\')">🛒 שוטפות</button>'+
+    '<button class="seg-btn'+(expType==='fixed'?' active':'')+'" onclick="setExpType(\'fixed\')">📌 קבועות</button>'+
+    '<button class="seg-btn'+(expType==='installment'?' active':'')+'" onclick="setExpType(\'installment\')">💳 תשלומים</button>'+
   '</div>';
 
-  // Category filter (only when variable or all)
-  if(expType!=='fixed'&&expType!=='installment'){
-    html+='<div class="chips">'+
-      '<div class="chip'+(expCat==='all'?' on':'')+'" onclick="setExpCat(\'all\')">כל קטגוריה</div>';
-    EXP_CATS.forEach(function(cat){
-      var hasData=EXPENSES.some(function(x){return x.date.startsWith(viewYM)&&x.cat===cat.id;});
-      if(hasData||expCat===cat.id){
+  // ── VARIABLE ──
+  if(expType==='variable'||expType==='all'){
+    // Category chips
+    var usedCats=Array.from(new Set(EXPENSES.filter(function(x){return x.date.startsWith(viewYM);}).map(function(x){return x.cat||'other_ex';})));
+    if(usedCats.length>1){
+      html+='<div class="chips">';
+      html+='<div class="chip'+(expCat==='all'?' on':'')+'" onclick="setExpCat(\'all\')">הכול</div>';
+      EXP_CATS.filter(function(c){return usedCats.indexOf(c.id)>=0;}).forEach(function(cat){
         html+='<div class="chip'+(expCat===cat.id?' on':'')+'" onclick="setExpCat(\''+cat.id+'\')">'+cat.ico+' '+cat.label+'</div>';
-      }
-    });
-    html+='</div>';
+      });
+      html+='</div>';
+    }
+
+    var varExp=EXPENSES.filter(function(x){return x.date.startsWith(viewYM)&&(expCat==='all'||x.cat===expCat);});
+    if(varExp.length===0){
+      html+='<div class="empty"><div class="empty-ico">🛒</div><div style="font-size:.84rem">אין הוצאות'+(expCat!=='all'?' בקטגוריה זו':'')+' ב'+fmtM(viewYM)+'</div></div>';
+    } else {
+      // Group by date
+      var byDate={};
+      varExp.forEach(function(x){var d=x.date;if(!byDate[d])byDate[d]=[];byDate[d].push(x);});
+      Object.keys(byDate).sort().reverse().forEach(function(dt){
+        var dayTotal=byDate[dt].reduce(function(s,x){return s+(+x.amount||0);},0);
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px 4px;margin-top:6px"><span style="font-size:.78rem;font-weight:700;color:var(--label2)">'+fmtD(dt)+'</span><span style="font-size:.76rem;color:var(--red);font-weight:600">-'+fmtA(dayTotal)+'</span></div>';
+        html+='<div class="elist">';
+        byDate[dt].forEach(function(e){
+          var cat=EXP_CATS.find(function(c){return c.id===e.cat;})||EXP_CATS[EXP_CATS.length-1];
+          var pay=PAY_METHODS.find(function(p){return p.id===e.payMethod;});
+          var storeName=e.store||e.desc||cat.label;
+          html+='<div class="eitem" onclick="openEditEntry(\'e\',\''+e.id+'\')">'+
+            '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
+            '<div class="ebody">'+
+              '<div class="edesc">'+esc(storeName)+'</div>'+
+              '<div class="emeta">'+cat.label+(pay?' · '+pay.ico+' '+pay.label:'')+'</div>'+
+            '</div>'+
+            '<div class="eamt exp-c">-'+fmtA(e.amount)+'</div>'+
+          '</div>';
+        });
+        html+='</div>';
+      });
+    }
   }
 
-  var curYM2=thisMonth();
-
-  // FIXED section
-  if(expType==='fixed'||expType==='all'){
-    var actFixed=FIXED.filter(function(f){return f.active!==false;});
-    var fxTotal=actFixed.reduce(function(s,f){return s+(+f.amount||0);},0);
-    html+='<div class="sec-hdr"><span class="sec-ttl">📌 הוצאות קבועות</span><div style="display:flex;align-items:center;gap:8px">';
-    if(fxTotal>0)html+='<span style="color:var(--red);font-weight:700;font-size:.82rem">'+fmtA(fxTotal)+'/חודש</span>';
-    html+='<button class="add-btn red" onclick="openAddFixed()">+</button></div></div>';
+  // ── FIXED ──
+  if(expType==='fixed'){
+    html+='<div class="sec-hdr"><span class="sec-ttl">📌 הוצאות קבועות</span><button class="add-btn red" onclick="openAddFixed()">+ הוסף</button></div>';
     if(FIXED.length===0){
       html+='<div class="empty"><div class="empty-ico">📌</div><div style="font-size:.84rem">אין הוצאות קבועות</div></div>';
     } else {
@@ -619,8 +673,8 @@ function renderExpenses(c){
         html+='<div class="fitem" onclick="openEditFixed(\''+f.id+'\')">'+
           '<div class="fday">'+p2(f.day||1)+'</div>'+
           '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
-          '<div class="ebody"><div class="edesc">'+esc(f.name||'')+'</div><div class="emeta">'+cat.label+' · יום '+p2(f.day||1)+'</div></div>'+
-          '<div style="font-weight:700;font-size:.9rem;color:'+(isOn?'var(--red)':'var(--label3)')+'">'+fmtA(f.amount)+'</div>'+
+          '<div class="ebody"><div class="edesc">'+esc(f.name||'')+'</div><div class="emeta">'+cat.label+' · יום '+p2(f.day||1)+' לחודש</div></div>'+
+          '<div style="font-weight:700;font-size:.92rem;margin-left:8px;color:'+(isOn?'var(--red)':'var(--label3)')+'">'+fmtA(f.amount)+'</div>'+
           '<div class="tog'+(isOn?' on':'')+'" onclick="event.stopPropagation();togFixed(\''+f.id+'\','+isOn+')"></div>'+
         '</div>';
       });
@@ -628,58 +682,41 @@ function renderExpenses(c){
     }
   }
 
-  // INSTALLMENTS section
-  if(expType==='installment'||expType==='all'){
-    var curInsts=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=0&&d<x.n;});
-    var insTotal=curInsts.reduce(function(s,x){return s+(+x.amountPer||0);},0);
-    html+='<div class="sec-hdr"><span class="sec-ttl">💳 תשלומים פעילים</span><div style="display:flex;align-items:center;gap:8px">';
-    if(insTotal>0)html+='<span style="color:var(--blue);font-weight:700;font-size:.82rem">'+fmtA(insTotal)+'/חודש</span>';
-    html+='<button class="add-btn" onclick="openAddInst()">+</button></div></div>';
+  // ── INSTALLMENTS ──
+  if(expType==='installment'){
+    html+='<div class="sec-hdr"><span class="sec-ttl">💳 תשלומים</span><button class="add-btn" onclick="openAddInst()">+ הוסף</button></div>';
     if(INSTS.length===0){
       html+='<div class="empty"><div class="empty-ico">💳</div><div style="font-size:.84rem">אין תשלומים</div></div>';
     } else {
-      INSTS.forEach(function(inst){
-        if(!inst.startYM||!inst.n)return;
-        var d=ymDiff(inst.startYM,curYM2);
-        var paid=Math.min(Math.max(0,d),inst.n);
-        var isDone=paid>=inst.n;
-        var pct=Math.round((paid/inst.n)*100);
-        html+='<div class="inst-card" onclick="openEditInst(\''+inst.id+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-            '<div><div style="font-weight:700;font-size:.9rem">'+esc(inst.name||'')+'</div>'+
-            '<div style="font-size:.7rem;color:var(--label3);margin-top:2px">'+fmtM(inst.startYM)+' — '+fmtM(addM(inst.startYM,inst.n-1))+'</div></div>'+
-            '<div style="text-align:left"><div style="font-weight:700;color:var(--blue)">'+fmtA(inst.amountPer)+'/חודש</div>'+
-            '<div style="font-size:.68rem;color:var(--label3)">'+paid+'/'+inst.n+' שולם</div></div>'+
-          '</div>'+
-          '<div class="prog-bar"><div class="prog-fill '+(isDone?'done':'act')+'" style="width:'+pct+'%"></div></div>'+
-          '<div style="font-size:.68rem;color:var(--label3);margin-top:4px;text-align:left">'+pct+'% · נשאר '+fmtA((inst.n-paid)*(+inst.amountPer||0))+'</div>'+
-        '</div>';
-      });
+      var activeInsts=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=0&&d<x.n;});
+      var doneInsts=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=x.n;});
+      if(activeInsts.length>0){
+        activeInsts.forEach(function(inst){html+=renderInstCard(inst,curYM2);});
+      }
+      if(doneInsts.length>0){
+        html+='<div style="font-size:.8rem;font-weight:700;color:var(--label3);margin:12px 0 6px">הסתיים</div>';
+        doneInsts.forEach(function(inst){html+=renderInstCard(inst,curYM2);});
+      }
     }
   }
 
-  // VARIABLE EXPENSES section
-  if(expType==='variable'||expType==='all'){
-    var varExp=EXPENSES.filter(function(x){return x.date.startsWith(viewYM)&&(expCat==='all'||x.cat===expCat);});
-    var varTotal=varExp.reduce(function(s,x){return s+(+x.amount||0);},0);
-    html+='<div class="sec-hdr"><span class="sec-ttl">🛒 הוצאות משתנות</span><div style="display:flex;align-items:center;gap:8px">';
-    if(varTotal>0)html+='<span style="color:var(--red);font-weight:700;font-size:.82rem">-'+fmtA(varTotal)+'</span>';
-    html+='<button class="add-btn red" onclick="openAddExp()">+</button></div></div>';
-    if(varExp.length===0){
-      html+='<div class="empty"><div class="empty-ico">🛒</div><div style="font-size:.84rem">אין הוצאות '+(expCat!=='all'?'בקטגוריה זו ':'')+' ב'+fmtM(viewYM)+'</div></div>';
-    } else {
-      html+='<div class="elist">';
-      varExp.forEach(function(e){
-        var cat=EXP_CATS.find(function(c){return c.id===e.cat;})||EXP_CATS[EXP_CATS.length-1];
-        html+='<div class="eitem" onclick="openEditEntry(\'e\',\''+e.id+'\')">'+
-          '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
-          '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+payBadge(e.payMethod)+'</div></div>'+
-          '<div class="eamt exp-c">-'+fmtA(e.amount)+'</div></div>';
-      });
-      html+='</div>';
-    }
-  }
   c.innerHTML=html;
+}
+function renderInstCard(inst,curYM2){
+  var d=ymDiff(inst.startYM,curYM2);
+  var paid=Math.min(Math.max(0,d),inst.n);
+  var isDone=paid>=inst.n;
+  var pct=Math.round((paid/inst.n)*100);
+  return '<div class="inst-card" onclick="openEditInst(\''+inst.id+'\')">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+      '<div><div style="font-weight:700;font-size:.9rem">'+esc(inst.name||'')+'</div>'+
+      '<div style="font-size:.7rem;color:var(--label3);margin-top:2px">'+fmtM(inst.startYM)+' — '+fmtM(addM(inst.startYM,inst.n-1))+'</div></div>'+
+      '<div style="text-align:left"><div style="font-weight:700;color:'+(isDone?'var(--green)':'var(--blue)')+'">'+fmtA(inst.amountPer)+'/חודש</div>'+
+      '<div style="font-size:.68rem;color:var(--label3)">'+paid+'/'+inst.n+' שולם · '+pct+'%</div></div>'+
+    '</div>'+
+    '<div class="prog-bar"><div class="prog-fill '+(isDone?'done':'act')+'" style="width:'+pct+'%"></div></div>'+
+    '<div style="font-size:.68rem;color:var(--label3);margin-top:4px;text-align:left">נשאר '+fmtA((inst.n-paid)*(+inst.amountPer||0))+'</div>'+
+  '</div>';
 }
 function setExpType(v){expType=v;render();}
 function setExpCat(v){expCat=v;render();}
@@ -795,6 +832,25 @@ function buildWhoPills(cid,sel,onsel){
   buildPills(cid,[{id:'p1',label:NAMES.p1,ico:'👤'},{id:'p2',label:NAMES.p2,ico:'👤'}],sel,onsel);
 }
 function buildPayPills(cid,sel,onsel){buildPills(cid,PAY_METHODS,sel,onsel);}
+function autoDetectCat(val){
+  if(!val){return;}
+  var lower=val.toLowerCase();
+  for(var i=0;i<STORE_RULES.length;i++){
+    var rule=STORE_RULES[i];
+    for(var j=0;j<rule.words.length;j++){
+      if(lower.indexOf(rule.words[j].toLowerCase())>=0){
+        selExpCat=rule.cat;
+        buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+        var cat=EXP_CATS.find(function(c){return c.id===rule.cat;});
+        var hint=document.getElementById('eCatHint');
+        if(hint&&cat)hint.textContent='— זוהה אוטומטית: '+cat.ico+' '+cat.label;
+        return;
+      }
+    }
+  }
+  var hint=document.getElementById('eCatHint');
+  if(hint)hint.textContent='';
+}
 
 // ─── OPEN MODALS ───
 function openAddInc(){
@@ -811,7 +867,7 @@ function openAddInc(){
 function openAddExp(){
   editId=null;
   document.getElementById('mExpTtl').textContent='➕ הוצאה חדשה';
-  document.getElementById('eDesc').value='';document.getElementById('eAmt').value='';document.getElementById('eDate').value=today();
+  document.getElementById('eStore').value='';document.getElementById('eAmt').value='';document.getElementById('eDate').value=today();document.getElementById('eCatHint').textContent='';
   selExpCat='food';selExpPay='credit';
   buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
   buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
@@ -851,7 +907,7 @@ function openEditEntry(type,id){
     var e=EXPENSES.find(function(x){return x.id===id;});if(!e)return;
     editId=id;
     document.getElementById('mExpTtl').textContent='✏️ עריכת הוצאה';
-    document.getElementById('eDesc').value=e.desc||'';document.getElementById('eAmt').value=e.amount||'';document.getElementById('eDate').value=e.date||today();
+    document.getElementById('eStore').value=e.store||e.desc||'';document.getElementById('eAmt').value=e.amount||'';document.getElementById('eDate').value=e.date||today();
     selExpCat=e.cat||'food';selExpPay=e.payMethod||'credit';
     buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
     buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
@@ -903,11 +959,11 @@ function saveInc(){
   else db.collection('bud_income').add(data).then(function(){toast('נשמר ✓');cm('mInc');});
 }
 function saveExp(){
-  var desc=document.getElementById('eDesc').value.trim();
+  var store=document.getElementById('eStore').value.trim();
   var amt=+document.getElementById('eAmt').value;
   var date=document.getElementById('eDate').value;
   if(!amt||!date){toast('נא למלא סכום ותאריך');return;}
-  var data={desc:desc,amount:amt,date:date,cat:selExpCat,who:ME.name,payMethod:selExpPay,uid:ME.uid,createdAt:Date.now()};
+  var data={store:store,desc:store,amount:amt,date:date,cat:selExpCat,who:ME.name,payMethod:selExpPay,uid:ME.uid,createdAt:Date.now()};
   if(!db){toast('אין חיבור לשרת');return;}
   if(editId)db.collection('bud_expenses').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mExp');});
   else db.collection('bud_expenses').add(data).then(function(){toast('נשמר ✓');cm('mExp');});
