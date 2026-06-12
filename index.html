@@ -216,6 +216,7 @@ body{height:100%;height:-webkit-fill-available;font-family:'Segoe UI',Arial,sans
       <div class="fg"><label class="fl">תאריך</label><input type="date" id="iDate" class="fi"></div>
     </div>
     <div class="fg"><label class="fl">של מי</label><div class="cat-scroll" id="iWhoPills"></div></div>
+    <div class="fg"><label class="fl">אמצעי קבלה</label><div class="cat-scroll" id="iPayPills"></div></div>
     <div class="fg"><label class="fl">קטגוריה</label><div class="cat-scroll" id="iCatPills"></div></div>
     <div class="brow" id="iBtns"><button class="bp" onclick="saveInc()">שמור</button></div>
   </div>
@@ -232,6 +233,7 @@ body{height:100%;height:-webkit-fill-available;font-family:'Segoe UI',Arial,sans
       <div class="fg"><label class="fl">תאריך</label><input type="date" id="eDate" class="fi"></div>
     </div>
     <div class="fg"><label class="fl">קטגוריה</label><div class="cat-scroll" id="eCatPills"></div></div>
+    <div class="fg"><label class="fl">אמצעי תשלום</label><div class="cat-scroll" id="ePayPills"></div></div>
     <div class="brow" id="eBtns"><button class="bp bd" onclick="saveExp()">שמור</button></div>
   </div>
 </div>
@@ -329,6 +331,8 @@ var expType='all'; // all/fixed/variable/installment
 var expCat='all';
 var editId=null;
 var selIncCat='salary', selExpCat='food', selFixCat='bills', selIncWho='p1';
+var selIncPay='cash', selExpPay='credit';
+var PAY_METHODS=[{id:'credit',label:'אשראי',ico:'💳'},{id:'cash',label:'מזומן',ico:'💵'},{id:'transfer',label:'העברה',ico:'🏦'}];
 
 // ─── INIT ───
 setTimeout(function(){var s=document.getElementById('splash');if(s&&s.style.display!=='none'){s.style.display='none';document.getElementById('loginScreen').style.display='flex';}},3000);
@@ -480,7 +484,7 @@ function renderDash(c){
       var cat=cats.find(function(c){return c.id===e.d.cat;})||cats[cats.length-1];
       html+='<div class="eitem" onclick="openEditEntry(\''+e.t+'\',\''+e.d.id+'\')">'+
         '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
-        '<div class="ebody"><div class="edesc">'+esc(e.d.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.d.date)+' · '+cat.label+' · '+esc(e.d.who||'')+'</div></div>'+
+        '<div class="ebody"><div class="edesc">'+esc(e.d.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.d.date)+' · '+cat.label+' · '+esc(e.d.who||'')+payBadge(e.d.payMethod)+'</div></div>'+
         '<div class="eamt '+(e.t==='i'?'inc-c':'exp-c')+'">'+(e.t==='i'?'+':'-')+fmtA(e.d.amount)+'</div></div>';
     });
     html+='</div>';
@@ -539,7 +543,7 @@ function renderIncome(c){
       var cat=INC_CATS.find(function(c){return c.id===e.cat;})||INC_CATS[INC_CATS.length-1];
       html+='<div class="eitem" onclick="openEditEntry(\'i\',\''+e.id+'\')">'+
         '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
-        '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+' · '+esc(e.who||'')+'</div></div>'+
+        '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+' · '+esc(e.who||'')+payBadge(e.payMethod)+'</div></div>'+
         '<div class="eamt inc-c">+'+fmtA(e.amount)+'</div></div>';
     });
     html+='</div>';
@@ -669,7 +673,7 @@ function renderExpenses(c){
         var cat=EXP_CATS.find(function(c){return c.id===e.cat;})||EXP_CATS[EXP_CATS.length-1];
         html+='<div class="eitem" onclick="openEditEntry(\'e\',\''+e.id+'\')">'+
           '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
-          '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+'</div></div>'+
+          '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+payBadge(e.payMethod)+'</div></div>'+
           '<div class="eamt exp-c">-'+fmtA(e.amount)+'</div></div>';
       });
       html+='</div>';
@@ -790,14 +794,16 @@ function buildPills(cid,cats,sel,onsel){
 function buildWhoPills(cid,sel,onsel){
   buildPills(cid,[{id:'p1',label:NAMES.p1,ico:'👤'},{id:'p2',label:NAMES.p2,ico:'👤'}],sel,onsel);
 }
+function buildPayPills(cid,sel,onsel){buildPills(cid,PAY_METHODS,sel,onsel);}
 
 // ─── OPEN MODALS ───
 function openAddInc(){
   editId=null;
   document.getElementById('mIncTtl').textContent='➕ הכנסה חדשה';
   document.getElementById('iDesc').value='';document.getElementById('iAmt').value='';document.getElementById('iDate').value=today();
-  selIncCat='salary';selIncWho=incPerson==='p2'?'p2':'p1';
+  selIncCat='salary';selIncWho=incPerson==='p2'?'p2':'p1';selIncPay='cash';
   buildWhoPills('iWhoPills',selIncWho,function(v){selIncWho=v;});
+  buildPayPills('iPayPills',selIncPay,function(v){selIncPay=v;});
   buildPills('iCatPills',INC_CATS,selIncCat,function(v){selIncCat=v;});
   document.getElementById('iBtns').innerHTML='<button class="bp" onclick="saveInc()">שמור</button>';
   om('mInc');
@@ -806,8 +812,9 @@ function openAddExp(){
   editId=null;
   document.getElementById('mExpTtl').textContent='➕ הוצאה חדשה';
   document.getElementById('eDesc').value='';document.getElementById('eAmt').value='';document.getElementById('eDate').value=today();
-  selExpCat='food';
+  selExpCat='food';selExpPay='credit';
   buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+  buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
   document.getElementById('eBtns').innerHTML='<button class="bp bd" onclick="saveExp()">שמור</button>';
   om('mExp');
 }
@@ -834,8 +841,9 @@ function openEditEntry(type,id){
     editId=id;
     document.getElementById('mIncTtl').textContent='✏️ עריכת הכנסה';
     document.getElementById('iDesc').value=e.desc||'';document.getElementById('iAmt').value=e.amount||'';document.getElementById('iDate').value=e.date||today();
-    selIncCat=e.cat||'salary';selIncWho=(e.who===NAMES.p2||e.who==='p2')?'p2':'p1';
+    selIncCat=e.cat||'salary';selIncWho=(e.who===NAMES.p2||e.who==='p2')?'p2':'p1';selIncPay=e.payMethod||'cash';
     buildWhoPills('iWhoPills',selIncWho,function(v){selIncWho=v;});
+    buildPayPills('iPayPills',selIncPay,function(v){selIncPay=v;});
     buildPills('iCatPills',INC_CATS,selIncCat,function(v){selIncCat=v;});
     document.getElementById('iBtns').innerHTML='<button class="bp bd" onclick="delEntry(\'i\',\''+id+'\')">מחק</button><button class="bp" onclick="saveInc()">עדכן</button>';
     om('mInc');
@@ -844,8 +852,9 @@ function openEditEntry(type,id){
     editId=id;
     document.getElementById('mExpTtl').textContent='✏️ עריכת הוצאה';
     document.getElementById('eDesc').value=e.desc||'';document.getElementById('eAmt').value=e.amount||'';document.getElementById('eDate').value=e.date||today();
-    selExpCat=e.cat||'food';
+    selExpCat=e.cat||'food';selExpPay=e.payMethod||'credit';
     buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+    buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
     document.getElementById('eBtns').innerHTML='<button class="bp bd" onclick="delEntry(\'e\',\''+id+'\')">מחק</button><button class="bp bd" onclick="saveExp()">עדכן</button>';
     om('mExp');
   }
@@ -888,7 +897,7 @@ function saveInc(){
   var date=document.getElementById('iDate').value;
   if(!amt||!date){toast('נא למלא סכום ותאריך');return;}
   var who=selIncWho==='p2'?NAMES.p2:NAMES.p1;
-  var data={desc:desc,amount:amt,date:date,cat:selIncCat,who:who,uid:ME.uid,createdAt:Date.now()};
+  var data={desc:desc,amount:amt,date:date,cat:selIncCat,who:who,payMethod:selIncPay,uid:ME.uid,createdAt:Date.now()};
   if(!db){toast('אין חיבור לשרת');return;}
   if(editId)db.collection('bud_income').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mInc');});
   else db.collection('bud_income').add(data).then(function(){toast('נשמר ✓');cm('mInc');});
@@ -898,7 +907,7 @@ function saveExp(){
   var amt=+document.getElementById('eAmt').value;
   var date=document.getElementById('eDate').value;
   if(!amt||!date){toast('נא למלא סכום ותאריך');return;}
-  var data={desc:desc,amount:amt,date:date,cat:selExpCat,who:ME.name,uid:ME.uid,createdAt:Date.now()};
+  var data={desc:desc,amount:amt,date:date,cat:selExpCat,who:ME.name,payMethod:selExpPay,uid:ME.uid,createdAt:Date.now()};
   if(!db){toast('אין חיבור לשרת');return;}
   if(editId)db.collection('bud_expenses').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mExp');});
   else db.collection('bud_expenses').add(data).then(function(){toast('נשמר ✓');cm('mExp');});
@@ -936,6 +945,8 @@ function delFixed(id){if(!confirm('למחוק?'))return;db.collection('bud_fixed
 
 // ─── TOAST ───
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2000);}
+function payBadge(method){if(!method)return '';var m=PAY_METHODS.find(function(p){return p.id===method;});return m?' · '+m.ico+' '+m.label:'';}
+
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
