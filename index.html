@@ -731,11 +731,13 @@ function tplClubDashboard(){
     : '')+
   '';
 }
+var SLOT_MIN = 15;
 function genTimeSlots(){
   var arr = [];
   for(var h=14;h<=21;h++){
-    arr.push((h<10?'0':'')+h+':00');
-    arr.push((h<10?'0':'')+h+':30');
+    for(var m=0;m<60;m+=SLOT_MIN){
+      arr.push((h<10?'0':'')+h+':'+(m<10?'0':'')+m);
+    }
   }
   return arr;
 }
@@ -812,7 +814,7 @@ function clubFieldsBoard(){
           if(!starting.length){
             return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
           }
-          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/30); }));
+          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/SLOT_MIN); }));
           fieldRowSkip[day] = maxSpan - 1;
           return '<td rowspan="'+maxSpan+'" data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
             starting.map(function(s){
@@ -821,8 +823,8 @@ function clubFieldsBoard(){
                 '<div class="muted" style="font-size:10px">'+(s.time||s.start)+'</div>'+
                 '<div class="row" style="margin-top:3px;gap:3px">'+
                   '<button class="logout-btn" data-shiftday="'+s.id+':-1" title="יום קודם" style="font-size:10px;padding:0 4px">◀</button>'+
-                  '<button class="logout-btn" data-shifttime="'+s.id+':-30" title="שעה קודם" style="font-size:10px;padding:0 4px">▲</button>'+
-                  '<button class="logout-btn" data-shifttime="'+s.id+':30" title="שעה הבאה" style="font-size:10px;padding:0 4px">▼</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':-15" title="שעה קודם" style="font-size:10px;padding:0 4px">▲</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':15" title="שעה הבאה" style="font-size:10px;padding:0 4px">▼</button>'+
                   '<button class="logout-btn" data-shiftday="'+s.id+':1" title="יום הבא" style="font-size:10px;padding:0 4px">▶</button>'+
                   '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:10px;padding:0 4px">🗑</button>'+
                 '</div>'+
@@ -952,7 +954,7 @@ function clubGroupsGrid(days, fieldsById){
           if(!starting.length){
             return '<td style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
           }
-          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/30); }));
+          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/SLOT_MIN); }));
           grpRowSkip[day] = maxSpan - 1;
           return '<td rowspan="'+maxSpan+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
             starting.map(function(s){
@@ -1289,7 +1291,7 @@ function wireTab(i){
       btn.onclick = function(e){
         e.stopPropagation();
         var parts = btn.dataset.shifttime.split(':');
-        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/30);
+        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/SLOT_MIN);
       };
     });
     document.querySelectorAll('[data-dragsch]').forEach(function(card){
