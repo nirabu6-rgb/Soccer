@@ -220,10 +220,11 @@ var NAV_TABS = {
   3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'},
   6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'}
 };
+var NAV_IDS = [0,1,2,4];
 function buildNav(){
-  var ids = isClub() ? [6,7,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
+  NAV_IDS = isClub() ? [6,7,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
   var bar = document.getElementById('navBar');
-  bar.innerHTML = ids.map(function(id,i){
+  bar.innerHTML = NAV_IDS.map(function(id,i){
     return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
   }).join('');
   document.querySelectorAll('.nav-btn').forEach(function(btn){
@@ -403,7 +404,7 @@ function enterApp(){
   document.getElementById('hdrSport').textContent = sportInfo(ME.sport).ic + ' ' + sportInfo(ME.sport).t;
   refreshPlanBadge();
   buildNav();
-  renderTab(0);
+  renderTab(NAV_IDS[0]);
 }
 function refreshPlanBadge(){
   var coachLabels = {
