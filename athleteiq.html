@@ -284,6 +284,10 @@ var CLUB_GROUPS_VIEW = 'weekly';
 var CLUB_DAILY_DAY = null;
 var CLUB_FIELD_VIEW = 'weekly';
 var CLUB_FIELD_DAY = null;
+var CLUB_FIELD_WEEK_OFFSET = 0;
+var CLUB_FIELD_MONTH_OFFSET = 0;
+var CLUB_GROUPS_WEEK_OFFSET = 0;
+var CLUB_GROUPS_MONTH_OFFSET = 0;
 var CLUB_SCHEDULE_MODE = 'group';
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
@@ -742,6 +746,38 @@ function genTimeSlots(){
   return arr;
 }
 var TIME_SLOTS = genTimeSlots();
+var MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function fmtDDMM(d){ return (d.getDate()<10?'0':'')+d.getDate()+'/'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1); }
+function startOfWeek(offsetWeeks){
+  var d = new Date();
+  d.setDate(d.getDate() + offsetWeeks*7);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+function weekRangeLabel(offsetWeeks){
+  var s = startOfWeek(offsetWeeks);
+  var e = new Date(s); e.setDate(s.getDate()+6);
+  return (offsetWeeks===0?'השבוע הזה · ':'')+fmtDDMM(s)+' – '+fmtDDMM(e);
+}
+function monthLabel(offsetMonths){
+  var d = new Date();
+  d.setMonth(d.getMonth() + offsetMonths);
+  return (offsetMonths===0?'החודש הזה · ':'')+MONTH_NAMES[d.getMonth()]+' '+d.getFullYear();
+}
+function weekNavRow(navAttr, offset){
+  return '<div class="row" style="margin-bottom:10px;gap:6px">'+
+    '<button class="logout-btn" data-'+navAttr+'="-1" title="שבוע קודם" style="font-size:16px">◀</button>'+
+    '<div class="muted" style="flex:1;text-align:center;font-size:12px">'+weekRangeLabel(offset)+'</div>'+
+    '<button class="logout-btn" data-'+navAttr+'="1" title="שבוע הבא" style="font-size:16px">▶</button>'+
+  '</div>';
+}
+function monthNavRow(navAttr, offset){
+  return '<div class="row" style="margin-bottom:10px;gap:6px">'+
+    '<button class="logout-btn" data-'+navAttr+'="-1" title="חודש קודם" style="font-size:16px">◀</button>'+
+    '<div class="muted" style="flex:1;text-align:center;font-size:12px">'+monthLabel(offset)+'</div>'+
+    '<button class="logout-btn" data-'+navAttr+'="1" title="חודש הבא" style="font-size:16px">▶</button>'+
+  '</div>';
+}
 function addMinutesToTime(start, mins){
   var parts = start.split(':');
   var total = parseInt(parts[0],10)*60 + parseInt(parts[1],10) + mins;
@@ -788,13 +824,17 @@ function clubFieldsBoard(){
   '</div>';
   var fieldDays = DAY_NAMES;
   if(CLUB_FIELD_VIEW==='daily'){
-    if(!CLUB_FIELD_DAY) CLUB_FIELD_DAY = DAY_NAMES[0];
+    if(!CLUB_FIELD_DAY) CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
     fieldDays = [CLUB_FIELD_DAY];
+    html += weekNavRow('fieldweeknav', CLUB_FIELD_WEEK_OFFSET);
     html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:10px;flex-wrap:wrap">'+
       DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_FIELD_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-fielddaytab="'+d+'">'+d+'</button>'; }).join('')+
     '</div>';
+  } else if(CLUB_FIELD_VIEW==='weekly'){
+    html += weekNavRow('fieldweeknav', CLUB_FIELD_WEEK_OFFSET);
   } else if(CLUB_FIELD_VIEW==='monthly' || CLUB_FIELD_VIEW==='yearly'){
     var lblF = CLUB_FIELD_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += monthNavRow('fieldmonthnav', CLUB_FIELD_MONTH_OFFSET);
     html += '<div class="muted" style="margin-bottom:8px">תצוגה '+lblF+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lblF+'</div>';
   }
   html += '<div class="muted" style="margin-bottom:8px;font-size:12px">לחיצה ארוכה על תא פנוי תיצור אימון חדש בו · גרור אימון לתא אחר כדי להזיז אותו, או השתמש בחיצים ◀▶ / ▲▼ על הבלוק</div>';
@@ -920,16 +960,19 @@ function tplClubGroupsSchedule(){
   '<button class="btn ghost" id="btnAddScheduleFromGroups" style="margin-bottom:14px">+ הוסף קבוצה ללוז</button>';
 
   if(CLUB_GROUPS_VIEW==='daily'){
-    if(!CLUB_DAILY_DAY) CLUB_DAILY_DAY = DAY_NAMES[0];
+    if(!CLUB_DAILY_DAY) CLUB_DAILY_DAY = DAY_NAMES[new Date().getDay()];
+    html += weekNavRow('gsweeknav', CLUB_GROUPS_WEEK_OFFSET);
     html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:12px;flex-wrap:wrap">'+
       DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_DAILY_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-daytab="'+d+'">'+d+'</button>'; }).join('')+
     '</div>'+
     clubGroupsGrid([CLUB_DAILY_DAY], fieldsById);
   } else if(CLUB_GROUPS_VIEW==='weekly'){
+    html += weekNavRow('gsweeknav', CLUB_GROUPS_WEEK_OFFSET);
     html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל הקבוצות — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
     clubGroupsGrid(DAY_NAMES, fieldsById);
   } else {
     var lbl = CLUB_GROUPS_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += monthNavRow('gsmonthnav', CLUB_GROUPS_MONTH_OFFSET);
     html += '<div class="muted" style="margin-bottom:10px">תצוגה '+lbl+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lbl+'</div>'+
     clubGroupsGrid(DAY_NAMES, fieldsById);
   }
@@ -1239,10 +1282,22 @@ function wireTab(i){
       btn.onclick = function(){ CLUB_SCHEDULE_MODE = btn.dataset.gsmode; renderTab(9); };
     });
     document.querySelectorAll('[data-gsview]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_GROUPS_VIEW = btn.dataset.gsview; renderTab(9); };
+      btn.onclick = function(){
+        CLUB_GROUPS_VIEW = btn.dataset.gsview;
+        CLUB_GROUPS_WEEK_OFFSET = 0;
+        CLUB_GROUPS_MONTH_OFFSET = 0;
+        if(CLUB_GROUPS_VIEW==='daily') CLUB_DAILY_DAY = DAY_NAMES[new Date().getDay()];
+        renderTab(9);
+      };
     });
     document.querySelectorAll('[data-daytab]').forEach(function(btn){
       btn.onclick = function(){ CLUB_DAILY_DAY = btn.dataset.daytab; renderTab(9); };
+    });
+    document.querySelectorAll('[data-gsweeknav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_GROUPS_WEEK_OFFSET += parseInt(btn.dataset.gsweeknav,10); renderTab(9); };
+    });
+    document.querySelectorAll('[data-gsmonthnav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_GROUPS_MONTH_OFFSET += parseInt(btn.dataset.gsmonthnav,10); renderTab(9); };
     });
     var addSchG = document.getElementById('btnAddScheduleFromGroups');
     if(addSchG) addSchG.onclick = openAddScheduleModal;
@@ -1252,10 +1307,22 @@ function wireTab(i){
     var fieldPicker = document.getElementById('fieldPicker');
     if(fieldPicker) fieldPicker.onchange = function(){ CLUB_SELECTED_FIELD = fieldPicker.value; renderTab(9); };
     document.querySelectorAll('[data-fieldview]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_VIEW = btn.dataset.fieldview; renderTab(9); };
+      btn.onclick = function(){
+        CLUB_FIELD_VIEW = btn.dataset.fieldview;
+        CLUB_FIELD_WEEK_OFFSET = 0;
+        CLUB_FIELD_MONTH_OFFSET = 0;
+        if(CLUB_FIELD_VIEW==='daily') CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
+        renderTab(9);
+      };
     });
     document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
       btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; renderTab(9); };
+    });
+    document.querySelectorAll('[data-fieldweeknav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_WEEK_OFFSET += parseInt(btn.dataset.fieldweeknav,10); renderTab(9); };
+    });
+    document.querySelectorAll('[data-fieldmonthnav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_MONTH_OFFSET += parseInt(btn.dataset.fieldmonthnav,10); renderTab(9); };
     });
     var addField = document.getElementById('btnAddField');
     if(addField) addField.onclick = openAddFieldModal;
