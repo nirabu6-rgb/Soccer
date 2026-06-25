@@ -283,6 +283,7 @@ var CLUB_FIELDS_LOADED = false;
 var CLUB_SCHEDULE = [];
 var CLUB_SCHEDULE_LOADED = false;
 var CLUB_SCHEDULE_VIEW = 'weekly';
+var CLUB_SELECTED_FIELD = null;
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
 var CLUB_SELECTED_GROUP = null;
@@ -726,34 +727,56 @@ function tplClubDashboard(){
         }).join('')+
       '</div>'
     : '')+
-  '<div class="section-title" style="font-size:15px">🗓️ לוז מגרשים ואימונים</div>'+
-  '<div class="grid3" style="margin-bottom:10px">'+
-    ['weekly','monthly','yearly'].map(function(v){
-      var lbl = v==='weekly'?'שבועי':(v==='monthly'?'חודשי':'שנתי');
-      return '<button class="btn '+(CLUB_SCHEDULE_VIEW===v?'':'ghost')+'" data-schview="'+v+'">'+lbl+'</button>';
-    }).join('')+
-  '</div>'+
-  '<div class="row" style="gap:8px;margin-bottom:10px">'+
-    '<button class="btn ghost" id="btnAddField">+ הוסף מגרש</button>'+
-    '<button class="btn ghost" id="btnAddSchedule">+ הוסף אימון ללוז</button>'+
-  '</div>'+
+  '<div class="section-title" style="font-size:15px">🗓️ לוח שבועי לפי מגרש</div>'+
   (!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED
     ? '<div class="muted" style="text-align:center">טוען...</div>'
-    : (CLUB_FIELDS.length===0
-      ? '<div class="card" style="text-align:center;color:var(--sub);margin-bottom:14px">עדיין לא נוספו מגרשים</div>'
-      : CLUB_FIELDS.map(function(f){
-          var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===f.id && s.freq===CLUB_SCHEDULE_VIEW;});
-          return '<div class="card" style="margin-bottom:10px"><div class="row"><b>🏟 '+f.name+'</b><button class="logout-btn" data-delfield="'+f.id+'" title="מחק מגרש">🗑</button></div>'+
-            (items.length===0
-              ? '<div class="muted" style="margin-top:6px">אין אימונים מתוכננים בתצוגה זו</div>'
-              : items.map(function(s){
-                  return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+s.group+' · '+s.label+'</span>'+
-                    '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק">🗑</button></div>';
-                }).join(''))+
-          '</div>';
-        }).join('')
-    )
+    : clubFieldsBoard()
   );
+}
+function clubFieldsBoard(){
+  if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
+  if(CLUB_SELECTED_FIELD && !CLUB_FIELDS.some(function(f){return f.id===CLUB_SELECTED_FIELD;})){ CLUB_SELECTED_FIELD = CLUB_FIELDS.length ? CLUB_FIELDS[0].id : null; }
+  var html = '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:10px;flex-wrap:wrap">'+
+    CLUB_FIELDS.map(function(f){
+      return '<button class="btn '+(CLUB_SELECTED_FIELD===f.id?'':'ghost')+'" style="white-space:nowrap" data-fieldtab="'+f.id+'">🏟 '+f.name+'</button>';
+    }).join('')+
+    '<button class="btn ghost" id="btnAddField">+ הוסף מגרש</button>'+
+  '</div>';
+  if(!CLUB_FIELDS.length){
+    return html + '<div class="card" style="text-align:center;color:var(--sub);margin-bottom:14px">עדיין לא נוספו מגרשים — הוסף מגרש כדי לבנות לו לוח שבועי</div>';
+  }
+  var field = CLUB_FIELDS.filter(function(f){return f.id===CLUB_SELECTED_FIELD;})[0];
+  html += '<div class="row" style="margin-bottom:10px"><b>🏟 '+field.name+'</b>'+
+    '<div class="row" style="gap:6px"><button class="btn ghost" id="btnAddSchedule">+ הוסף אימון</button>'+
+    '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div></div>';
+  html += DAY_NAMES.map(function(day){
+    var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id && s.day===day;})
+      .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
+    return '<div class="card" style="margin-bottom:8px"><div class="row"><b>'+day+'</b></div>'+
+      (items.length===0
+        ? '<div class="muted" style="margin-top:4px;font-size:13px">אין אימונים</div>'
+        : items.map(function(s){
+            return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+(s.time?s.time+' · ':'')+s.group+'</span>'+
+              '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק">🗑</button></div>';
+          }).join(''))+
+    '</div>';
+  }).join('');
+  var overlapNote = clubOverlapNote(field.id);
+  if(overlapNote) html += '<div class="muted" style="margin-bottom:10px">⚠️ '+overlapNote+'</div>';
+  return html;
+}
+function clubOverlapNote(fieldId){
+  var byDay = {};
+  CLUB_SCHEDULE.filter(function(s){return s.fieldId===fieldId && s.time;}).forEach(function(s){
+    var key = s.day+'_'+s.time;
+    byDay[key] = byDay[key] || [];
+    byDay[key].push(s.group);
+  });
+  var notes = [];
+  Object.keys(byDay).forEach(function(k){
+    if(byDay[k].length>1) notes.push(k.replace('_',' · ')+': '+byDay[k].join(' + '));
+  });
+  return notes.length ? 'יותר מקבוצה אחת מתאמנת באותו זמן — '+notes.join(' | ') : '';
 }
 
 /* ---------------- TAB 7: Club training ---------------- */
@@ -1009,8 +1032,8 @@ function wireTab(i){
     if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
     var goRoster = document.getElementById('btnGoRoster');
     if(goRoster) goRoster.onclick = function(){ selectNav(3); };
-    document.querySelectorAll('[data-schview]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_SCHEDULE_VIEW = btn.dataset.schview; renderTab(6); };
+    document.querySelectorAll('[data-fieldtab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_SELECTED_FIELD = btn.dataset.fieldtab; renderTab(6); };
     });
     var addField = document.getElementById('btnAddField');
     if(addField) addField.onclick = openAddFieldModal;
@@ -1248,33 +1271,34 @@ function openAddFieldModal(){
     var field = {id:id, name:n, clubUid:ME.uid};
     db.collection(P+'clubfields').doc(id).set(field).then(function(){
       CLUB_FIELDS.push(field);
+      CLUB_SELECTED_FIELD = id;
       closeModal();
       renderTab(6);
     });
   };
 }
 function openAddScheduleModal(){
-  if(!CLUB_FIELDS.length){ openModal('<h3>אין מגרשים</h3><p class="muted">יש להוסיף מגרש לפני הוספת אימון ללוז</p><button class="btn" onclick="closeModal()">סגור</button>'); return; }
-  openModal('<h3>+ הוספת אימון ללוז</h3>'+
+  if(!CLUB_FIELDS.length){ openModal('<h3>אין מגרשים</h3><p class="muted">יש להוסיף מגרש לפני הוספת אימון ללוח</p><button class="btn" onclick="closeModal()">סגור</button>'); return; }
+  openModal('<h3>+ הוספת אימון ללוח השבועי</h3>'+
     '<div class="field"><label>מגרש</label><select id="schField">'+
-      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'">'+f.name+'</option>'; }).join('')+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(f.id===CLUB_SELECTED_FIELD?'selected':'')+'>'+f.name+'</option>'; }).join('')+
     '</select></div>'+
+    '<div class="field"><label>יום בשבוע</label><select id="schDay">'+
+      DAY_NAMES.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>שעה (אופציונלי)</label><input id="schTime" placeholder="לדוגמה: 17:00-18:00"></div>'+
     '<div class="field"><label>קבוצת גיל</label><select id="schGroup">'+
       AGE_GROUPS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
     '</select></div>'+
-    '<div class="field"><label>תדירות</label><select id="schFreq">'+
-      '<option value="weekly">שבועי</option><option value="monthly">חודשי</option><option value="yearly">שנתי</option>'+
-    '</select></div>'+
-    '<div class="field"><label>פירוט (יום/שעה/תאריך)</label><input id="schLabel" placeholder="לדוגמה: ראשון 17:00"></div>'+
+    '<div class="muted" style="margin:8px 0">ניתן להוסיף כמה קבוצות לאותו יום ואפילו לאותה שעה באותו מגרש — המערכת תציג התראה על חפיפה</div>'+
     '<button class="btn" id="schSave">שמור</button>');
   document.getElementById('schSave').onclick = function(){
-    var label = document.getElementById('schLabel').value.trim();
-    if(!label) return;
     var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
-    var sch = {id:id, fieldId:document.getElementById('schField').value, group:document.getElementById('schGroup').value,
-      freq:document.getElementById('schFreq').value, label:label, clubUid:ME.uid};
+    var sch = {id:id, fieldId:document.getElementById('schField').value, day:document.getElementById('schDay').value,
+      time:document.getElementById('schTime').value.trim(), group:document.getElementById('schGroup').value, clubUid:ME.uid};
     db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
       CLUB_SCHEDULE.push(sch);
+      CLUB_SELECTED_FIELD = sch.fieldId;
       closeModal();
       renderTab(6);
     });
