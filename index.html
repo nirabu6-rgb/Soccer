@@ -239,10 +239,10 @@ var PLAYER_CLIPS = [];
 var CHAT_LOG = [];
 
 var MOCK_PLAYERS = [
-  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null},
-  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null,history:[],injuryStart:'01/05/2026'},
-  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null,history:[],injuryStart:'10/06/2026'},
-  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null}
+  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:''},
+  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null,history:[],injuryStart:'01/05/2026',expectedReturn:'01/07/2026',rehabPlan:'שבוע 1-2: תרגילי ניידות וחימום קרסול. שבוע 3-4: חזרה הדרגתית לריצה קלה.'},
+  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null,history:[],injuryStart:'10/06/2026',expectedReturn:'',rehabPlan:''},
+  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:''}
 ];
 var STATUS_INFO = {
   healthy:{ic:'✅',t:'תקין',color:'var(--good)'},
@@ -657,7 +657,23 @@ function tplClub(){
     coachPriceCard('club_monthly','מועדון · חודשי','349')+
     coachPriceCard('club_yearly','מועדון · שנתי','2990');
   }
+  var injured = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy';});
+  var avgRating = MOCK_PLAYERS.length ? Math.round(MOCK_PLAYERS.reduce(function(s,p){return s+p.rating;},0)/MOCK_PLAYERS.length) : 0;
   return ''+
+  '<div class="section-title">🏟️ דשבורד מועדון</div>'+
+  '<div class="grid3" style="margin-bottom:14px">'+
+    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים במחלקה</div></div>'+
+    '<div class="stat"><div class="v">'+avgRating+'</div><div class="l">ממוצע דירוג</div></div>'+
+    '<div class="stat"><div class="v" style="color:'+(injured.length?'var(--warn)':'var(--good)')+'">'+injured.length+'</div><div class="l">פציעות/שיקום</div></div>'+
+  '</div>'+
+  (injured.length
+    ? '<div class="card" style="margin-bottom:14px"><div class="muted" style="margin-bottom:6px">🩹 מצב רפואי במחלקה</div>'+
+        injured.map(function(p){
+          return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+p.name+' (#'+p.jersey+')</span>'+
+            '<span class="status-tag" style="background:'+STATUS_INFO[p.status].color+';color:#04111a">'+STATUS_INFO[p.status].ic+' '+STATUS_INFO[p.status].t+(p.expectedReturn?' · חזרה '+p.expectedReturn:'')+'</span></div>';
+        }).join('')+
+      '</div>'
+    : '')+
   '<div class="section-title">🏟️ בניית תרגילי מועדון</div>'+
   '<div class="muted" style="margin-bottom:10px">בנה ספריית תרגילים מפורטת לקבוצה שלך, עם תמונה ותיאור סרטוט/תנועה לכל תרגיל</div>'+
   '<button class="btn" id="btnAddClubExercise" style="margin-bottom:14px">+ הוסף תרגיל</button>'+
@@ -803,7 +819,13 @@ function wireTab(i){
     if(tpc) tpc.onclick = function(){
       openModal('<h3>📋 תוכנית קבוצתית — שבוע 6</h3>'+
         '<div class="muted" style="margin-bottom:10px">שלב בניית כוח בסיס · ⏱ '+TEAM_SETTINGS.duration+' דק\' לאימון · 💧 '+TEAM_SETTINGS.waterBreakMin+' דק\' הפסקות מים · 🔄 '+TEAM_SETTINGS.transitionSec+' שנ\' מעברים</div>'+
-        TEAM_PLAN.map(function(d){return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div>'+(d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t)+'</div>':'')+'</div></div>'}).join('')+
+        TEAM_PLAN.map(function(d){
+          var ex = (d.exerciseIdx!=null && CLUB_EXERCISES[d.exerciseIdx]) ? CLUB_EXERCISES[d.exerciseIdx] : null;
+          return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div>'+
+            (d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t)+'</div>':'')+
+            (ex ? '<div class="muted" style="margin-top:6px">🎬 תרגיל: '+ex.name+(ex.description?' — '+ex.description:'')+'</div>'+(ex.imageData?'<img src="'+ex.imageData+'" style="width:100%;border-radius:10px;margin-top:6px">':'')+(ex.sketchNote?'<div class="muted" style="margin-top:4px">✏️ '+ex.sketchNote+'</div>':'') : '')+
+          '</div></div>';
+        }).join('')+
         shareButtonsHtml('teamShare')+
         '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
       wireShareButtons('teamShare', 'תוכנית אימון קבוצתית — שבוע 6', TEAM_PLAN);
@@ -820,12 +842,22 @@ function wireTab(i){
         '<div class="section-title" style="font-size:14px">תוכנית שבועית</div>'+
         '<div class="muted" style="margin-bottom:10px">התוכנית חלה על כל שחקני הקבוצה (אלא אם הוגדרה תוכנית אישית)</div>'+
         TEAM_PLAN.map(function(d,i){
-          return '<div class="field"><label>'+d.d+'</label><input data-tpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>';
+          return '<div class="field"><label>'+d.d+'</label><input data-tpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>'+
+            (isClub() && CLUB_EXERCISES.length
+              ? '<div class="field"><label>תרגיל מצולם מהספרייה (אופציונלי)</label>'+
+                '<select data-tpex="'+i+'"><option value="">— ללא —</option>'+
+                CLUB_EXERCISES.map(function(ex,exi){ return '<option value="'+exi+'" '+(d.exerciseIdx===exi?'selected':'')+'>'+ex.name+'</option>'; }).join('')+
+                '</select></div>'
+              : '');
         }).join('')+
         '<button class="btn" id="tpSave">שמור תוכנית קבוצתית</button>');
       document.getElementById('tpSave').onclick = function(){
         document.querySelectorAll('[data-tpi]').forEach(function(inp){
           TEAM_PLAN[parseInt(inp.dataset.tpi,10)].t = inp.value;
+        });
+        document.querySelectorAll('[data-tpex]').forEach(function(sel){
+          var v = sel.value;
+          TEAM_PLAN[parseInt(sel.dataset.tpex,10)].exerciseIdx = v===''? null : parseInt(v,10);
         });
         TEAM_SETTINGS.duration = parseInt(document.getElementById('tsDuration').value,10) || 0;
         TEAM_SETTINGS.waterBreakMin = parseInt(document.getElementById('tsWater').value,10) || 0;
@@ -918,7 +950,7 @@ function openAddPlayerModal(draft){
       name:n, pos:document.getElementById('npPos').value||'שחקן',
       age:parseInt(document.getElementById('npAge').value,10)||14,
       jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
-      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null, history:[], injuryStart:null
+      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null, history:[], injuryStart:null, expectedReturn:'', rehabPlan:''
     });
     closeModal();
     renderTab(3);
@@ -1067,6 +1099,32 @@ function shareButtonsHtml(idPrefix){
     '<button class="btn ghost" id="'+idPrefix+'Mail">✉️ שלח באימייל</button>'+
   '</div>';
 }
+function wireShareText(idPrefix, title, text){
+  var waBtn = document.getElementById(idPrefix+'Wa');
+  if(waBtn) waBtn.onclick = function(){
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
+  var mailBtn = document.getElementById(idPrefix+'Mail');
+  if(mailBtn) mailBtn.onclick = function(){
+    window.location.href = 'mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(text);
+  };
+}
+function playerReportText(p){
+  var r = p.ratings;
+  var lines = [];
+  lines.push('דוח שחקן — '+p.name+' (#'+p.jersey+')');
+  lines.push(p.pos+' · גיל '+p.age+' · דירוג כללי '+p.rating);
+  lines.push('סטטוס רפואי: '+STATUS_INFO[p.status].t + (p.expectedReturn?' · חזרה משוערת '+p.expectedReturn:''));
+  if(p.rehabPlan) lines.push('תוכנית שיקום: '+p.rehabPlan);
+  if(r) lines.push('הערכת מאמן — מהירות:'+r.speed+' כוח:'+r.strength+' טכניקה:'+r.technique+' סיבולת:'+r.endurance+(r.goal?' · יעד לשיפור: '+r.goal:''));
+  if(p.history && p.history.length){
+    lines.push('היסטוריית פציעות:');
+    p.history.forEach(function(h){ lines.push('- '+STATUS_INFO[h.status].t+' ('+h.startDate+' — '+h.endDate+')'+(h.note?' '+h.note:'')); });
+  }
+  lines.push('תוכנית אימון נוכחית:');
+  (p.plan || TEAM_PLAN).forEach(function(d){ lines.push(d.d+': '+(d.t||'-')); });
+  return lines.join('\n');
+}
 function wireShareButtons(idPrefix, title, plan){
   var waBtn = document.getElementById(idPrefix+'Wa');
   if(waBtn) waBtn.onclick = function(){
@@ -1098,6 +1156,10 @@ function openPlayerModal(idx){
     '<div class="field"><label>הערה / פירוט (פציעה, שיקום, הגבלות)</label>'+
       '<textarea id="pmNote" rows="3" placeholder="לדוגמה: נקע בקרסול, אסור ריצה למשך שבועיים">'+(p.note||'')+'</textarea>'+
     '</div>'+
+    (p.status!=='healthy'
+      ? '<div class="field"><label>תאריך חזרה משוער</label><input id="pmReturn" placeholder="DD/MM/YYYY" value="'+(p.expectedReturn||'')+'"></div>'+
+        '<div class="field"><label>תוכנית שיקום</label><textarea id="pmRehab" rows="3" placeholder="לדוגמה: שבוע 1-2 תרגילי ניידות, שבוע 3-4 חזרה הדרגתית לריצה">'+(p.rehabPlan||'')+'</textarea></div>'
+      : '')+
     '<button class="btn" id="pmSaveStatus" style="margin-bottom:16px">שמור סטטוס רפואי</button>'+
     '<div class="section-title" style="font-size:14px;margin-top:0">📜 היסטוריית פציעות</div>'+
     (p.history && p.history.length
@@ -1105,6 +1167,7 @@ function openPlayerModal(idx){
           var st = STATUS_INFO[h.status];
           return '<div class="card" style="margin-bottom:8px"><div class="row"><b>'+st.ic+' '+st.t+'</b><span class="muted">'+h.startDate+' — '+h.endDate+'</span></div>'+
             (h.note ? '<div class="muted" style="margin-top:6px">'+h.note+'</div>' : '')+
+            (h.rehabPlan ? '<div class="muted" style="margin-top:6px">🏥 תוכנית שיקום: '+h.rehabPlan+'</div>' : '')+
           '</div>';
         }).join('')
       : '<div class="muted" style="margin-bottom:16px">אין היסטוריית פציעות</div>')+
@@ -1129,12 +1192,20 @@ function openPlayerModal(idx){
     '<button class="btn" id="pmSavePlan">שמור תוכנית אישית לשחקן</button>'+
     (p.plan ? '<button class="btn ghost" id="pmResetPlan" style="margin-top:8px">חזרה לתוכנית הקבוצתית</button>' : '')+
     shareButtonsHtml('pmShare')+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📤 שיתוף דוח מלא</div>'+
+    '<div class="muted" style="margin-bottom:8px">שולח לשחקן את כל הנתונים: הערכות, סטטוס רפואי, היסטוריה ותוכנית נוכחית</div>'+
+    shareButtonsHtml('pmReport')+
   '');
   wireShareButtons('pmShare', 'תוכנית אימון אישית — '+p.name, plan);
+  wireShareText('pmReport', 'דוח שחקן — '+p.name, playerReportText(p));
   document.getElementById('pmSaveStatus').onclick = function(){
     var oldStatus = p.status;
     var newStatus = document.getElementById('pmStatus').value;
     var newNote = document.getElementById('pmNote').value;
+    var returnEl = document.getElementById('pmReturn');
+    var rehabEl = document.getElementById('pmRehab');
+    var newReturn = returnEl ? returnEl.value.trim() : '';
+    var newRehab = rehabEl ? rehabEl.value.trim() : '';
     var today = new Date().toLocaleDateString('he-IL');
     if(oldStatus==='healthy' && newStatus!=='healthy'){
       p.injuryStart = today;
@@ -1144,10 +1215,16 @@ function openPlayerModal(idx){
       p.history.unshift({
         status:oldStatus,
         note:p.note,
+        rehabPlan:p.rehabPlan,
         startDate:p.injuryStart || today,
         endDate:today
       });
       p.injuryStart = null;
+      p.expectedReturn = '';
+      p.rehabPlan = '';
+    } else {
+      p.expectedReturn = newReturn;
+      p.rehabPlan = newRehab;
     }
     p.status = newStatus;
     p.note = newNote;
