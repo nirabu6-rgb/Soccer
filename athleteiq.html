@@ -289,6 +289,7 @@ var CLUB_GROUPS_VIEW = 'weekly';
 var CLUB_DAILY_DAY = null;
 var CLUB_FIELD_VIEW = 'weekly';
 var CLUB_FIELD_DAY = null;
+var CLUB_SCHEDULE_MODE = 'group';
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
 var CLUB_SELECTED_GROUP = null;
@@ -733,11 +734,7 @@ function tplClubDashboard(){
         }).join('')+
       '</div>'
     : '')+
-  '<div class="section-title" style="font-size:15px">🗓️ לוח שבועי לפי מגרש</div>'+
-  (!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED
-    ? '<div class="muted" style="text-align:center">טוען...</div>'
-    : clubFieldsBoard()
-  );
+  '';
 }
 function genTimeSlots(){
   var arr = [];
@@ -769,7 +766,7 @@ function shiftClubSchedule(id, dayDelta, slotDelta){
     s.time = s.start + '-' + addMinutesToTime(s.start, s.duration||30);
   }
   db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
-  renderTab(6);
+  renderTab(TAB===9?9:6);
 }
 function clubFieldsBoard(){
   if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
@@ -900,7 +897,16 @@ function tplClubGroupsSchedule(){
   CLUB_FIELDS.forEach(function(f){ fieldsById[f.id] = f.name; });
   var html = ''+
   '<div class="section-title">🗂️ לוז קבוצות</div>'+
-  '<div class="grid3" style="margin-bottom:10px">'+
+  '<div class="row" style="gap:6px;margin-bottom:10px">'+
+    '<button class="btn '+(CLUB_SCHEDULE_MODE==='group'?'':'ghost')+'" data-gsmode="group" style="flex:1">לפי קבוצה</button>'+
+    '<button class="btn '+(CLUB_SCHEDULE_MODE==='field'?'':'ghost')+'" data-gsmode="field" style="flex:1">לפי מגרש</button>'+
+  '</div>';
+
+  if(CLUB_SCHEDULE_MODE==='field'){
+    return html + clubFieldsBoard();
+  }
+
+  html += '<div class="grid3" style="margin-bottom:10px">'+
     [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
       return '<button class="btn '+(CLUB_GROUPS_VIEW===v[0]?'':'ghost')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
     }).join('')+
@@ -1171,78 +1177,11 @@ function wireTab(i){
         ME.coachPlan = btn.dataset.coachplan;
         refreshPlanBadge();
         buildNav();
-        renderTab(6);
+        renderTab(TAB===9?9:6);
       };
     });
-    if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
-    if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
     var goRoster = document.getElementById('btnGoRoster');
     if(goRoster) goRoster.onclick = function(){ selectNav(3); };
-    document.querySelectorAll('[data-fieldtab]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_SELECTED_FIELD = btn.dataset.fieldtab; renderTab(6); };
-    });
-    document.querySelectorAll('[data-fieldview]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_VIEW = btn.dataset.fieldview; renderTab(6); };
-    });
-    document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; renderTab(6); };
-    });
-    var addField = document.getElementById('btnAddField');
-    if(addField) addField.onclick = openAddFieldModal;
-    document.querySelectorAll('[data-delfield]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var id = btn.dataset.delfield;
-        db.collection(P+'clubfields').doc(id).delete();
-        CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
-        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
-        renderTab(6);
-      };
-    });
-    var addSch = document.getElementById('btnAddSchedule');
-    if(addSch) addSch.onclick = openAddScheduleModal;
-    document.querySelectorAll('[data-delsch]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var id = btn.dataset.delsch;
-        db.collection(P+'clubschedule').doc(id).delete();
-        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
-        renderTab(6);
-      };
-    });
-    document.querySelectorAll('[data-shiftday]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var parts = btn.dataset.shiftday.split(':');
-        shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
-      };
-    });
-    document.querySelectorAll('[data-shifttime]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var parts = btn.dataset.shifttime.split(':');
-        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/30);
-      };
-    });
-    document.querySelectorAll('[data-dragsch]').forEach(function(card){
-      card.addEventListener('dragstart', function(e){
-        e.dataTransfer.setData('text/plain', card.dataset.dragsch);
-      });
-    });
-    document.querySelectorAll('[data-droptime]').forEach(function(cell){
-      cell.addEventListener('dragover', function(e){ e.preventDefault(); });
-      cell.addEventListener('drop', function(e){
-        e.preventDefault();
-        var id = e.dataTransfer.getData('text/plain');
-        var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
-        if(!s) return;
-        s.day = cell.dataset.dropday;
-        s.start = cell.dataset.droptime;
-        s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
-        db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
-        renderTab(6);
-      });
-    });
   }
   if(i===7){
     var addEx = document.getElementById('btnAddClubExercise');
@@ -1282,6 +1221,9 @@ function wireTab(i){
     if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
     if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
     if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+    document.querySelectorAll('[data-gsmode]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_SCHEDULE_MODE = btn.dataset.gsmode; renderTab(9); };
+    });
     document.querySelectorAll('[data-gsview]').forEach(function(btn){
       btn.onclick = function(){ CLUB_GROUPS_VIEW = btn.dataset.gsview; renderTab(9); };
     });
@@ -1292,6 +1234,71 @@ function wireTab(i){
     if(addSchG) addSchG.onclick = openAddScheduleModal;
     document.querySelectorAll('[data-groupdetail]').forEach(function(card){
       card.onclick = function(){ openGroupDetailModal(card.dataset.groupdetail); };
+    });
+    document.querySelectorAll('[data-fieldtab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_SELECTED_FIELD = btn.dataset.fieldtab; renderTab(9); };
+    });
+    document.querySelectorAll('[data-fieldview]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_VIEW = btn.dataset.fieldview; renderTab(9); };
+    });
+    document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; renderTab(9); };
+    });
+    var addField = document.getElementById('btnAddField');
+    if(addField) addField.onclick = openAddFieldModal;
+    document.querySelectorAll('[data-delfield]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var id = btn.dataset.delfield;
+        db.collection(P+'clubfields').doc(id).delete();
+        CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
+        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
+        renderTab(9);
+      };
+    });
+    var addSch = document.getElementById('btnAddSchedule');
+    if(addSch) addSch.onclick = openAddScheduleModal;
+    document.querySelectorAll('[data-delsch]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var id = btn.dataset.delsch;
+        db.collection(P+'clubschedule').doc(id).delete();
+        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
+        renderTab(9);
+      };
+    });
+    document.querySelectorAll('[data-shiftday]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var parts = btn.dataset.shiftday.split(':');
+        shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
+      };
+    });
+    document.querySelectorAll('[data-shifttime]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var parts = btn.dataset.shifttime.split(':');
+        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/30);
+      };
+    });
+    document.querySelectorAll('[data-dragsch]').forEach(function(card){
+      card.addEventListener('dragstart', function(e){
+        e.dataTransfer.setData('text/plain', card.dataset.dragsch);
+      });
+    });
+    document.querySelectorAll('[data-droptime]').forEach(function(cell){
+      cell.addEventListener('dragover', function(e){ e.preventDefault(); });
+      cell.addEventListener('drop', function(e){
+        e.preventDefault();
+        var id = e.dataTransfer.getData('text/plain');
+        var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+        if(!s) return;
+        s.day = cell.dataset.dropday;
+        s.start = cell.dataset.droptime;
+        s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
+        db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+        renderTab(9);
+      });
     });
   }
   if(i===4){
@@ -1474,7 +1481,7 @@ function openAddFieldModal(){
       CLUB_FIELDS.push(field);
       CLUB_SELECTED_FIELD = id;
       closeModal();
-      renderTab(6);
+      renderTab(TAB===9?9:6);
     });
   };
 }
