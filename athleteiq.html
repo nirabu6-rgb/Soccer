@@ -207,10 +207,10 @@ var selSport = 'soccer', selMode = 'player';
 /* ---------------- Nav ---------------- */
 var NAV_TABS = {
   0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
-  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}
+  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'}
 };
 function buildNav(){
-  var ids = ME.mode==='coach' ? [0,3,4] : [0,1,2,4];
+  var ids = ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4];
   var bar = document.getElementById('navBar');
   bar.innerHTML = ids.map(function(id,i){
     return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
@@ -231,10 +231,10 @@ var PLAYER_CLIPS = [];
 var CHAT_LOG = [];
 
 var MOCK_PLAYERS = [
-  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null},
-  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null},
-  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null},
-  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null}
+  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null},
+  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null},
+  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null},
+  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null}
 ];
 var STATUS_INFO = {
   healthy:{ic:'✅',t:'תקין',color:'var(--good)'},
@@ -262,6 +262,34 @@ var TRAINING_PLAN = {
   seasonal:'עונת אביב 2026 — מטרה: שיפור מהירות 8%, כוח נפץ 12%'
 };
 var TEAM_PLAN = TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};});
+var CLUB_EXERCISES = [];
+var PLAN_LIBRARY = [
+  {id:1, title:'בניית מהירות בסיסית', author:'מאמן רוני אביטל, ישראל', country:'ישראל', sport:'soccer', focus:'מהירות', weeks:4, days:[
+    {d:'ראשון',t:'חימום + ספרינטים קצרים'},{d:'שני',t:'כוח פלג גוף תחתון'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'ספרינטים עם שינוי כיוון'},{d:'חמישי',t:'אימון פליאומטרי'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:2, title:'Total Endurance Builder', author:'Coach Marco Rossi, Italy', country:'Italy', sport:'soccer', focus:'סיבולת', weeks:6, days:[
+    {d:'ראשון',t:'ריצה ארוכה בעצימות נמוכה'},{d:'שני',t:'אינטרוולים בינוניים'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'אימון סיבולת עם כדור'},{d:'חמישי',t:'ריצת טמפו'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:3, title:'טכניקת כדרור מתקדמת', author:'מאמנת שירה גולן, ישראל', country:'ישראל', sport:'soccer', focus:'טכניקה', weeks:4, days:[
+    {d:'ראשון',t:'כדרור בין שערונים'},{d:'שני',t:'מסירות קצרות וארוכות'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'כדרור בלחץ זמן'},{d:'חמישי',t:'שליטה ובלימה'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:4, title:'Explosive Strength Program', author:'Coach James Carter, England', country:'England', sport:'soccer', focus:'כוח', weeks:8, days:[
+    {d:'ראשון',t:'כוח מתפרץ - רגליים'},{d:'שני',t:'אימון פלייומטריה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'כוח עליון וליבה'},{d:'חמישי',t:'ספרינטים בעלייה'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:5, title:'תוכנית שיקום וחזרה לפעילות', author:'מאמן דורון לב, ישראל', country:'ישראל', sport:'soccer', focus:'שיקום', weeks:6, days:[
+    {d:'ראשון',t:'תרגילי גמישות ומוביליות'},{d:'שני',t:'חיזוק שרירי ליבה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'הליכה/ריצה קלה מבוקרת'},{d:'חמישי',t:'תרגילי שיווי משקל'},{d:'שישי',t:'תרגול עדין עם כדור'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:6, title:'Youth Development Plan', author:'Coach Lucas Fernandez, Spain', country:'Spain', sport:'soccer', focus:'התפתחות כללית', weeks:10, days:[
+    {d:'ראשון',t:'משחקים קטנים (Small-sided games)'},{d:'שני',t:'תרגילי קואורדינציה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'טכניקה בסיסית בכדור'},{d:'חמישי',t:'משחקי כוח וזריזות'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]}
+];
+var TEAM_SETTINGS = {duration:60, waterBreakMin:5, transitionSec:30};
 
 /* ---------------- Sport grid build ---------------- */
 (function buildSportGrid(){
@@ -323,8 +351,13 @@ function enterApp(){
   renderTab(0);
 }
 function refreshPlanBadge(){
-  document.getElementById('hdrPlan').textContent = ME.mode==='coach' ? (ME.coachPlan ? 'מאמן · '+(ME.coachPlan==='yearly'?'שנתי':'חודשי') : 'מאמן · לא רשום') : (ME.plan==='premium'?'פרימיום':'חינם');
+  var coachLabels = {
+    coach_monthly:'מאמן · חודשי', coach_yearly:'מאמן · שנתי',
+    club_monthly:'מועדון · חודשי', club_yearly:'מועדון · שנתי'
+  };
+  document.getElementById('hdrPlan').textContent = ME.mode==='coach' ? (ME.coachPlan ? coachLabels[ME.coachPlan] : 'מאמן · לא רשום') : (ME.plan==='premium'?'פרימיום':'חינם');
 }
+function isClub(){ return ME.coachPlan==='club_monthly' || ME.coachPlan==='club_yearly'; }
 
 document.getElementById('btnLogout').onclick = function(){
   localStorage.removeItem('ath_uid');
@@ -360,6 +393,7 @@ function renderTab(i){
   else if(i===2) c.innerHTML = tplTraining();
   else if(i===3) c.innerHTML = tplCoach();
   else if(i===4) c.innerHTML = tplSub();
+  else if(i===5) c.innerHTML = tplClub();
   wireTab(i);
 }
 
@@ -513,8 +547,13 @@ function tplCoach(){
       '<b>הצטרף כמאמן</b>'+
       '<div class="muted" style="margin:8px 0">רכוש חבילת מאמן כדי לבנות קבוצה, להעלות ולנתח סרטוני שחקנים לפי מספר חולצה, ולקבל תוכניות אימון AI לקבוצה ולכל שחקן</div>'+
     '</div>'+
-    coachPriceCard('monthly','חבילה חודשית','149')+
-    coachPriceCard('yearly','חבילה שנתית','1290');
+    '<div class="section-title" style="font-size:15px">חבילת מאמן רגילה</div>'+
+    coachPriceCard('coach_monthly','חבילה חודשית','149')+
+    coachPriceCard('coach_yearly','חבילה שנתית','1290')+
+    '<div class="section-title" style="font-size:15px">חבילת מועדון</div>'+
+    '<div class="muted" style="margin-bottom:10px">חבילת מועדון פותחת גם את לשונית "מועדון" — בניית תוכנית תרגילים מפורטת עם תמונות וסרטוטים לכל תרגיל</div>'+
+    coachPriceCard('club_monthly','מועדון · חודשי','349')+
+    coachPriceCard('club_yearly','מועדון · שנתי','2990');
   }
   var injuredCount = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy'}).length;
   return ''+
@@ -538,15 +577,59 @@ function tplCoach(){
       '<button class="logout-btn" data-del="'+idx+'" title="מחק שחקן">🗑</button></div>';
   }).join('')+'</div>'+
   '<div class="section-title" style="font-size:15px">תוכנית קבוצתית</div>'+
-  '<div class="card tap" id="teamPlanCard"><div class="row"><span>📋 תוכנית אימון לקבוצה — שבוע 6</span><span>›</span></div></div>'+
-  '<button class="btn ghost" id="btnEditTeamPlan" style="margin-top:10px">✏️ עריכת תוכנית קבוצתית</button>';
+  '<div class="card tap" id="teamPlanCard"><div class="row"><span>📋 תוכנית אימון לקבוצה — שבוע 6</span><span>›</span></div>'+
+    '<div class="muted" style="margin-top:6px">⏱ '+TEAM_SETTINGS.duration+' דק\' · 💧 '+TEAM_SETTINGS.waterBreakMin+' דק\' הפסקות מים · 🔄 '+TEAM_SETTINGS.transitionSec+' שנ\' מעברים</div>'+
+  '</div>'+
+  '<div class="grid2" style="margin-top:10px">'+
+    '<button class="btn ghost" id="btnEditTeamPlan">✏️ עריכת תוכנית קבוצתית</button>'+
+    '<button class="btn ghost" id="btnPlanLibrary">📚 ספריית תוכניות</button>'+
+  '</div>';
 }
 function coachPriceCard(id,title,price){
+  var isYearly = id.indexOf('yearly') !== -1;
   return '<div class="plan-card" style="position:relative">'+
     '<div class="row"><b style="font-size:16px">'+title+'</b></div>'+
-    '<div class="price">₪'+price+'<span> / '+(id==='yearly'?'שנה':'חודש')+'</span></div>'+
+    '<div class="price">₪'+price+'<span> / '+(isYearly?'שנה':'חודש')+'</span></div>'+
     '<button class="btn" data-coachplan="'+id+'">רכוש חבילה</button>'+
   '</div>';
+}
+
+/* ---------------- TAB 5: Club exercise builder (club tier only) ---------------- */
+function tplClub(){
+  if(ME.mode !== 'coach'){
+    return '<div class="section-title">🏟️ מועדון</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
+      '<b>מצב מאמן נעול</b>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לגשת לכלי בניית תרגילי מועדון</div>'+
+      '<button class="btn ghost" id="switchCoachClub">החלף למצב מאמן</button>'+
+    '</div>';
+  }
+  if(!isClub()){
+    return ''+
+    '<div class="section-title">🏟️ מועדון</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔐</div>'+
+      '<b>פתח את לשונית המועדון</b>'+
+      '<div class="muted" style="margin:8px 0">חבילת מועדון פותחת בניית תוכנית מפורטת תרגיל-אחר-תרגיל, עם תמונות ותיאורי סרטוט/תנועה לכל תרגיל — מעבר לתוכנית השבועית הכללית</div>'+
+    '</div>'+
+    coachPriceCard('club_monthly','מועדון · חודשי','349')+
+    coachPriceCard('club_yearly','מועדון · שנתי','2990');
+  }
+  return ''+
+  '<div class="section-title">🏟️ בניית תרגילי מועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">בנה ספריית תרגילים מפורטת לקבוצה שלך, עם תמונה ותיאור סרטוט/תנועה לכל תרגיל</div>'+
+  '<button class="btn" id="btnAddClubExercise" style="margin-bottom:14px">+ הוסף תרגיל</button>'+
+  (CLUB_EXERCISES.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו תרגילים</div>'
+    : CLUB_EXERCISES.map(function(ex,i){
+        return '<div class="card"><div class="row"><b>'+ex.name+'</b><button class="logout-btn" data-delex="'+i+'" title="מחק תרגיל">🗑</button></div>'+
+          (ex.description ? '<div class="muted" style="margin-top:6px">'+ex.description+'</div>' : '')+
+          (ex.imageData ? '<img src="'+ex.imageData+'" style="width:100%;border-radius:10px;margin-top:8px">' : '')+
+          (ex.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+ex.sketchNote+'</div>' : '')+
+        '</div>';
+      }).join('')
+  );
 }
 
 /* ---------------- TAB 4: Subscriptions ---------------- */
@@ -666,11 +749,20 @@ function wireTab(i){
       openModal('<h3>📋 תוכנית קבוצתית — שבוע 6</h3>'+
         '<div class="muted" style="margin-bottom:10px">שלב בניית כוח בסיס</div>'+
         TEAM_PLAN.map(function(d){return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div></div></div>'}).join('')+
+        shareButtonsHtml('teamShare')+
         '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
+      wireShareButtons('teamShare', 'תוכנית אימון קבוצתית — שבוע 6', TEAM_PLAN);
     };
     var etp = document.getElementById('btnEditTeamPlan');
     if(etp) etp.onclick = function(){
       openModal('<h3>✏️ עריכת תוכנית קבוצתית</h3>'+
+        '<div class="section-title" style="font-size:14px;margin-top:0">⚙️ הגדרות אימון</div>'+
+        '<div class="grid3">'+
+          '<div class="field"><label>אורך אימון (דק\')</label><input id="tsDuration" type="number" min="0" value="'+TEAM_SETTINGS.duration+'"></div>'+
+          '<div class="field"><label>הפסקת מים (דק\')</label><input id="tsWater" type="number" min="0" value="'+TEAM_SETTINGS.waterBreakMin+'"></div>'+
+          '<div class="field"><label>מעברים (שנ\')</label><input id="tsTransition" type="number" min="0" value="'+TEAM_SETTINGS.transitionSec+'"></div>'+
+        '</div>'+
+        '<div class="section-title" style="font-size:14px">תוכנית שבועית</div>'+
         '<div class="muted" style="margin-bottom:10px">התוכנית חלה על כל שחקני הקבוצה (אלא אם הוגדרה תוכנית אישית)</div>'+
         TEAM_PLAN.map(function(d,i){
           return '<div class="field"><label>'+d.d+'</label><input data-tpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>';
@@ -680,11 +772,43 @@ function wireTab(i){
         document.querySelectorAll('[data-tpi]').forEach(function(inp){
           TEAM_PLAN[parseInt(inp.dataset.tpi,10)].t = inp.value;
         });
+        TEAM_SETTINGS.duration = parseInt(document.getElementById('tsDuration').value,10) || 0;
+        TEAM_SETTINGS.waterBreakMin = parseInt(document.getElementById('tsWater').value,10) || 0;
+        TEAM_SETTINGS.transitionSec = parseInt(document.getElementById('tsTransition').value,10) || 0;
         closeModal();
+        renderTab(3);
       };
     };
+    var pl = document.getElementById('btnPlanLibrary');
+    if(pl) pl.onclick = openPlanLibraryModal;
     document.querySelectorAll('.player-row').forEach(function(row){
       row.onclick = function(){ openPlayerModal(parseInt(row.dataset.idx,10)); };
+    });
+  }
+  if(i===5){
+    var swc = document.getElementById('switchCoachClub');
+    if(swc) swc.onclick = function(){
+      ME.mode = 'coach';
+      localStorage.setItem('ath_mode','coach');
+      refreshPlanBadge();
+      buildNav();
+      selectNav(5);
+    };
+    document.querySelectorAll('[data-coachplan]').forEach(function(btn){
+      btn.onclick = function(){
+        ME.coachPlan = btn.dataset.coachplan;
+        refreshPlanBadge();
+        renderTab(5);
+      };
+    });
+    var addEx = document.getElementById('btnAddClubExercise');
+    if(addEx) addEx.onclick = openAddClubExerciseModal;
+    document.querySelectorAll('[data-delex]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        CLUB_EXERCISES.splice(parseInt(btn.dataset.delex,10),1);
+        renderTab(5);
+      };
     });
   }
   if(i===4){
@@ -727,7 +851,7 @@ function openAddPlayerModal(draft){
       name:n, pos:document.getElementById('npPos').value||'שחקן',
       age:parseInt(document.getElementById('npAge').value,10)||14,
       jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
-      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null
+      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null
     });
     closeModal();
     renderTab(3);
@@ -751,10 +875,88 @@ function openPositionPicker(draft){
   });
 }
 
+function openPlanLibraryModal(){
+  openModal('<h3>📚 ספריית תוכניות</h3>'+
+    '<div class="muted" style="margin-bottom:12px">תוכניות מתורגלות וקובצות מאמנים — ספרייה מוכנה מראש, ולא חיפוש או גריפה חיה מהאינטרנט</div>'+
+    PLAN_LIBRARY.map(function(plan){
+      return '<div class="plan-card">'+
+        '<div class="row"><b>'+plan.title+'</b><span class="pill">'+plan.weeks+' שבועות</span></div>'+
+        '<div class="muted" style="margin:6px 0">'+plan.author+' · מיקוד: '+plan.focus+'</div>'+
+        '<button class="btn ghost" data-applyplan="'+plan.id+'">החל על הקבוצה</button>'+
+      '</div>';
+    }).join('')+
+    '<button class="btn" onclick="closeModal()" style="margin-top:6px">סגור</button>');
+  document.querySelectorAll('[data-applyplan]').forEach(function(btn){
+    btn.onclick = function(){
+      var plan = PLAN_LIBRARY.filter(function(pl){return pl.id===parseInt(btn.dataset.applyplan,10);})[0];
+      if(plan){
+        TEAM_PLAN = plan.days.map(function(d){return {d:d.d,t:d.t};});
+        closeModal();
+        renderTab(3);
+      }
+    };
+  });
+}
+
+function openAddClubExerciseModal(){
+  openModal('<h3>+ הוספת תרגיל מועדון</h3>'+
+    '<div class="field"><label>שם התרגיל</label><input id="cexName" placeholder="לדוגמה: כדרור בין שערונים"></div>'+
+    '<div class="field"><label>תיאור התרגיל</label><textarea id="cexDesc" rows="3" placeholder="תיאור מהלך התרגיל..."></textarea></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="cexImg" type="file" accept="image/*"></div>'+
+    '<div id="cexImgPreview"></div>'+
+    '<div class="field"><label>תיאור סרטוט/תנועה</label><textarea id="cexSketch" rows="2" placeholder="תיאור טקסטואלי של הסרטוט/התנועה על המגרש"></textarea></div>'+
+    '<button class="btn" id="cexSave">שמור תרגיל</button>');
+  var imgData = '';
+  document.getElementById('cexImg').onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      imgData = ev.target.result;
+      document.getElementById('cexImgPreview').innerHTML = '<img src="'+imgData+'" style="width:100%;border-radius:10px;margin-top:8px">';
+    };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('cexSave').onclick = function(){
+    var n = document.getElementById('cexName').value.trim();
+    if(!n) return;
+    CLUB_EXERCISES.push({
+      name:n,
+      description:document.getElementById('cexDesc').value.trim(),
+      imageData:imgData,
+      sketchNote:document.getElementById('cexSketch').value.trim()
+    });
+    closeModal();
+    renderTab(5);
+  };
+}
+
+function planTextSummary(title, plan){
+  return title+'\n'+plan.map(function(d){return d.d+': '+d.t;}).join('\n');
+}
+function shareButtonsHtml(idPrefix){
+  return '<div class="grid2" style="margin-top:8px;margin-bottom:8px">'+
+    '<button class="btn ghost" id="'+idPrefix+'Wa">📲 שלח ב-WhatsApp</button>'+
+    '<button class="btn ghost" id="'+idPrefix+'Mail">✉️ שלח באימייל</button>'+
+  '</div>';
+}
+function wireShareButtons(idPrefix, title, plan){
+  var waBtn = document.getElementById(idPrefix+'Wa');
+  if(waBtn) waBtn.onclick = function(){
+    var text = planTextSummary(title, plan);
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
+  var mailBtn = document.getElementById(idPrefix+'Mail');
+  if(mailBtn) mailBtn.onclick = function(){
+    var text = planTextSummary(title, plan);
+    window.location.href = 'mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(text);
+  };
+}
 function openPlayerModal(idx){
   var p = MOCK_PLAYERS[idx];
   var plan = p.plan || TEAM_PLAN;
   var src = p.plan ? 'תוכנית אישית' : 'תוכנית קבוצתית (ברירת מחדל)';
+  var r = p.ratings || {speed:0, strength:0, technique:0, endurance:0, goal:''};
   openModal(''+
     '<h3>'+p.name+'</h3>'+
     '<div class="muted" style="margin-bottom:10px">'+p.pos+' · גיל '+p.age+' · דירוג '+p.rating+'</div>'+
@@ -769,6 +971,16 @@ function openPlayerModal(idx){
       '<textarea id="pmNote" rows="3" placeholder="לדוגמה: נקע בקרסול, אסור ריצה למשך שבועיים">'+(p.note||'')+'</textarea>'+
     '</div>'+
     '<button class="btn" id="pmSaveStatus" style="margin-bottom:16px">שמור סטטוס רפואי</button>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📊 הערכת מאמן</div>'+
+    '<div class="muted" style="margin-bottom:8px">ההערכה נקבעת ונערכת על ידי המאמן בלבד</div>'+
+    '<div class="grid2">'+
+      '<div class="field"><label>מהירות (0-100)</label><input id="pmSpeed" type="number" min="0" max="100" value="'+r.speed+'"></div>'+
+      '<div class="field"><label>כוח (0-100)</label><input id="pmStrength" type="number" min="0" max="100" value="'+r.strength+'"></div>'+
+      '<div class="field"><label>טכניקה (0-100)</label><input id="pmTechnique" type="number" min="0" max="100" value="'+r.technique+'"></div>'+
+      '<div class="field"><label>סיבולת (0-100)</label><input id="pmEndurance" type="number" min="0" max="100" value="'+r.endurance+'"></div>'+
+    '</div>'+
+    '<div class="field"><label>יעד לשיפור</label><input id="pmGoal" placeholder="לדוגמה: שיפור דיוק מסירות" value="'+(r.goal||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<button class="btn" id="pmSaveRatings" style="margin-bottom:16px">שמור הערכה</button>'+
     '<div class="section-title" style="font-size:14px;margin-top:0">🎥 ניתוח וידאו (לפי מספר חולצה #'+p.jersey+')</div>'+
     (p.analysis ? renderAnalysis(p.analysis) : '<div class="muted" style="margin-bottom:8px">עדיין לא הועלה סרטון לשחקן זה</div>')+
     '<button class="btn ghost" id="pmUploadVideo" style="margin-bottom:16px">📹 העלה סרטון משחק לניתוח</button>'+
@@ -779,12 +991,24 @@ function openPlayerModal(idx){
     }).join('')+
     '<button class="btn" id="pmSavePlan">שמור תוכנית אישית לשחקן</button>'+
     (p.plan ? '<button class="btn ghost" id="pmResetPlan" style="margin-top:8px">חזרה לתוכנית הקבוצתית</button>' : '')+
+    shareButtonsHtml('pmShare')+
   '');
+  wireShareButtons('pmShare', 'תוכנית אימון אישית — '+p.name, plan);
   document.getElementById('pmSaveStatus').onclick = function(){
     p.status = document.getElementById('pmStatus').value;
     p.note = document.getElementById('pmNote').value;
     closeModal();
     renderTab(3);
+  };
+  document.getElementById('pmSaveRatings').onclick = function(){
+    p.ratings = {
+      speed: parseInt(document.getElementById('pmSpeed').value,10) || 0,
+      strength: parseInt(document.getElementById('pmStrength').value,10) || 0,
+      technique: parseInt(document.getElementById('pmTechnique').value,10) || 0,
+      endurance: parseInt(document.getElementById('pmEndurance').value,10) || 0,
+      goal: document.getElementById('pmGoal').value.trim()
+    };
+    openPlayerModal(idx);
   };
   document.getElementById('pmSavePlan').onclick = function(){
     var base = p.plan ? p.plan : TEAM_PLAN.map(function(d){return {d:d.d,t:d.t};});
