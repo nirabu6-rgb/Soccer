@@ -795,7 +795,7 @@ function clubFieldsBoard(){
     var lblF = CLUB_FIELD_VIEW==='monthly' ? 'חודשי' : 'שנתי';
     html += '<div class="muted" style="margin-bottom:8px">תצוגה '+lblF+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lblF+'</div>';
   }
-  html += '<div class="muted" style="margin-bottom:8px;font-size:12px">גרור אימון לתא אחר כדי להזיז אותו, או השתמש בחיצים ◀▶ / ▲▼ על הבלוק</div>';
+  html += '<div class="muted" style="margin-bottom:8px;font-size:12px">לחיצה ארוכה על תא פנוי תיצור אימון חדש בו · גרור אימון לתא אחר כדי להזיז אותו, או השתמש בחיצים ◀▶ / ▲▼ על הבלוק</div>';
   var fieldRowSkip = {};
   fieldDays.forEach(function(d){ fieldRowSkip[d] = 0; });
   var fieldItemsAll = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id;});
@@ -1310,6 +1310,21 @@ function wireTab(i){
         db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
         renderTab(9);
       });
+      var lpTimer = null;
+      var startLongPress = function(e){
+        if(e.target !== cell) return;
+        lpTimer = setTimeout(function(){
+          lpTimer = null;
+          openAddScheduleModal({fieldId: CLUB_SELECTED_FIELD, day: cell.dataset.dropday, start: cell.dataset.droptime});
+        }, 500);
+      };
+      var cancelLongPress = function(){ if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; } };
+      cell.addEventListener('mousedown', startLongPress);
+      cell.addEventListener('mouseup', cancelLongPress);
+      cell.addEventListener('mouseleave', cancelLongPress);
+      cell.addEventListener('touchstart', startLongPress, {passive:true});
+      cell.addEventListener('touchend', cancelLongPress);
+      cell.addEventListener('touchmove', cancelLongPress);
     });
   }
   if(i===4){
@@ -1496,17 +1511,19 @@ function openAddFieldModal(){
     });
   };
 }
-function openAddScheduleModal(){
+function openAddScheduleModal(presets){
+  presets = presets || {};
   if(!CLUB_FIELDS.length){ openModal('<h3>אין מגרשים</h3><p class="muted">יש להוסיף מגרש לפני הוספת אימון ללוח</p><button class="btn" onclick="closeModal()">סגור</button>'); return; }
+  var presetField = presets.fieldId || CLUB_SELECTED_FIELD;
   openModal('<h3>+ הוספת אימון ללוח השבועי</h3>'+
     '<div class="field"><label>מגרש</label><select id="schField">'+
-      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(f.id===CLUB_SELECTED_FIELD?'selected':'')+'>'+f.name+'</option>'; }).join('')+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(f.id===presetField?'selected':'')+'>'+f.name+'</option>'; }).join('')+
     '</select></div>'+
     '<div class="field"><label>יום בשבוע</label><select id="schDay">'+
-      DAY_NAMES.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('')+
+      DAY_NAMES.map(function(d){ return '<option value="'+d+'" '+(d===presets.day?'selected':'')+'>'+d+'</option>'; }).join('')+
     '</select></div>'+
     '<div class="field"><label>שעת התחלה</label><select id="schStart">'+
-      TIME_SLOTS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+      TIME_SLOTS.map(function(t){ return '<option value="'+t+'" '+(t===presets.start?'selected':'')+'>'+t+'</option>'; }).join('')+
     '</select></div>'+
     '<div class="field"><label>אורך האימון</label><select id="schDuration">'+
       [['30','30 דק\''],['60','שעה'],['90','שעה וחצי'],['120','שעתיים']].map(function(d){ return '<option value="'+d[0]+'" '+(d[0]==='60'?'selected':'')+'>'+d[1]+'</option>'; }).join('')+
