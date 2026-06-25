@@ -912,35 +912,42 @@ function tplClubGroupsSchedule(){
     html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:12px;flex-wrap:wrap">'+
       DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_DAILY_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-daytab="'+d+'">'+d+'</button>'; }).join('')+
     '</div>'+
-    clubGroupsForView(function(s){ return s.day===CLUB_DAILY_DAY; }, fieldsById, true);
+    clubGroupsGrid([CLUB_DAILY_DAY], fieldsById);
   } else if(CLUB_GROUPS_VIEW==='weekly'){
-    html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל קבוצה — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
-    clubGroupsForView(function(){ return true; }, fieldsById, true);
+    html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל הקבוצות — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
+    clubGroupsGrid(DAY_NAMES, fieldsById);
   } else {
     var lbl = CLUB_GROUPS_VIEW==='monthly' ? 'חודשי' : 'שנתי';
     html += '<div class="muted" style="margin-bottom:10px">תצוגה '+lbl+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lbl+'</div>'+
-    clubGroupsForView(function(){ return true; }, fieldsById, false);
+    clubGroupsGrid(DAY_NAMES, fieldsById);
   }
   return html;
 }
-function clubGroupsForView(filterFn, fieldsById, showDay){
-  var groupsWithSched = AGE_GROUPS.filter(function(g){
-    return CLUB_SCHEDULE.some(function(s){return s.group===g && filterFn(s);});
-  });
-  if(groupsWithSched.length===0){
+function clubGroupsGrid(days, fieldsById){
+  if(!CLUB_SCHEDULE.length){
     return '<div class="card" style="text-align:center;color:var(--sub)">אין קבוצות מתוזמנות בתצוגה זו</div>';
   }
-  return groupsWithSched.map(function(g){
-    var items = CLUB_SCHEDULE.filter(function(s){return s.group===g && filterFn(s);})
-      .sort(function(a,b){ return DAY_NAMES.indexOf(a.day)-DAY_NAMES.indexOf(b.day) || (a.time||'').localeCompare(b.time||''); });
-    return '<div class="card tap" data-groupdetail="'+g+'" style="margin-bottom:10px">'+
-      '<div class="row"><b>'+g+'</b><div>›</div></div>'+
-      items.map(function(s){
-        return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+(showDay?(s.day+(s.time?' · '+s.time:'')):s.time||'-')+'</span>'+
-          '<span class="muted">🏟 '+(fieldsById[s.fieldId]||'מגרש לא ידוע')+'</span></div>';
-      }).join('')+
-    '</div>';
-  }).join('');
+  return '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:'+(days.length>1?680:240)+'px">'+
+    '<tr><td style="width:50px"></td>'+
+      days.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px;font-weight:700">'+d+'</td>'; }).join('')+
+    '</tr>'+
+    TIME_SLOTS.map(function(slot){
+      return '<tr>'+
+        '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
+        days.map(function(day){
+          var items = CLUB_SCHEDULE.filter(function(s){return s.day===day && s.start===slot;});
+          return '<td style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
+            items.map(function(s){
+              return '<div class="card tap" data-groupdetail="'+s.group+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px">'+
+                '<div style="font-weight:700">'+s.group+'</div>'+
+                '<div class="muted" style="font-size:10px">🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
+              '</div>';
+            }).join('')+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    }).join('')+
+  '</table></div>';
 }
 function openGroupDetailModal(group){
   var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(group)!==-1;});
