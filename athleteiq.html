@@ -156,6 +156,14 @@ textarea:focus{border-color:var(--accent)}
     </div>
     <button class="btn" id="btnEnter">כניסה ל-AthleteIQ</button>
     <div class="link" id="btnDemo">המשך כאורח לדמו מהיר</div>
+    <div class="link" id="btnCoachCodeLink" style="margin-top:6px">מאמן עם קוד מועדון? כניסה כאן</div>
+  </div>
+  <div id="step2coachcode" style="display:none">
+    <div class="field"><label>קוד מאמן</label><input id="ccLoginCode" placeholder="לדוגמה: AB12CD"></div>
+    <div class="field"><label>סיסמה</label><input id="ccLoginPass" placeholder="סיסמה" type="password"></div>
+    <div id="ccLoginErr" class="muted" style="color:var(--bad);display:none;margin-bottom:8px">קוד או סיסמה שגויים</div>
+    <button class="btn" id="btnCoachCodeEnter">כניסה כמאמן</button>
+    <div class="link" id="btnCoachCodeBack" style="margin-top:6px">חזרה</div>
   </div>
 </div>
 
@@ -231,10 +239,10 @@ var PLAYER_CLIPS = [];
 var CHAT_LOG = [];
 
 var MOCK_PLAYERS = [
-  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null},
-  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null},
-  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null},
-  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null}
+  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null},
+  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null,history:[],injuryStart:'01/05/2026'},
+  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null,history:[],injuryStart:'10/06/2026'},
+  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null}
 ];
 var STATUS_INFO = {
   healthy:{ic:'✅',t:'תקין',color:'var(--good)'},
@@ -263,6 +271,8 @@ var TRAINING_PLAN = {
 };
 var TEAM_PLAN = TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};});
 var CLUB_EXERCISES = [];
+var CLUB_COACHES = [];
+var CLUB_COACHES_LOADED = false;
 var PLAN_LIBRARY = [
   {id:1, title:'בניית מהירות בסיסית', author:'מאמן רוני אביטל, ישראל', country:'ישראל', sport:'soccer', focus:'מהירות', weeks:4, days:[
     {d:'ראשון',t:'חימום + ספרינטים קצרים'},{d:'שני',t:'כוח פלג גוף תחתון'},{d:'שלישי',t:'מנוחה אקטיבית'},
@@ -334,6 +344,37 @@ function doLogin(name, asGuest){
 
 document.getElementById('btnEnter').onclick = function(){
   doLogin(document.getElementById('regName').value, false);
+};
+document.getElementById('btnCoachCodeLink').onclick = function(){
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2coachcode').style.display = 'block';
+};
+document.getElementById('btnCoachCodeBack').onclick = function(){
+  document.getElementById('step2coachcode').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+};
+document.getElementById('btnCoachCodeEnter').onclick = function(){
+  var code = document.getElementById('ccLoginCode').value.trim().toUpperCase();
+  var password = document.getElementById('ccLoginPass').value.trim();
+  if(!code || !password) return;
+  db.collection(P+'clubcoaches').doc(code).get().then(function(doc){
+    if(doc.exists && doc.data().password===password){
+      var data = doc.data();
+      ME.uid = 'coach_'+code;
+      ME.name = data.name;
+      ME.sport = 'soccer';
+      ME.mode = 'coach';
+      ME.coachPlan = 'club_monthly';
+      ME.subCoach = true;
+      localStorage.setItem('ath_uid', ME.uid);
+      localStorage.setItem('ath_name', ME.name);
+      localStorage.setItem('ath_sport', ME.sport);
+      localStorage.setItem('ath_mode', 'coach');
+      enterApp();
+    } else {
+      document.getElementById('ccLoginErr').style.display = 'block';
+    }
+  });
 };
 document.getElementById('btnDemo').onclick = function(){
   selSport = 'soccer'; selMode = 'player';
@@ -629,6 +670,20 @@ function tplClub(){
           (ex.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+ex.sketchNote+'</div>' : '')+
         '</div>';
       }).join('')
+  )+
+  '<div class="section-title" style="font-size:15px">👥 ניהול מאמני המועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">צור לכל מאמן בצוות קוד וסיסמה אישיים — הוא יתחבר עם הם בעצמו, באופן עצמאי, ויקבל גישה למצב מאמן</div>'+
+  '<button class="btn ghost" id="btnAddCoach" style="margin-bottom:14px">+ הוסף מאמן לצוות</button>'+
+  (!CLUB_COACHES_LOADED
+    ? '<div class="muted" style="text-align:center">טוען...</div>'
+    : (CLUB_COACHES.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו מאמנים</div>'
+      : CLUB_COACHES.map(function(cch,i){
+          return '<div class="card"><div class="row"><b>'+cch.name+'</b><button class="logout-btn" data-delcoach="'+cch.code+'" title="מחק מאמן">🗑</button></div>'+
+            '<div class="muted" style="margin-top:6px">קוד: <b>'+cch.code+'</b> · סיסמה: <b>'+cch.password+'</b></div>'+
+          '</div>';
+        }).join('')
+    )
   );
 }
 
@@ -747,8 +802,8 @@ function wireTab(i){
     var tpc = document.getElementById('teamPlanCard');
     if(tpc) tpc.onclick = function(){
       openModal('<h3>📋 תוכנית קבוצתית — שבוע 6</h3>'+
-        '<div class="muted" style="margin-bottom:10px">שלב בניית כוח בסיס</div>'+
-        TEAM_PLAN.map(function(d){return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div></div></div>'}).join('')+
+        '<div class="muted" style="margin-bottom:10px">שלב בניית כוח בסיס · ⏱ '+TEAM_SETTINGS.duration+' דק\' לאימון · 💧 '+TEAM_SETTINGS.waterBreakMin+' דק\' הפסקות מים · 🔄 '+TEAM_SETTINGS.transitionSec+' שנ\' מעברים</div>'+
+        TEAM_PLAN.map(function(d){return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div>'+(d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t)+'</div>':'')+'</div></div>'}).join('')+
         shareButtonsHtml('teamShare')+
         '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
       wireShareButtons('teamShare', 'תוכנית אימון קבוצתית — שבוע 6', TEAM_PLAN);
@@ -810,6 +865,18 @@ function wireTab(i){
         renderTab(5);
       };
     });
+    if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+    var addCoach = document.getElementById('btnAddCoach');
+    if(addCoach) addCoach.onclick = openAddClubCoachModal;
+    document.querySelectorAll('[data-delcoach]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var code = btn.dataset.delcoach;
+        db.collection(P+'clubcoaches').doc(code).delete();
+        CLUB_COACHES = CLUB_COACHES.filter(function(c){return c.code!==code;});
+        renderTab(5);
+      };
+    });
   }
   if(i===4){
     document.querySelectorAll('[data-plan]').forEach(function(btn){
@@ -851,7 +918,7 @@ function openAddPlayerModal(draft){
       name:n, pos:document.getElementById('npPos').value||'שחקן',
       age:parseInt(document.getElementById('npAge').value,10)||14,
       jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
-      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null
+      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null, history:[], injuryStart:null
     });
     closeModal();
     renderTab(3);
@@ -941,6 +1008,56 @@ function openAddClubExerciseModal(){
   };
 }
 
+function loadClubCoaches(){
+  if(!ME.uid) return;
+  db.collection(P+'clubcoaches').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_COACHES = snap.docs.map(function(d){ return d.data(); });
+    CLUB_COACHES_LOADED = true;
+    if(TAB===5) renderTab(5);
+  });
+}
+function genCode(len, chars){
+  var s = '';
+  for(var i=0;i<len;i++) s += chars.charAt(Math.floor(Math.random()*chars.length));
+  return s;
+}
+function openAddClubCoachModal(){
+  openModal('<h3>+ הוספת מאמן לצוות</h3>'+
+    '<div class="field"><label>שם המאמן</label><input id="ccName" placeholder="שם מלא"></div>'+
+    '<div class="muted" style="margin-bottom:10px">קוד וסיסמה ייוצרו אוטומטית — המאמן יוכל להתחבר איתם בעצמו ממסך הכניסה, ללא צורך בך</div>'+
+    '<button class="btn" id="ccSave">צור מאמן</button>');
+  document.getElementById('ccSave').onclick = function(){
+    var n = document.getElementById('ccName').value.trim();
+    if(!n) return;
+    var code = genCode(6,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
+    var password = genCode(6,'abcdefghjkmnpqrstuvwxyz23456789');
+    var coach = {name:n, code:code, password:password, clubUid:ME.uid, createdAt:Date.now()};
+    db.collection(P+'clubcoaches').doc(code).set(coach).then(function(){
+      CLUB_COACHES.push(coach);
+      openModal('<h3>✅ המאמן נוצר בהצלחה</h3>'+
+        '<div class="card" style="text-align:center;margin-bottom:14px">'+
+          '<div><b>'+n+'</b></div>'+
+          '<div class="muted" style="margin-top:8px">קוד מאמן</div><div style="font-size:22px;font-weight:800">'+code+'</div>'+
+          '<div class="muted" style="margin-top:8px">סיסמה</div><div style="font-size:22px;font-weight:800">'+password+'</div>'+
+        '</div>'+
+        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים למאמן — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת</div>'+
+        shareButtonsHtml('ccShare')+
+        '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
+      wireShareButtons('ccShare', 'פרטי כניסה למערכת AthleteIQ', [
+        {d:'קוד מאמן', t:code}, {d:'סיסמה', t:password}
+      ]);
+      renderTab(5);
+    });
+  };
+}
+
+function sessionBreakdown(focus){
+  var total = TEAM_SETTINGS.duration || 60;
+  var warm = Math.max(Math.round(total*0.15),5);
+  var cool = Math.max(Math.round(total*0.1),5);
+  var main = Math.max(total - warm - cool, 10);
+  return 'חימום ('+warm+' דק\') ← '+focus+' ('+main+' דק\', הפסקת מים '+(TEAM_SETTINGS.waterBreakMin||0)+' דק\', מעברים '+(TEAM_SETTINGS.transitionSec||0)+' שנ\' בין תרגילים) ← שחרור ('+cool+' דק\')';
+}
 function planTextSummary(title, plan){
   return title+'\n'+plan.map(function(d){return d.d+': '+d.t;}).join('\n');
 }
@@ -982,6 +1099,15 @@ function openPlayerModal(idx){
       '<textarea id="pmNote" rows="3" placeholder="לדוגמה: נקע בקרסול, אסור ריצה למשך שבועיים">'+(p.note||'')+'</textarea>'+
     '</div>'+
     '<button class="btn" id="pmSaveStatus" style="margin-bottom:16px">שמור סטטוס רפואי</button>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📜 היסטוריית פציעות</div>'+
+    (p.history && p.history.length
+      ? p.history.map(function(h){
+          var st = STATUS_INFO[h.status];
+          return '<div class="card" style="margin-bottom:8px"><div class="row"><b>'+st.ic+' '+st.t+'</b><span class="muted">'+h.startDate+' — '+h.endDate+'</span></div>'+
+            (h.note ? '<div class="muted" style="margin-top:6px">'+h.note+'</div>' : '')+
+          '</div>';
+        }).join('')
+      : '<div class="muted" style="margin-bottom:16px">אין היסטוריית פציעות</div>')+
     '<div class="section-title" style="font-size:14px;margin-top:0">📊 הערכת מאמן</div>'+
     '<div class="muted" style="margin-bottom:8px">ההערכה נקבעת ונערכת על ידי המאמן בלבד</div>'+
     '<div class="grid2">'+
@@ -1006,8 +1132,25 @@ function openPlayerModal(idx){
   '');
   wireShareButtons('pmShare', 'תוכנית אימון אישית — '+p.name, plan);
   document.getElementById('pmSaveStatus').onclick = function(){
-    p.status = document.getElementById('pmStatus').value;
-    p.note = document.getElementById('pmNote').value;
+    var oldStatus = p.status;
+    var newStatus = document.getElementById('pmStatus').value;
+    var newNote = document.getElementById('pmNote').value;
+    var today = new Date().toLocaleDateString('he-IL');
+    if(oldStatus==='healthy' && newStatus!=='healthy'){
+      p.injuryStart = today;
+    }
+    if(oldStatus!=='healthy' && newStatus==='healthy'){
+      p.history = p.history || [];
+      p.history.unshift({
+        status:oldStatus,
+        note:p.note,
+        startDate:p.injuryStart || today,
+        endDate:today
+      });
+      p.injuryStart = null;
+    }
+    p.status = newStatus;
+    p.note = newNote;
     closeModal();
     renderTab(3);
   };
@@ -1149,8 +1292,11 @@ function buildPlanFromChat(a){
 
 /* ---------------- Modal helpers ---------------- */
 function openModal(html){
-  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBody').innerHTML =
+    '<button id="modalBackBtn" style="position:sticky;top:0;float:left;background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;margin-bottom:6px">←</button>'+
+    html;
   document.getElementById('modalBg').classList.add('show');
+  document.getElementById('modalBackBtn').onclick = closeModal;
 }
 function closeModal(){
   document.getElementById('modalBg').classList.remove('show');
