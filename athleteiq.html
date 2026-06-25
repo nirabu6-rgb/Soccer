@@ -779,9 +779,9 @@ function clubFieldsBoard(){
   html += '<div class="row" style="margin-bottom:10px">'+
     '<button class="btn ghost" id="btnAddSchedule">+ הוסף קבוצת אימון למגרש</button>'+
     '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div>';
-  html += '<div class="grid3" style="margin-bottom:10px">'+
+  html += '<div class="tabs-mini" style="margin-bottom:10px">'+
     [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
-      return '<button class="btn '+(CLUB_FIELD_VIEW===v[0]?'':'ghost')+'" data-fieldview="'+v[0]+'">'+v[1]+'</button>';
+      return '<button class="tab-mini '+(CLUB_FIELD_VIEW===v[0]?'sel':'')+'" data-fieldview="'+v[0]+'">'+v[1]+'</button>';
     }).join('')+
   '</div>';
   var fieldDays = DAY_NAMES;
@@ -902,17 +902,17 @@ function tplClubGroupsSchedule(){
   var html = ''+
   '<div class="section-title">🗂️ לוז קבוצות</div>'+
   '<div class="row" style="gap:6px;margin-bottom:10px">'+
-    '<button class="btn '+(CLUB_SCHEDULE_MODE==='group'?'':'ghost')+'" data-gsmode="group" style="flex:1">לפי קבוצה</button>'+
-    '<button class="btn '+(CLUB_SCHEDULE_MODE==='field'?'':'ghost')+'" data-gsmode="field" style="flex:1">לפי מגרש</button>'+
+    '<button class="btn '+(CLUB_SCHEDULE_MODE==='group'?'':'ghost')+'" data-gsmode="group" style="flex:1;font-size:17px">קבוצות</button>'+
+    '<button class="btn '+(CLUB_SCHEDULE_MODE==='field'?'':'ghost')+'" data-gsmode="field" style="flex:1;font-size:17px">מגרש</button>'+
   '</div>';
 
   if(CLUB_SCHEDULE_MODE==='field'){
     return html + clubFieldsBoard();
   }
 
-  html += '<div class="grid3" style="margin-bottom:10px">'+
+  html += '<div class="tabs-mini" style="margin-bottom:10px">'+
     [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
-      return '<button class="btn '+(CLUB_GROUPS_VIEW===v[0]?'':'ghost')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
+      return '<button class="tab-mini '+(CLUB_GROUPS_VIEW===v[0]?'sel':'')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
     }).join('')+
   '</div>'+
   '<button class="btn ghost" id="btnAddScheduleFromGroups" style="margin-bottom:14px">+ הוסף קבוצה ללוז</button>';
