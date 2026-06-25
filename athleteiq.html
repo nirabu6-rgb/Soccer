@@ -861,18 +861,28 @@ function openPositionPicker(draft){
   draft.name = document.getElementById('npName').value;
   draft.age = document.getElementById('npAge').value;
   draft.jersey = document.getElementById('npJersey').value;
-  openModal('<h3>בחר תפקיד על המגרש</h3>'+
+  var selected = (draft.pos||'').split(' / ').filter(Boolean);
+  openModal('<h3>בחר תפקיד/ים על המגרש</h3>'+
+    '<div class="muted" style="margin-bottom:8px">אפשר לבחור כמה תפקידים</div>'+
     '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
       POSITIONS.map(function(pos){
-        return '<div class="sport" data-pos="'+pos+'" style="font-size:13px;padding:12px 6px">'+pos+'</div>';
+        var sel = selected.indexOf(pos)!==-1;
+        return '<div class="sport'+(sel?' sel':'')+'" data-pos="'+pos+'" style="font-size:13px;padding:12px 6px'+(sel?';outline:2px solid var(--accent)':'')+'">'+pos+'</div>';
       }).join('')+
-    '</div>');
+    '</div>'+
+    '<button class="btn" id="posPickDone" style="margin-top:14px">אישור</button>');
   document.querySelectorAll('[data-pos]').forEach(function(el){
     el.onclick = function(){
-      draft.pos = el.dataset.pos;
-      openAddPlayerModal(draft);
+      var pos = el.dataset.pos;
+      var i = selected.indexOf(pos);
+      if(i===-1){ selected.push(pos); el.classList.add('sel'); el.style.outline = '2px solid var(--accent)'; }
+      else { selected.splice(i,1); el.classList.remove('sel'); el.style.outline = 'none'; }
     };
   });
+  document.getElementById('posPickDone').onclick = function(){
+    draft.pos = selected.join(' / ');
+    openAddPlayerModal(draft);
+  };
 }
 
 function openPlanLibraryModal(){
@@ -954,8 +964,9 @@ function wireShareButtons(idPrefix, title, plan){
 }
 function openPlayerModal(idx){
   var p = MOCK_PLAYERS[idx];
-  var plan = p.plan || TEAM_PLAN;
-  var src = p.plan ? 'תוכנית אישית' : 'תוכנית קבוצתית (ברירת מחדל)';
+  var hasPlan = !!p.plan;
+  var plan = p.plan || DAY_NAMES.map(function(d){return {d:d, t:''};});
+  var src = hasPlan ? 'תוכנית אישית' : 'לא נבנתה תוכנית עדיין';
   var r = p.ratings || {speed:0, strength:0, technique:0, endurance:0, goal:''};
   openModal(''+
     '<h3>'+p.name+'</h3>'+
@@ -1011,7 +1022,7 @@ function openPlayerModal(idx){
     openPlayerModal(idx);
   };
   document.getElementById('pmSavePlan').onclick = function(){
-    var base = p.plan ? p.plan : TEAM_PLAN.map(function(d){return {d:d.d,t:d.t};});
+    var base = plan.map(function(d){return {d:d.d,t:d.t};});
     document.querySelectorAll('[data-ppi]').forEach(function(inp){
       base[parseInt(inp.dataset.ppi,10)].t = inp.value;
     });
@@ -1025,9 +1036,12 @@ function openPlayerModal(idx){
   };
   document.getElementById('pmUploadVideo').onclick = function(){
     openModal('<h3>📹 ניתוח סרטון — '+p.name+' (#'+p.jersey+')</h3>'+
-      '<div class="muted" style="margin-bottom:14px">בחר קובץ וידאו של המשחק. המערכת תזהה את השחקן לפי מספר '+p.jersey+' ותפיק ניתוח אישי.</div>'+
-      '<button class="btn" id="pmDoAnalyze">בחר סרטון ונתח</button>');
+      '<div class="muted" style="margin-bottom:14px">בחר קובץ וידאו של המשחק מהמכשיר. המערכת תזהה את השחקן לפי מספר '+p.jersey+' ותפיק ניתוח אישי.</div>'+
+      '<input id="pmVideoFile" type="file" accept="video/*" style="margin-bottom:14px">'+
+      '<button class="btn" id="pmDoAnalyze">נתח סרטון</button>');
     document.getElementById('pmDoAnalyze').onclick = function(){
+      var file = document.getElementById('pmVideoFile').files && document.getElementById('pmVideoFile').files[0];
+      if(!file){ return; }
       document.getElementById('pmDoAnalyze').textContent = '🔄 מנתח את משחק שחקן #'+p.jersey+'...';
       setTimeout(function(){
         p.analysis = genAnalysis(p.jersey);
