@@ -152,6 +152,7 @@ textarea:focus{border-color:var(--accent)}
       <div class="modegrid" id="modeGrid">
         <div class="mode sel" data-mode="player"><div class="ic">🏃</div><div class="t">שחקן</div><div class="d">פרופיל אישי ומעקב</div></div>
         <div class="mode" data-mode="coach"><div class="ic">👨‍💼</div><div class="t">מאמן</div><div class="d">ניהול קבוצה</div></div>
+        <div class="mode" data-mode="club"><div class="ic">🏟️</div><div class="t">מועדון</div><div class="d">ניהול קבוצות, מאמנים וגילאים</div></div>
       </div>
     </div>
     <button class="btn" id="btnEnter">כניסה ל-AthleteIQ</button>
@@ -208,7 +209,8 @@ var SPORTS = [
   {id:'fit',ic:'🏋️',t:'פיטנס'},{id:'other',ic:'🥇',t:'אחר'}
 ];
 var POSITIONS = ['שוער','מגן ימני','מגן שמאלי','בלם','קשר הגנתי','קשר התקפי','קשר ימני','קשר שמאלי','אגף ימני','אגף שמאלי','חלוץ'];
-var ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null};
+var AGE_GROUPS = ['טרום ג\'','טרום ב\'','טרום א\'','ילדים ג\'','ילדים ב\'','ילדים א\'','נערים ג\'','נערים ב\'','נערים א\'','נוער'];
+var ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
 var TAB = 0;
 var selSport = 'soccer', selMode = 'player';
 
@@ -239,10 +241,10 @@ var PLAYER_CLIPS = [];
 var CHAT_LOG = [];
 
 var MOCK_PLAYERS = [
-  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:''},
-  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null,history:[],injuryStart:'01/05/2026',expectedReturn:'01/07/2026',rehabPlan:'שבוע 1-2: תרגילי ניידות וחימום קרסול. שבוע 3-4: חזרה הדרגתית לריצה קלה.'},
-  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null,history:[],injuryStart:'10/06/2026',expectedReturn:'',rehabPlan:''},
-  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:''}
+  {name:'יואב לוי',pos:'חלוץ',age:14,jersey:9,rating:82,trend:'up',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:'',group:AGE_GROUPS[5]},
+  {name:'עומר כהן',pos:'מגן',age:13,jersey:4,rating:75,trend:'up',status:'rehab',note:'נקע בקרסול - שיקום פיזיותרפי, חזרה הדרגתית לריצה',plan:null,analysis:null,ratings:null,history:[],injuryStart:'01/05/2026',expectedReturn:'01/07/2026',rehabPlan:'שבוע 1-2: תרגילי ניידות וחימום קרסול. שבוע 3-4: חזרה הדרגתית לריצה קלה.',group:AGE_GROUPS[5]},
+  {name:'איתי שרון',pos:'קשר',age:15,jersey:8,rating:88,trend:'down',status:'injured',note:'מתח בשריר הירך - בבדיקה, אסור עומס',plan:null,analysis:null,ratings:null,history:[],injuryStart:'10/06/2026',expectedReturn:'',rehabPlan:'',group:AGE_GROUPS[6]},
+  {name:'נועם דהן',pos:'שוער',age:14,jersey:1,rating:79,trend:'flat',status:'healthy',note:'',plan:null,analysis:null,ratings:null,history:[],injuryStart:null,expectedReturn:'',rehabPlan:'',group:AGE_GROUPS[5]}
 ];
 var STATUS_INFO = {
   healthy:{ic:'✅',t:'תקין',color:'var(--good)'},
@@ -333,8 +335,9 @@ function doLogin(name, asGuest){
   if(!name) name = 'אורח';
   ME.name = name;
   ME.sport = selSport;
-  ME.mode = selMode;
+  ME.mode = selMode==='club' ? 'coach' : selMode;
   ME.uid = localStorage.getItem('ath_uid') || ('u_' + Math.random().toString(36).slice(2,10));
+  if(selMode==='club'){ ME.coachPlan = 'club_monthly'; }
   localStorage.setItem('ath_uid', ME.uid);
   localStorage.setItem('ath_name', ME.name);
   localStorage.setItem('ath_sport', ME.sport);
@@ -366,6 +369,7 @@ document.getElementById('btnCoachCodeEnter').onclick = function(){
       ME.mode = 'coach';
       ME.coachPlan = 'club_monthly';
       ME.subCoach = true;
+      ME.ageGroups = data.ageGroups || [];
       localStorage.setItem('ath_uid', ME.uid);
       localStorage.setItem('ath_name', ME.name);
       localStorage.setItem('ath_sport', ME.sport);
@@ -405,7 +409,7 @@ document.getElementById('btnLogout').onclick = function(){
   localStorage.removeItem('ath_name');
   localStorage.removeItem('ath_sport');
   localStorage.removeItem('ath_mode');
-  ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null};
+  ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
   PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
   document.getElementById('app').style.display = 'none';
   document.getElementById('login').style.display = 'flex';
@@ -598,6 +602,7 @@ function tplCoach(){
   }
   var injuredCount = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy'}).length;
   return ''+
+  (ME.subCoach && ME.ageGroups && ME.ageGroups.length ? '<div class="muted" style="margin-bottom:10px">🏟️ אתה מאמן קבוצת/ות: <b>'+ME.ageGroups.join(' · ')+'</b></div>' : '')+
   '<div class="section-title">👨‍💼 ניהול קבוצה</div>'+
   '<div class="grid3" style="margin-bottom:14px">'+
     '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים</div></div>'+
@@ -659,12 +664,25 @@ function tplClub(){
   }
   var injured = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy';});
   var avgRating = MOCK_PLAYERS.length ? Math.round(MOCK_PLAYERS.reduce(function(s,p){return s+p.rating;},0)/MOCK_PLAYERS.length) : 0;
+  var groupsInUse = AGE_GROUPS.filter(function(g){
+    return MOCK_PLAYERS.some(function(p){return p.group===g;}) || CLUB_COACHES.some(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;});
+  });
   return ''+
   '<div class="section-title">🏟️ דשבורד מועדון</div>'+
   '<div class="grid3" style="margin-bottom:14px">'+
-    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים במחלקה</div></div>'+
-    '<div class="stat"><div class="v">'+avgRating+'</div><div class="l">ממוצע דירוג</div></div>'+
-    '<div class="stat"><div class="v" style="color:'+(injured.length?'var(--warn)':'var(--good)')+'">'+injured.length+'</div><div class="l">פציעות/שיקום</div></div>'+
+    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">ילדים סה"כ</div></div>'+
+    '<div class="stat"><div class="v">'+groupsInUse.length+'</div><div class="l">קבוצות גיל</div></div>'+
+    '<div class="stat"><div class="v">'+CLUB_COACHES.length+'</div><div class="l">מאמנים</div></div>'+
+  '</div>'+
+  '<div class="section-title" style="font-size:15px">קבוצות לפי גיל</div>'+
+  '<div class="card" style="margin-bottom:14px">'+
+    AGE_GROUPS.map(function(g){
+      var cnt = MOCK_PLAYERS.filter(function(p){return p.group===g;}).length;
+      var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;}).map(function(c){return c.name;});
+      if(!cnt && !coaches.length) return '';
+      return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+g+' · '+cnt+' שחקנים</span>'+
+        '<span class="muted">'+(coaches.length?coaches.join(', '):'אין מאמן משובץ')+'</span></div>';
+    }).join('')+
   '</div>'+
   (injured.length
     ? '<div class="card" style="margin-bottom:14px"><div class="muted" style="margin-bottom:6px">🩹 מצב רפואי במחלקה</div>'+
@@ -696,6 +714,7 @@ function tplClub(){
       ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו מאמנים</div>'
       : CLUB_COACHES.map(function(cch,i){
           return '<div class="card"><div class="row"><b>'+cch.name+'</b><button class="logout-btn" data-delcoach="'+cch.code+'" title="מחק מאמן">🗑</button></div>'+
+            (cch.ageGroups && cch.ageGroups.length ? '<div class="muted" style="margin-top:4px">קבוצות: '+cch.ageGroups.join(' · ')+(cch.ageGroups.length>1?' (מאמן על שתי קבוצות/עוזר)':'')+'</div>' : '')+
             '<div class="muted" style="margin-top:6px">קוד: <b>'+cch.code+'</b> · סיסמה: <b>'+cch.password+'</b></div>'+
           '</div>';
         }).join('')
@@ -941,6 +960,9 @@ function openAddPlayerModal(draft){
     '<div class="field"><label>תפקיד</label><input id="npPos" placeholder="בחר תפקיד" readonly style="cursor:pointer" value="'+(draft.pos||'')+'"></div>'+
     '<div class="field"><label>גיל</label><input id="npAge" type="number" placeholder="14" value="'+(draft.age||'')+'"></div>'+
     '<div class="field"><label>מספר חולצה</label><input id="npJersey" type="number" placeholder="10" value="'+(draft.jersey||'')+'"></div>'+
+    '<div class="field"><label>קבוצת גיל</label><select id="npGroup">'+
+      AGE_GROUPS.map(function(g){ return '<option value="'+g+'" '+((draft.group||ME.ageGroups&&ME.ageGroups[0])===g?'selected':'')+'>'+g+'</option>'; }).join('')+
+    '</select></div>'+
     '<button class="btn" id="npSave">שמור שחקן</button>');
   document.getElementById('npPos').onclick = function(){ openPositionPicker(draft); };
   document.getElementById('npSave').onclick = function(){
@@ -950,6 +972,7 @@ function openAddPlayerModal(draft){
       name:n, pos:document.getElementById('npPos').value||'שחקן',
       age:parseInt(document.getElementById('npAge').value,10)||14,
       jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
+      group:document.getElementById('npGroup').value,
       rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null, history:[], injuryStart:null, expectedReturn:'', rehabPlan:''
     });
     closeModal();
@@ -960,6 +983,7 @@ function openPositionPicker(draft){
   draft.name = document.getElementById('npName').value;
   draft.age = document.getElementById('npAge').value;
   draft.jersey = document.getElementById('npJersey').value;
+  draft.group = document.getElementById('npGroup').value;
   var selected = (draft.pos||'').split(' / ').filter(Boolean);
   openModal('<h3>בחר תפקיד/ים על המגרש</h3>'+
     '<div class="muted" style="margin-bottom:8px">אפשר לבחור כמה תפקידים</div>'+
@@ -1056,27 +1080,42 @@ function genCode(len, chars){
 function openAddClubCoachModal(){
   openModal('<h3>+ הוספת מאמן לצוות</h3>'+
     '<div class="field"><label>שם המאמן</label><input id="ccName" placeholder="שם מלא"></div>'+
-    '<div class="muted" style="margin-bottom:10px">קוד וסיסמה ייוצרו אוטומטית — המאמן יוכל להתחבר איתם בעצמו ממסך הכניסה, ללא צורך בך</div>'+
+    '<div class="field"><label>קבוצת/ות גיל (אפשר לבחור כמה — למאמן על שתי קבוצות או עוזר)</label>'+
+      '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
+        AGE_GROUPS.map(function(g){ return '<div class="sport" data-ccg="'+g+'" style="font-size:12px;padding:10px 6px">'+g+'</div>'; }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="muted" style="margin:10px 0">קוד וסיסמה ייוצרו אוטומטית — המאמן יוכל להתחבר איתם בעצמו ממסך הכניסה, ללא צורך בך</div>'+
     '<button class="btn" id="ccSave">צור מאמן</button>');
+  var selGroups = [];
+  document.querySelectorAll('[data-ccg]').forEach(function(el){
+    el.onclick = function(){
+      var g = el.dataset.ccg;
+      var i = selGroups.indexOf(g);
+      if(i===-1){ selGroups.push(g); el.classList.add('sel'); el.style.outline = '2px solid var(--accent)'; }
+      else { selGroups.splice(i,1); el.classList.remove('sel'); el.style.outline = 'none'; }
+    };
+  });
   document.getElementById('ccSave').onclick = function(){
     var n = document.getElementById('ccName').value.trim();
     if(!n) return;
     var code = genCode(6,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
     var password = genCode(6,'abcdefghjkmnpqrstuvwxyz23456789');
-    var coach = {name:n, code:code, password:password, clubUid:ME.uid, createdAt:Date.now()};
+    var coach = {name:n, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now()};
     db.collection(P+'clubcoaches').doc(code).set(coach).then(function(){
       CLUB_COACHES.push(coach);
       openModal('<h3>✅ המאמן נוצר בהצלחה</h3>'+
         '<div class="card" style="text-align:center;margin-bottom:14px">'+
           '<div><b>'+n+'</b></div>'+
+          (selGroups.length ? '<div class="muted" style="margin-top:6px">קבוצות: '+selGroups.join(' · ')+'</div>' : '')+
           '<div class="muted" style="margin-top:8px">קוד מאמן</div><div style="font-size:22px;font-weight:800">'+code+'</div>'+
           '<div class="muted" style="margin-top:8px">סיסמה</div><div style="font-size:22px;font-weight:800">'+password+'</div>'+
         '</div>'+
-        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים למאמן — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת</div>'+
+        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים למאמן — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת. בכניסה הוא יראה לאיזו קבוצת/ות גיל הוא מאמן</div>'+
         shareButtonsHtml('ccShare')+
         '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
       wireShareButtons('ccShare', 'פרטי כניסה למערכת AthleteIQ', [
-        {d:'קוד מאמן', t:code}, {d:'סיסמה', t:password}
+        {d:'קוד מאמן', t:code}, {d:'סיסמה', t:password}, {d:'קבוצות', t:selGroups.join(', ')||'-'}
       ]);
       renderTab(5);
     });
