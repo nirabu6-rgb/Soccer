@@ -285,6 +285,8 @@ var CLUB_SCHEDULE = [];
 var CLUB_SCHEDULE_LOADED = false;
 var CLUB_SCHEDULE_VIEW = 'weekly';
 var CLUB_SELECTED_FIELD = null;
+var CLUB_GROUPS_VIEW = 'weekly';
+var CLUB_DAILY_DAY = null;
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
 var CLUB_SELECTED_GROUP = null;
@@ -822,34 +824,70 @@ function tplClubTraining(){
 
 /* ---------------- TAB 9: Club groups schedule ---------------- */
 function tplClubGroupsSchedule(){
-  var locked = clubLockOrUpsell('לוז קבוצות','תצוגה שבועית מלאה לכל קבוצת גיל — באיזה מגרש, יום ושעה היא מתאמנת');
+  var locked = clubLockOrUpsell('לוז קבוצות','לוח שעות מלא לכל קבוצת גיל — יומי, שבועי, חודשי ושנתי');
   if(locked!==null) return locked;
   if(!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED){
     return '<div class="section-title">🗂️ לוז קבוצות</div><div class="muted" style="text-align:center">טוען...</div>';
   }
   var fieldsById = {};
   CLUB_FIELDS.forEach(function(f){ fieldsById[f.id] = f.name; });
-  var groupsWithSched = AGE_GROUPS.filter(function(g){
-    return CLUB_SCHEDULE.some(function(s){return s.group===g;});
-  });
-  return ''+
+  var html = ''+
   '<div class="section-title">🗂️ לוז קבוצות</div>'+
-  '<div class="muted" style="margin-bottom:12px">תצוגה שבועית לכל קבוצת גיל — איפה ומתי היא מתאמנת. כדי להוסיף או לערוך אימונים, היכנס ללשונית "דשבורד" ובחר מגרש</div>'+
-  (groupsWithSched.length===0
-    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא תוזמנו אימונים לאף קבוצה</div>'
-    : groupsWithSched.map(function(g){
-        var items = CLUB_SCHEDULE.filter(function(s){return s.group===g;})
-          .sort(function(a,b){ return DAY_NAMES.indexOf(a.day)-DAY_NAMES.indexOf(b.day) || (a.time||'').localeCompare(b.time||''); });
-        var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;}).map(function(c){return c.name;});
-        return '<div class="card" style="margin-bottom:10px">'+
-          '<div class="row"><b>'+g+'</b><span class="muted">'+(coaches.length?coaches.join(', '):'אין מאמן משובץ')+'</span></div>'+
-          items.map(function(s){
-            return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+s.day+(s.time?' · '+s.time:'')+'</span>'+
-              '<span class="muted">🏟 '+(fieldsById[s.fieldId]||'מגרש לא ידוע')+'</span></div>';
-          }).join('')+
-        '</div>';
-      }).join('')
-  );
+  '<div class="grid3" style="margin-bottom:10px">'+
+    [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
+      return '<button class="btn '+(CLUB_GROUPS_VIEW===v[0]?'':'ghost')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
+    }).join('')+
+  '</div>'+
+  '<button class="btn ghost" id="btnAddScheduleFromGroups" style="margin-bottom:14px">+ הוסף קבוצה ללוז</button>';
+
+  if(CLUB_GROUPS_VIEW==='daily'){
+    if(!CLUB_DAILY_DAY) CLUB_DAILY_DAY = DAY_NAMES[0];
+    html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:12px;flex-wrap:wrap">'+
+      DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_DAILY_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-daytab="'+d+'">'+d+'</button>'; }).join('')+
+    '</div>'+
+    clubGroupsForView(function(s){ return s.day===CLUB_DAILY_DAY; }, fieldsById, true);
+  } else if(CLUB_GROUPS_VIEW==='weekly'){
+    html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל קבוצה — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
+    clubGroupsForView(function(){ return true; }, fieldsById, true);
+  } else {
+    var lbl = CLUB_GROUPS_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += '<div class="muted" style="margin-bottom:10px">תצוגה '+lbl+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lbl+'</div>'+
+    clubGroupsForView(function(){ return true; }, fieldsById, false);
+  }
+  return html;
+}
+function clubGroupsForView(filterFn, fieldsById, showDay){
+  var groupsWithSched = AGE_GROUPS.filter(function(g){
+    return CLUB_SCHEDULE.some(function(s){return s.group===g && filterFn(s);});
+  });
+  if(groupsWithSched.length===0){
+    return '<div class="card" style="text-align:center;color:var(--sub)">אין קבוצות מתוזמנות בתצוגה זו</div>';
+  }
+  return groupsWithSched.map(function(g){
+    var items = CLUB_SCHEDULE.filter(function(s){return s.group===g && filterFn(s);})
+      .sort(function(a,b){ return DAY_NAMES.indexOf(a.day)-DAY_NAMES.indexOf(b.day) || (a.time||'').localeCompare(b.time||''); });
+    return '<div class="card tap" data-groupdetail="'+g+'" style="margin-bottom:10px">'+
+      '<div class="row"><b>'+g+'</b><div>›</div></div>'+
+      items.map(function(s){
+        return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+(showDay?(s.day+(s.time?' · '+s.time:'')):s.time||'-')+'</span>'+
+          '<span class="muted">🏟 '+(fieldsById[s.fieldId]||'מגרש לא ידוע')+'</span></div>';
+      }).join('')+
+    '</div>';
+  }).join('');
+}
+function openGroupDetailModal(group){
+  var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(group)!==-1;});
+  var players = MOCK_PLAYERS.filter(function(p){return p.group===group;});
+  openModal('<h3>'+group+'</h3>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">👥 מאמנים וצוות</div>'+
+    (coaches.length===0
+      ? '<div class="muted" style="margin-bottom:10px">אין מאמן או איש צוות משובץ לקבוצה זו</div>'
+      : coaches.map(function(c){ return '<div class="card" style="margin-bottom:8px"><b>'+c.name+'</b><div class="muted" style="margin-top:4px">'+(c.role||'מאמן ראשי')+'</div></div>'; }).join(''))+
+    '<div class="section-title" style="font-size:14px">⚽ שחקנים ('+players.length+')</div>'+
+    (players.length===0
+      ? '<div class="muted">אין שחקנים בקבוצה זו</div>'
+      : players.map(function(p){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+p.name+' · '+p.pos+'</span><span class="muted">#'+p.jersey+'</span></div>'; }).join(''))+
+    '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
 }
 
 /* ---------------- TAB 8: Club permissions / staff ---------------- */
@@ -1131,6 +1169,17 @@ function wireTab(i){
     if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
     if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
     if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+    document.querySelectorAll('[data-gsview]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_GROUPS_VIEW = btn.dataset.gsview; renderTab(9); };
+    });
+    document.querySelectorAll('[data-daytab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_DAILY_DAY = btn.dataset.daytab; renderTab(9); };
+    });
+    var addSchG = document.getElementById('btnAddScheduleFromGroups');
+    if(addSchG) addSchG.onclick = openAddScheduleModal;
+    document.querySelectorAll('[data-groupdetail]').forEach(function(card){
+      card.onclick = function(){ openGroupDetailModal(card.dataset.groupdetail); };
+    });
   }
   if(i===4){
     document.querySelectorAll('[data-plan]').forEach(function(btn){
@@ -1339,7 +1388,7 @@ function openAddScheduleModal(){
       CLUB_SCHEDULE.push(sch);
       CLUB_SELECTED_FIELD = sch.fieldId;
       closeModal();
-      renderTab(6);
+      renderTab(TAB===9 ? 9 : 6);
     });
   };
 }
