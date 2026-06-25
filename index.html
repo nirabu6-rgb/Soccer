@@ -217,10 +217,11 @@ var selSport = 'soccer', selMode = 'player';
 /* ---------------- Nav ---------------- */
 var NAV_TABS = {
   0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
-  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'}
+  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'},
+  6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'}
 };
 function buildNav(){
-  var ids = ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4];
+  var ids = isClub() ? [6,7,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
   var bar = document.getElementById('navBar');
   bar.innerHTML = ids.map(function(id,i){
     return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
@@ -275,6 +276,15 @@ var TEAM_PLAN = TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};});
 var CLUB_EXERCISES = [];
 var CLUB_COACHES = [];
 var CLUB_COACHES_LOADED = false;
+var CLUB_ROLES = ['מאמן ראשי','עוזר מאמן','אנליסט','פיזיותרפיסט','אחר'];
+var CLUB_FIELDS = [];
+var CLUB_FIELDS_LOADED = false;
+var CLUB_SCHEDULE = [];
+var CLUB_SCHEDULE_LOADED = false;
+var CLUB_SCHEDULE_VIEW = 'weekly';
+var CLUB_GROUP_PLANS = {};
+var CLUB_GROUP_PLANS_LOADED = {};
+var CLUB_SELECTED_GROUP = null;
 var PLAN_LIBRARY = [
   {id:1, title:'בניית מהירות בסיסית', author:'מאמן רוני אביטל, ישראל', country:'ישראל', sport:'soccer', focus:'מהירות', weeks:4, days:[
     {d:'ראשון',t:'חימום + ספרינטים קצרים'},{d:'שני',t:'כוח פלג גוף תחתון'},{d:'שלישי',t:'מנוחה אקטיבית'},
@@ -438,7 +448,9 @@ function renderTab(i){
   else if(i===2) c.innerHTML = tplTraining();
   else if(i===3) c.innerHTML = tplCoach();
   else if(i===4) c.innerHTML = tplSub();
-  else if(i===5) c.innerHTML = tplClub();
+  else if(i===6) c.innerHTML = tplClubDashboard();
+  else if(i===7) c.innerHTML = tplClubTraining();
+  else if(i===8) c.innerHTML = tplClubPermissions();
   wireTab(i);
 }
 
@@ -641,32 +653,35 @@ function coachPriceCard(id,title,price){
 }
 
 /* ---------------- TAB 5: Club exercise builder (club tier only) ---------------- */
-function tplClub(){
+function clubLockOrUpsell(title, desc){
   if(ME.mode !== 'coach'){
-    return '<div class="section-title">🏟️ מועדון</div>'+
+    return '<div class="section-title">🏟️ '+title+'</div>'+
     '<div class="card" style="text-align:center">'+
       '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
       '<b>מצב מאמן נעול</b>'+
-      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לגשת לכלי בניית תרגילי מועדון</div>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לגשת לכלים של המועדון</div>'+
       '<button class="btn ghost" id="switchCoachClub">החלף למצב מאמן</button>'+
     '</div>';
   }
   if(!isClub()){
     return ''+
-    '<div class="section-title">🏟️ מועדון</div>'+
+    '<div class="section-title">🏟️ '+title+'</div>'+
     '<div class="card" style="text-align:center">'+
       '<div style="font-size:34px;margin-bottom:8px">🔐</div>'+
-      '<b>פתח את לשונית המועדון</b>'+
-      '<div class="muted" style="margin:8px 0">חבילת מועדון פותחת בניית תוכנית מפורטת תרגיל-אחר-תרגיל, עם תמונות ותיאורי סרטוט/תנועה לכל תרגיל — מעבר לתוכנית השבועית הכללית</div>'+
+      '<b>פתח את חבילת המועדון</b>'+
+      '<div class="muted" style="margin:8px 0">'+desc+'</div>'+
     '</div>'+
     coachPriceCard('club_monthly','מועדון · חודשי','349')+
     coachPriceCard('club_yearly','מועדון · שנתי','2990');
   }
+  return null;
+}
+
+/* ---------------- TAB 6: Club dashboard ---------------- */
+function tplClubDashboard(){
+  var locked = clubLockOrUpsell('דשבורד מועדון','דשבורד ניהול מועדון מלא — מאמנים, שחקנים, סטטוס תוכניות ולוז מגרשים');
+  if(locked!==null) return locked;
   var injured = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy';});
-  var avgRating = MOCK_PLAYERS.length ? Math.round(MOCK_PLAYERS.reduce(function(s,p){return s+p.rating;},0)/MOCK_PLAYERS.length) : 0;
-  var groupsInUse = AGE_GROUPS.filter(function(g){
-    return MOCK_PLAYERS.some(function(p){return p.group===g;}) || CLUB_COACHES.some(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;});
-  });
   var now = new Date();
   var updatedThisMonth = CLUB_COACHES.filter(function(c){
     if(!c.lastPlanUpdate) return false;
@@ -680,12 +695,13 @@ function tplClub(){
   });
   return ''+
   '<div class="section-title">🏟️ דשבורד ניהול מועדון</div>'+
-  '<div class="muted" style="margin-bottom:10px">תצוגה ייעודית להנהלת המועדון — שונה מדשבורד המאמן והשחקן, ומציגה את מצב הפעילות של כל הסגל</div>'+
+  '<div class="muted" style="margin-bottom:10px">תצוגה ייעודית להנהלת המועדון — שונה מדשבורד המאמן והשחקן</div>'+
   '<div class="grid3" style="margin-bottom:14px">'+
     '<div class="stat"><div class="v">'+CLUB_COACHES.length+'</div><div class="l">מאמנים</div></div>'+
     '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים סה"כ</div></div>'+
     '<div class="stat"><div class="v">'+updatedThisMonth.length+'</div><div class="l">תוכניות עודכנו החודש</div></div>'+
   '</div>'+
+  '<button class="btn ghost" id="btnGoRoster" style="margin-bottom:14px">👥 ניהול רשימת שחקנים</button>'+
   '<div class="section-title" style="font-size:15px">📋 סטטוס עדכון תוכניות אימון</div>'+
   '<div class="card" style="margin-bottom:14px">'+
     '<div class="muted" style="margin-bottom:8px">ניתן לעדכן תוכנית שבועית/חודשית בכל שלב בשנה — אין חובה לעדכן בתחילתה</div>'+
@@ -701,16 +717,6 @@ function tplClub(){
       )
     )+
   '</div>'+
-  '<div class="section-title" style="font-size:15px">קבוצות לפי גיל</div>'+
-  '<div class="card" style="margin-bottom:14px">'+
-    AGE_GROUPS.map(function(g){
-      var cnt = MOCK_PLAYERS.filter(function(p){return p.group===g;}).length;
-      var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;}).map(function(c){return c.name;});
-      if(!cnt && !coaches.length) return '';
-      return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+g+' · '+cnt+' שחקנים</span>'+
-        '<span class="muted">'+(coaches.length?coaches.join(', '):'אין מאמן משובץ')+'</span></div>';
-    }).join('')+
-  '</div>'+
   (injured.length
     ? '<div class="card" style="margin-bottom:14px"><div class="muted" style="margin-bottom:6px">🩹 מצב רפואי במחלקה</div>'+
         injured.map(function(p){
@@ -719,8 +725,62 @@ function tplClub(){
         }).join('')+
       '</div>'
     : '')+
+  '<div class="section-title" style="font-size:15px">🗓️ לוז מגרשים ואימונים</div>'+
+  '<div class="grid3" style="margin-bottom:10px">'+
+    ['weekly','monthly','yearly'].map(function(v){
+      var lbl = v==='weekly'?'שבועי':(v==='monthly'?'חודשי':'שנתי');
+      return '<button class="btn '+(CLUB_SCHEDULE_VIEW===v?'':'ghost')+'" data-schview="'+v+'">'+lbl+'</button>';
+    }).join('')+
+  '</div>'+
+  '<div class="row" style="gap:8px;margin-bottom:10px">'+
+    '<button class="btn ghost" id="btnAddField">+ הוסף מגרש</button>'+
+    '<button class="btn ghost" id="btnAddSchedule">+ הוסף אימון ללוז</button>'+
+  '</div>'+
+  (!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED
+    ? '<div class="muted" style="text-align:center">טוען...</div>'
+    : (CLUB_FIELDS.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub);margin-bottom:14px">עדיין לא נוספו מגרשים</div>'
+      : CLUB_FIELDS.map(function(f){
+          var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===f.id && s.freq===CLUB_SCHEDULE_VIEW;});
+          return '<div class="card" style="margin-bottom:10px"><div class="row"><b>🏟 '+f.name+'</b><button class="logout-btn" data-delfield="'+f.id+'" title="מחק מגרש">🗑</button></div>'+
+            (items.length===0
+              ? '<div class="muted" style="margin-top:6px">אין אימונים מתוכננים בתצוגה זו</div>'
+              : items.map(function(s){
+                  return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+s.group+' · '+s.label+'</span>'+
+                    '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק">🗑</button></div>';
+                }).join(''))+
+          '</div>';
+        }).join('')
+    )
+  );
+}
+
+/* ---------------- TAB 7: Club training ---------------- */
+function tplClubTraining(){
+  var locked = clubLockOrUpsell('אימונים','בנה תוכנית אימון לכל קבוצת גיל בנפרד — יומית, שבועית ושנתית — ותרגילים מצולמים לקבוצה');
+  if(locked!==null) return locked;
+  var gp = CLUB_SELECTED_GROUP ? (CLUB_GROUP_PLANS[CLUB_SELECTED_GROUP] || null) : null;
+  return ''+
+  '<div class="section-title">📋 אימוני המועדון לפי קבוצת גיל</div>'+
+  '<div class="muted" style="margin-bottom:10px">בחר קבוצת גיל כדי לבנות או לעדכן את תוכנית האימון שלה</div>'+
+  '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%;margin-bottom:14px">'+
+    AGE_GROUPS.map(function(g){
+      return '<div class="sport'+(CLUB_SELECTED_GROUP===g?' sel':'')+'" data-grp="'+g+'" style="font-size:13px;padding:12px 6px;cursor:pointer'+(CLUB_SELECTED_GROUP===g?';outline:2px solid var(--accent)':'')+'">'+g+'</div>';
+    }).join('')+
+  '</div>'+
+  (CLUB_SELECTED_GROUP
+    ? '<div class="card" style="margin-bottom:14px">'+
+        '<div class="row"><b>'+CLUB_SELECTED_GROUP+'</b></div>'+
+        (gp
+          ? '<div class="muted" style="margin:8px 0"><b>שבועי:</b> '+(gp.weekly||'-')+'</div>'+
+            '<div class="muted" style="margin:8px 0"><b>שנתי:</b> '+(gp.yearly||'-')+'</div>'+
+            (gp.daily||[]).map(function(d){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+d.d+'</span><span class="muted">'+d.t+'</span></div>'; }).join('')
+          : '<div class="muted" style="margin:8px 0">עדיין לא נבנתה תוכנית לקבוצה זו</div>')+
+        '<button class="btn" id="btnEditGroupPlan" style="margin-top:10px">✏️ '+(gp?'עריכת תוכנית הקבוצה':'בניית תוכנית לקבוצה')+'</button>'+
+      '</div>'
+    : '')+
   '<div class="section-title">🏟️ בניית תרגילי מועדון</div>'+
-  '<div class="muted" style="margin-bottom:10px">בנה ספריית תרגילים מפורטת לקבוצה שלך, עם תמונה ותיאור סרטוט/תנועה לכל תרגיל</div>'+
+  '<div class="muted" style="margin-bottom:10px">בנה ספריית תרגילים מפורטת, עם תמונה ותיאור סרטוט/תנועה לכל תרגיל</div>'+
   '<button class="btn" id="btnAddClubExercise" style="margin-bottom:14px">+ הוסף תרגיל</button>'+
   (CLUB_EXERCISES.length===0
     ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו תרגילים</div>'
@@ -731,17 +791,25 @@ function tplClub(){
           (ex.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+ex.sketchNote+'</div>' : '')+
         '</div>';
       }).join('')
-  )+
-  '<div class="section-title" style="font-size:15px">👥 ניהול מאמני המועדון</div>'+
-  '<div class="muted" style="margin-bottom:10px">צור לכל מאמן בצוות קוד וסיסמה אישיים — הוא יתחבר עם הם בעצמו, באופן עצמאי, ויקבל גישה למצב מאמן</div>'+
-  '<button class="btn ghost" id="btnAddCoach" style="margin-bottom:14px">+ הוסף מאמן לצוות</button>'+
+  );
+}
+
+/* ---------------- TAB 8: Club permissions / staff ---------------- */
+function tplClubPermissions(){
+  var locked = clubLockOrUpsell('הרשאות','צרף מאמנים ואנשי צוות עם תפקיד מוגדר — מאמן ראשי, עוזר מאמן, אנליסט ועוד');
+  if(locked!==null) return locked;
+  return ''+
+  '<div class="section-title">🔑 הרשאות וצוות המועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">צור לכל איש צוות שם מלא, תפקיד וקוד+סיסמה אישיים — הוא יתחבר בעצמו, באופן עצמאי, ויקבל גישה למצב מאמן</div>'+
+  '<button class="btn ghost" id="btnAddCoach" style="margin-bottom:14px">+ הוסף איש צוות</button>'+
   (!CLUB_COACHES_LOADED
     ? '<div class="muted" style="text-align:center">טוען...</div>'
     : (CLUB_COACHES.length===0
-      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו מאמנים</div>'
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו אנשי צוות</div>'
       : CLUB_COACHES.map(function(cch,i){
-          return '<div class="card"><div class="row"><b>'+cch.name+'</b><button class="logout-btn" data-delcoach="'+cch.code+'" title="מחק מאמן">🗑</button></div>'+
-            (cch.ageGroups && cch.ageGroups.length ? '<div class="muted" style="margin-top:4px">קבוצות: '+cch.ageGroups.join(' · ')+(cch.ageGroups.length>1?' (מאמן על שתי קבוצות/עוזר)':'')+'</div>' : '')+
+          return '<div class="card"><div class="row"><b>'+cch.name+'</b><button class="logout-btn" data-delcoach="'+cch.code+'" title="מחק">🗑</button></div>'+
+            '<div class="muted" style="margin-top:4px">תפקיד: '+(cch.role||'מאמן ראשי')+'</div>'+
+            (cch.ageGroups && cch.ageGroups.length ? '<div class="muted" style="margin-top:4px">קבוצות: '+cch.ageGroups.join(' · ')+(cch.ageGroups.length>1?' (אחראי על כמה קבוצות)':'')+'</div>' : '')+
             '<div class="muted" style="margin-top:6px">קוד: <b>'+cch.code+'</b> · סיסמה: <b>'+cch.password+'</b></div>'+
           '</div>';
         }).join('')
@@ -919,31 +987,75 @@ function wireTab(i){
       row.onclick = function(){ openPlayerModal(parseInt(row.dataset.idx,10)); };
     });
   }
-  if(i===5){
-    var swc = document.getElementById('switchCoachClub');
-    if(swc) swc.onclick = function(){
+  if(i===6){
+    var swc6 = document.getElementById('switchCoachClub');
+    if(swc6) swc6.onclick = function(){
       ME.mode = 'coach';
       localStorage.setItem('ath_mode','coach');
       refreshPlanBadge();
       buildNav();
-      selectNav(5);
+      selectNav(6);
     };
     document.querySelectorAll('[data-coachplan]').forEach(function(btn){
       btn.onclick = function(){
         ME.coachPlan = btn.dataset.coachplan;
         refreshPlanBadge();
-        renderTab(5);
+        buildNav();
+        renderTab(6);
       };
     });
+    if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
+    if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
+    var goRoster = document.getElementById('btnGoRoster');
+    if(goRoster) goRoster.onclick = function(){ selectNav(3); };
+    document.querySelectorAll('[data-schview]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_SCHEDULE_VIEW = btn.dataset.schview; renderTab(6); };
+    });
+    var addField = document.getElementById('btnAddField');
+    if(addField) addField.onclick = openAddFieldModal;
+    document.querySelectorAll('[data-delfield]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var id = btn.dataset.delfield;
+        db.collection(P+'clubfields').doc(id).delete();
+        CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
+        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
+        renderTab(6);
+      };
+    });
+    var addSch = document.getElementById('btnAddSchedule');
+    if(addSch) addSch.onclick = openAddScheduleModal;
+    document.querySelectorAll('[data-delsch]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var id = btn.dataset.delsch;
+        db.collection(P+'clubschedule').doc(id).delete();
+        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
+        renderTab(6);
+      };
+    });
+  }
+  if(i===7){
     var addEx = document.getElementById('btnAddClubExercise');
     if(addEx) addEx.onclick = openAddClubExerciseModal;
     document.querySelectorAll('[data-delex]').forEach(function(btn){
       btn.onclick = function(e){
         e.stopPropagation();
         CLUB_EXERCISES.splice(parseInt(btn.dataset.delex,10),1);
-        renderTab(5);
+        renderTab(7);
       };
     });
+    document.querySelectorAll('[data-grp]').forEach(function(btn){
+      btn.onclick = function(){
+        CLUB_SELECTED_GROUP = btn.dataset.grp;
+        loadClubGroupPlan(CLUB_SELECTED_GROUP);
+        renderTab(7);
+      };
+    });
+    var editGrp = document.getElementById('btnEditGroupPlan');
+    if(editGrp) editGrp.onclick = function(){ openClubGroupPlanModal(CLUB_SELECTED_GROUP); };
+  }
+  if(i===8){
     if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
     var addCoach = document.getElementById('btnAddCoach');
     if(addCoach) addCoach.onclick = openAddClubCoachModal;
@@ -953,7 +1065,7 @@ function wireTab(i){
         var code = btn.dataset.delcoach;
         db.collection(P+'clubcoaches').doc(code).delete();
         CLUB_COACHES = CLUB_COACHES.filter(function(c){return c.code!==code;});
-        renderTab(5);
+        renderTab(8);
       };
     });
   }
@@ -1088,7 +1200,7 @@ function openAddClubExerciseModal(){
       sketchNote:document.getElementById('cexSketch').value.trim()
     });
     closeModal();
-    renderTab(5);
+    renderTab(7);
   };
 }
 
@@ -1097,8 +1209,98 @@ function loadClubCoaches(){
   db.collection(P+'clubcoaches').where('clubUid','==',ME.uid).get().then(function(snap){
     CLUB_COACHES = snap.docs.map(function(d){ return d.data(); });
     CLUB_COACHES_LOADED = true;
-    if(TAB===5) renderTab(5);
+    if(TAB===8) renderTab(8);
   });
+}
+function loadClubFields(){
+  if(!ME.uid) return;
+  db.collection(P+'clubfields').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_FIELDS = snap.docs.map(function(d){ return d.data(); });
+    CLUB_FIELDS_LOADED = true;
+    if(TAB===6) renderTab(6);
+  });
+}
+function loadClubSchedule(){
+  if(!ME.uid) return;
+  db.collection(P+'clubschedule').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_SCHEDULE = snap.docs.map(function(d){ return d.data(); });
+    CLUB_SCHEDULE_LOADED = true;
+    if(TAB===6) renderTab(6);
+  });
+}
+function loadClubGroupPlan(group){
+  if(!ME.uid || CLUB_GROUP_PLANS_LOADED[group]) return;
+  db.collection(P+'clubgroupplans').doc(ME.uid+'_'+group).get().then(function(doc){
+    if(doc.exists) CLUB_GROUP_PLANS[group] = doc.data().plan;
+    CLUB_GROUP_PLANS_LOADED[group] = true;
+    if(TAB===7) renderTab(7);
+  });
+}
+function openAddFieldModal(){
+  openModal('<h3>+ הוספת מגרש</h3>'+
+    '<div class="field"><label>שם המגרש</label><input id="fldName" placeholder="לדוגמה: מגרש 1 - דשא"></div>'+
+    '<button class="btn" id="fldSave">שמור מגרש</button>');
+  document.getElementById('fldSave').onclick = function(){
+    var n = document.getElementById('fldName').value.trim();
+    if(!n) return;
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var field = {id:id, name:n, clubUid:ME.uid};
+    db.collection(P+'clubfields').doc(id).set(field).then(function(){
+      CLUB_FIELDS.push(field);
+      closeModal();
+      renderTab(6);
+    });
+  };
+}
+function openAddScheduleModal(){
+  if(!CLUB_FIELDS.length){ openModal('<h3>אין מגרשים</h3><p class="muted">יש להוסיף מגרש לפני הוספת אימון ללוז</p><button class="btn" onclick="closeModal()">סגור</button>'); return; }
+  openModal('<h3>+ הוספת אימון ללוז</h3>'+
+    '<div class="field"><label>מגרש</label><select id="schField">'+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'">'+f.name+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>קבוצת גיל</label><select id="schGroup">'+
+      AGE_GROUPS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>תדירות</label><select id="schFreq">'+
+      '<option value="weekly">שבועי</option><option value="monthly">חודשי</option><option value="yearly">שנתי</option>'+
+    '</select></div>'+
+    '<div class="field"><label>פירוט (יום/שעה/תאריך)</label><input id="schLabel" placeholder="לדוגמה: ראשון 17:00"></div>'+
+    '<button class="btn" id="schSave">שמור</button>');
+  document.getElementById('schSave').onclick = function(){
+    var label = document.getElementById('schLabel').value.trim();
+    if(!label) return;
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var sch = {id:id, fieldId:document.getElementById('schField').value, group:document.getElementById('schGroup').value,
+      freq:document.getElementById('schFreq').value, label:label, clubUid:ME.uid};
+    db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
+      CLUB_SCHEDULE.push(sch);
+      closeModal();
+      renderTab(6);
+    });
+  };
+}
+function openClubGroupPlanModal(group){
+  var gp = CLUB_GROUP_PLANS[group] || {daily:TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};}), weekly:'', yearly:''};
+  openModal('<h3>✏️ תוכנית אימון — '+group+'</h3>'+
+    '<div class="field"><label>תקציר שבועי</label><input id="gpWeekly" value="'+(gp.weekly||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<div class="field"><label>תקציר שנתי</label><input id="gpYearly" value="'+(gp.yearly||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<div class="section-title" style="font-size:14px">תוכנית יומית</div>'+
+    gp.daily.map(function(d,i){
+      return '<div class="field"><label>'+d.d+'</label><input data-gpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>';
+    }).join('')+
+    '<button class="btn" id="gpSave">שמור תוכנית קבוצה</button>');
+  document.getElementById('gpSave').onclick = function(){
+    document.querySelectorAll('[data-gpi]').forEach(function(inp){
+      gp.daily[parseInt(inp.dataset.gpi,10)].t = inp.value;
+    });
+    gp.weekly = document.getElementById('gpWeekly').value;
+    gp.yearly = document.getElementById('gpYearly').value;
+    CLUB_GROUP_PLANS[group] = gp;
+    db.collection(P+'clubgroupplans').doc(ME.uid+'_'+group).set({plan:gp, clubUid:ME.uid, group:group}, {merge:true});
+    markPlanUpdated();
+    closeModal();
+    renderTab(7);
+  };
 }
 function genCode(len, chars){
   var s = '';
@@ -1106,8 +1308,11 @@ function genCode(len, chars){
   return s;
 }
 function openAddClubCoachModal(){
-  openModal('<h3>+ הוספת מאמן לצוות</h3>'+
-    '<div class="field"><label>שם המאמן</label><input id="ccName" placeholder="שם מלא"></div>'+
+  openModal('<h3>+ הוספת איש צוות</h3>'+
+    '<div class="field"><label>שם מלא</label><input id="ccName" placeholder="שם מלא"></div>'+
+    '<div class="field"><label>תפקיד</label><select id="ccRole">'+
+      CLUB_ROLES.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('')+
+    '</select></div>'+
     '<div class="field"><label>קבוצת/ות גיל (אפשר לבחור כמה — למאמן על שתי קבוצות או עוזר)</label>'+
       '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
         AGE_GROUPS.map(function(g){ return '<div class="sport" data-ccg="'+g+'" style="font-size:12px;padding:10px 6px">'+g+'</div>'; }).join('')+
@@ -1129,23 +1334,25 @@ function openAddClubCoachModal(){
     if(!n) return;
     var code = genCode(6,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
     var password = genCode(6,'abcdefghjkmnpqrstuvwxyz23456789');
-    var coach = {name:n, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now(), lastPlanUpdate:null};
+    var role = document.getElementById('ccRole').value;
+    var coach = {name:n, role:role, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now(), lastPlanUpdate:null};
     db.collection(P+'clubcoaches').doc(code).set(coach).then(function(){
       CLUB_COACHES.push(coach);
-      openModal('<h3>✅ המאמן נוצר בהצלחה</h3>'+
+      openModal('<h3>✅ איש הצוות נוצר בהצלחה</h3>'+
         '<div class="card" style="text-align:center;margin-bottom:14px">'+
           '<div><b>'+n+'</b></div>'+
+          '<div class="muted" style="margin-top:4px">תפקיד: '+role+'</div>'+
           (selGroups.length ? '<div class="muted" style="margin-top:6px">קבוצות: '+selGroups.join(' · ')+'</div>' : '')+
-          '<div class="muted" style="margin-top:8px">קוד מאמן</div><div style="font-size:22px;font-weight:800">'+code+'</div>'+
+          '<div class="muted" style="margin-top:8px">קוד</div><div style="font-size:22px;font-weight:800">'+code+'</div>'+
           '<div class="muted" style="margin-top:8px">סיסמה</div><div style="font-size:22px;font-weight:800">'+password+'</div>'+
         '</div>'+
-        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים למאמן — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת. בכניסה הוא יראה לאיזו קבוצת/ות גיל הוא מאמן</div>'+
+        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת. בכניסה הוא יראה לאיזו קבוצת/ות גיל הוא מאמן</div>'+
         shareButtonsHtml('ccShare')+
         '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
       wireShareButtons('ccShare', 'פרטי כניסה למערכת AthleteIQ', [
-        {d:'קוד מאמן', t:code}, {d:'סיסמה', t:password}, {d:'קבוצות', t:selGroups.join(', ')||'-'}
+        {d:'קוד', t:code}, {d:'סיסמה', t:password}, {d:'תפקיד', t:role}, {d:'קבוצות', t:selGroups.join(', ')||'-'}
       ]);
-      renderTab(5);
+      renderTab(8);
     });
   };
 }
