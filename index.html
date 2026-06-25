@@ -287,6 +287,8 @@ var CLUB_SCHEDULE_VIEW = 'weekly';
 var CLUB_SELECTED_FIELD = null;
 var CLUB_GROUPS_VIEW = 'weekly';
 var CLUB_DAILY_DAY = null;
+var CLUB_FIELD_VIEW = 'weekly';
+var CLUB_FIELD_DAY = null;
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
 var CLUB_SELECTED_GROUP = null;
@@ -737,6 +739,38 @@ function tplClubDashboard(){
     : clubFieldsBoard()
   );
 }
+function genTimeSlots(){
+  var arr = [];
+  for(var h=14;h<=21;h++){
+    arr.push((h<10?'0':'')+h+':00');
+    arr.push((h<10?'0':'')+h+':30');
+  }
+  return arr;
+}
+var TIME_SLOTS = genTimeSlots();
+function addMinutesToTime(start, mins){
+  var parts = start.split(':');
+  var total = parseInt(parts[0],10)*60 + parseInt(parts[1],10) + mins;
+  var h = Math.floor(total/60), m = total%60;
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+}
+function shiftClubSchedule(id, dayDelta, slotDelta){
+  var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+  if(!s) return;
+  if(dayDelta){
+    var di = DAY_NAMES.indexOf(s.day) + dayDelta;
+    if(di<0 || di>=DAY_NAMES.length) return;
+    s.day = DAY_NAMES[di];
+  }
+  if(slotDelta && s.start){
+    var si = TIME_SLOTS.indexOf(s.start) + slotDelta;
+    if(si<0 || si>=TIME_SLOTS.length) return;
+    s.start = TIME_SLOTS[si];
+    s.time = s.start + '-' + addMinutesToTime(s.start, s.duration||30);
+  }
+  db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+  renderTab(6);
+}
 function clubFieldsBoard(){
   if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
   if(CLUB_SELECTED_FIELD && !CLUB_FIELDS.some(function(f){return f.id===CLUB_SELECTED_FIELD;})){ CLUB_SELECTED_FIELD = CLUB_FIELDS.length ? CLUB_FIELDS[0].id : null; }
@@ -753,20 +787,53 @@ function clubFieldsBoard(){
   html += '<div class="row" style="margin-bottom:10px"><b>🏟 '+field.name+'</b>'+
     '<div class="row" style="gap:6px"><button class="btn ghost" id="btnAddSchedule">+ הוסף אימון</button>'+
     '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div></div>';
-  html += DAY_NAMES.map(function(day){
-    var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id && s.day===day;})
-      .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
-    return '<div class="card" style="margin-bottom:8px"><div class="row"><b>'+day+'</b></div>'+
-      (items.length===0
-        ? '<div class="muted" style="margin-top:4px;font-size:13px">אין אימונים</div>'
-        : items.map(function(s){
-            return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+(s.time?s.time+' · ':'')+s.group+'</span>'+
-              '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק">🗑</button></div>';
-          }).join(''))+
+  html += '<div class="grid3" style="margin-bottom:10px">'+
+    [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
+      return '<button class="btn '+(CLUB_FIELD_VIEW===v[0]?'':'ghost')+'" data-fieldview="'+v[0]+'">'+v[1]+'</button>';
+    }).join('')+
+  '</div>';
+  var fieldDays = DAY_NAMES;
+  if(CLUB_FIELD_VIEW==='daily'){
+    if(!CLUB_FIELD_DAY) CLUB_FIELD_DAY = DAY_NAMES[0];
+    fieldDays = [CLUB_FIELD_DAY];
+    html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:10px;flex-wrap:wrap">'+
+      DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_FIELD_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-fielddaytab="'+d+'">'+d+'</button>'; }).join('')+
     '</div>';
-  }).join('');
+  } else if(CLUB_FIELD_VIEW==='monthly' || CLUB_FIELD_VIEW==='yearly'){
+    var lblF = CLUB_FIELD_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += '<div class="muted" style="margin-bottom:8px">תצוגה '+lblF+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lblF+'</div>';
+  }
+  html += '<div class="muted" style="margin-bottom:8px;font-size:12px">גרור אימון לתא אחר כדי להזיז אותו, או השתמש בחיצים ◀▶ / ▲▼ על הבלוק</div>';
+  html += '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:680px">'+
+    '<tr><td style="width:50px"></td>'+
+      fieldDays.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px;font-weight:700">'+d+'</td>'; }).join('')+
+    '</tr>'+
+    TIME_SLOTS.map(function(slot){
+      return '<tr>'+
+        '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
+        fieldDays.map(function(day){
+          var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id && s.day===day && s.start===slot;});
+          return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
+            items.map(function(s){
+              return '<div class="card" draggable="true" data-dragsch="'+s.id+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;cursor:grab">'+
+                '<div style="font-weight:700">'+s.group+'</div>'+
+                '<div class="muted" style="font-size:10px">'+(s.time||s.start)+'</div>'+
+                '<div class="row" style="margin-top:3px;gap:3px">'+
+                  '<button class="logout-btn" data-shiftday="'+s.id+':-1" title="יום קודם" style="font-size:10px;padding:0 4px">◀</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':-30" title="שעה קודם" style="font-size:10px;padding:0 4px">▲</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':30" title="שעה הבאה" style="font-size:10px;padding:0 4px">▼</button>'+
+                  '<button class="logout-btn" data-shiftday="'+s.id+':1" title="יום הבא" style="font-size:10px;padding:0 4px">▶</button>'+
+                  '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:10px;padding:0 4px">🗑</button>'+
+                '</div>'+
+              '</div>';
+            }).join('')+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    }).join('')+
+  '</table></div>';
   var overlapNote = clubOverlapNote(field.id);
-  if(overlapNote) html += '<div class="muted" style="margin-bottom:10px">⚠️ '+overlapNote+'</div>';
+  if(overlapNote) html += '<div class="muted" style="margin:10px 0">⚠️ '+overlapNote+'</div>';
   return html;
 }
 function clubOverlapNote(fieldId){
@@ -1107,6 +1174,12 @@ function wireTab(i){
     document.querySelectorAll('[data-fieldtab]').forEach(function(btn){
       btn.onclick = function(){ CLUB_SELECTED_FIELD = btn.dataset.fieldtab; renderTab(6); };
     });
+    document.querySelectorAll('[data-fieldview]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_VIEW = btn.dataset.fieldview; renderTab(6); };
+    });
+    document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; renderTab(6); };
+    });
     var addField = document.getElementById('btnAddField');
     if(addField) addField.onclick = openAddFieldModal;
     document.querySelectorAll('[data-delfield]').forEach(function(btn){
@@ -1129,6 +1202,39 @@ function wireTab(i){
         CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
         renderTab(6);
       };
+    });
+    document.querySelectorAll('[data-shiftday]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var parts = btn.dataset.shiftday.split(':');
+        shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
+      };
+    });
+    document.querySelectorAll('[data-shifttime]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var parts = btn.dataset.shifttime.split(':');
+        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/30);
+      };
+    });
+    document.querySelectorAll('[data-dragsch]').forEach(function(card){
+      card.addEventListener('dragstart', function(e){
+        e.dataTransfer.setData('text/plain', card.dataset.dragsch);
+      });
+    });
+    document.querySelectorAll('[data-droptime]').forEach(function(cell){
+      cell.addEventListener('dragover', function(e){ e.preventDefault(); });
+      cell.addEventListener('drop', function(e){
+        e.preventDefault();
+        var id = e.dataTransfer.getData('text/plain');
+        var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+        if(!s) return;
+        s.day = cell.dataset.dropday;
+        s.start = cell.dataset.droptime;
+        s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
+        db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+        renderTab(6);
+      });
     });
   }
   if(i===7){
@@ -1374,7 +1480,12 @@ function openAddScheduleModal(){
     '<div class="field"><label>יום בשבוע</label><select id="schDay">'+
       DAY_NAMES.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('')+
     '</select></div>'+
-    '<div class="field"><label>שעה (אופציונלי)</label><input id="schTime" placeholder="לדוגמה: 17:00-18:00"></div>'+
+    '<div class="field"><label>שעת התחלה</label><select id="schStart">'+
+      TIME_SLOTS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>אורך האימון</label><select id="schDuration">'+
+      [['30','30 דק\''],['60','שעה'],['90','שעה וחצי'],['120','שעתיים']].map(function(d){ return '<option value="'+d[0]+'" '+(d[0]==='60'?'selected':'')+'>'+d[1]+'</option>'; }).join('')+
+    '</select></div>'+
     '<div class="field"><label>קבוצת גיל</label><select id="schGroup">'+
       AGE_GROUPS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
     '</select></div>'+
@@ -1382,8 +1493,11 @@ function openAddScheduleModal(){
     '<button class="btn" id="schSave">שמור</button>');
   document.getElementById('schSave').onclick = function(){
     var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var start = document.getElementById('schStart').value;
+    var duration = parseInt(document.getElementById('schDuration').value,10);
     var sch = {id:id, fieldId:document.getElementById('schField').value, day:document.getElementById('schDay').value,
-      time:document.getElementById('schTime').value.trim(), group:document.getElementById('schGroup').value, clubUid:ME.uid};
+      start:start, duration:duration, time:start+'-'+addMinutesToTime(start,duration),
+      group:document.getElementById('schGroup').value, clubUid:ME.uid};
     db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
       CLUB_SCHEDULE.push(sch);
       CLUB_SELECTED_FIELD = sch.fieldId;
