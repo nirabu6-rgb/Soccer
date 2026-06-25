@@ -203,6 +203,29 @@ var POSITIONS = ['שוער','מגן ימני','מגן שמאלי','בלם','קש
 var ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null};
 var TAB = 0;
 var selSport = 'soccer', selMode = 'player';
+
+/* ---------------- Nav ---------------- */
+var NAV_TABS = {
+  0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
+  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}
+};
+function buildNav(){
+  var ids = ME.mode==='coach' ? [0,3,4] : [0,1,2,4];
+  var bar = document.getElementById('navBar');
+  bar.innerHTML = ids.map(function(id,i){
+    return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
+  }).join('');
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    btn.onclick = function(){ selectNav(parseInt(btn.dataset.tab,10)); };
+  });
+}
+function selectNav(i){
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('sel')});
+  var btn = document.querySelector('.nav-btn[data-tab="'+i+'"]');
+  if(btn) btn.classList.add('sel');
+  renderTab(i);
+}
+
 var PLAYER_PLAN = null;
 var PLAYER_CLIPS = [];
 var CHAT_LOG = [];
@@ -327,27 +350,7 @@ document.getElementById('btnLogout').onclick = function(){
   }
 })();
 
-/* ---------------- Nav ---------------- */
-var NAV_TABS = {
-  0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
-  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}
-};
-function buildNav(){
-  var ids = ME.mode==='coach' ? [0,3,4] : [0,1,2,4];
-  var bar = document.getElementById('navBar');
-  bar.innerHTML = ids.map(function(id,i){
-    return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
-  }).join('');
-  document.querySelectorAll('.nav-btn').forEach(function(btn){
-    btn.onclick = function(){ selectNav(parseInt(btn.dataset.tab,10)); };
-  });
-}
-function selectNav(i){
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('sel')});
-  var btn = document.querySelector('.nav-btn[data-tab="'+i+'"]');
-  if(btn) btn.classList.add('sel');
-  renderTab(i);
-}
+/* ---------------- Nav (click wiring happens inside buildNav) ---------------- */
 
 function renderTab(i){
   TAB = i;
