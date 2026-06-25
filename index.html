@@ -218,11 +218,12 @@ var selSport = 'soccer', selMode = 'player';
 var NAV_TABS = {
   0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
   3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'},
-  6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'}
+  6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'},
+  9:{ic:'🗂️',t:'לוז קבוצות'}
 };
 var NAV_IDS = [0,1,2,4];
 function buildNav(){
-  NAV_IDS = isClub() ? [6,7,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
+  NAV_IDS = isClub() ? [6,7,9,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
   var bar = document.getElementById('navBar');
   bar.innerHTML = NAV_IDS.map(function(id,i){
     return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
@@ -453,6 +454,7 @@ function renderTab(i){
   else if(i===6) c.innerHTML = tplClubDashboard();
   else if(i===7) c.innerHTML = tplClubTraining();
   else if(i===8) c.innerHTML = tplClubPermissions();
+  else if(i===9) c.innerHTML = tplClubGroupsSchedule();
   wireTab(i);
 }
 
@@ -818,6 +820,38 @@ function tplClubTraining(){
   );
 }
 
+/* ---------------- TAB 9: Club groups schedule ---------------- */
+function tplClubGroupsSchedule(){
+  var locked = clubLockOrUpsell('לוז קבוצות','תצוגה שבועית מלאה לכל קבוצת גיל — באיזה מגרש, יום ושעה היא מתאמנת');
+  if(locked!==null) return locked;
+  if(!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED){
+    return '<div class="section-title">🗂️ לוז קבוצות</div><div class="muted" style="text-align:center">טוען...</div>';
+  }
+  var fieldsById = {};
+  CLUB_FIELDS.forEach(function(f){ fieldsById[f.id] = f.name; });
+  var groupsWithSched = AGE_GROUPS.filter(function(g){
+    return CLUB_SCHEDULE.some(function(s){return s.group===g;});
+  });
+  return ''+
+  '<div class="section-title">🗂️ לוז קבוצות</div>'+
+  '<div class="muted" style="margin-bottom:12px">תצוגה שבועית לכל קבוצת גיל — איפה ומתי היא מתאמנת. כדי להוסיף או לערוך אימונים, היכנס ללשונית "דשבורד" ובחר מגרש</div>'+
+  (groupsWithSched.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא תוזמנו אימונים לאף קבוצה</div>'
+    : groupsWithSched.map(function(g){
+        var items = CLUB_SCHEDULE.filter(function(s){return s.group===g;})
+          .sort(function(a,b){ return DAY_NAMES.indexOf(a.day)-DAY_NAMES.indexOf(b.day) || (a.time||'').localeCompare(b.time||''); });
+        var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;}).map(function(c){return c.name;});
+        return '<div class="card" style="margin-bottom:10px">'+
+          '<div class="row"><b>'+g+'</b><span class="muted">'+(coaches.length?coaches.join(', '):'אין מאמן משובץ')+'</span></div>'+
+          items.map(function(s){
+            return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+s.day+(s.time?' · '+s.time:'')+'</span>'+
+              '<span class="muted">🏟 '+(fieldsById[s.fieldId]||'מגרש לא ידוע')+'</span></div>';
+          }).join('')+
+        '</div>';
+      }).join('')
+  );
+}
+
 /* ---------------- TAB 8: Club permissions / staff ---------------- */
 function tplClubPermissions(){
   var locked = clubLockOrUpsell('הרשאות','צרף מאמנים ואנשי צוות עם תפקיד מוגדר — מאמן ראשי, עוזר מאמן, אנליסט ועוד');
@@ -1093,6 +1127,11 @@ function wireTab(i){
       };
     });
   }
+  if(i===9){
+    if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
+    if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
+    if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+  }
   if(i===4){
     document.querySelectorAll('[data-plan]').forEach(function(btn){
       btn.onclick = function(){
@@ -1233,7 +1272,7 @@ function loadClubCoaches(){
   db.collection(P+'clubcoaches').where('clubUid','==',ME.uid).get().then(function(snap){
     CLUB_COACHES = snap.docs.map(function(d){ return d.data(); });
     CLUB_COACHES_LOADED = true;
-    if(TAB===8) renderTab(8);
+    if(TAB===8 || TAB===9) renderTab(TAB);
   });
 }
 function loadClubFields(){
@@ -1241,7 +1280,7 @@ function loadClubFields(){
   db.collection(P+'clubfields').where('clubUid','==',ME.uid).get().then(function(snap){
     CLUB_FIELDS = snap.docs.map(function(d){ return d.data(); });
     CLUB_FIELDS_LOADED = true;
-    if(TAB===6) renderTab(6);
+    if(TAB===6 || TAB===9) renderTab(TAB);
   });
 }
 function loadClubSchedule(){
@@ -1249,7 +1288,7 @@ function loadClubSchedule(){
   db.collection(P+'clubschedule').where('clubUid','==',ME.uid).get().then(function(snap){
     CLUB_SCHEDULE = snap.docs.map(function(d){ return d.data(); });
     CLUB_SCHEDULE_LOADED = true;
-    if(TAB===6) renderTab(6);
+    if(TAB===6 || TAB===9) renderTab(TAB);
   });
 }
 function loadClubGroupPlan(group){
