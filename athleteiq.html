@@ -171,7 +171,7 @@ textarea:focus{border-color:var(--accent)}
 <!-- ===================== MAIN APP ===================== -->
 <div id="app">
   <div class="topbar">
-    <div class="who">
+    <div class="who" id="hdrMenuBtn" style="cursor:pointer">
       <div class="avatar" id="hdrAvatar">A</div>
       <div>
         <div class="n" id="hdrName">שחקן</div>
@@ -180,7 +180,6 @@ textarea:focus{border-color:var(--accent)}
     </div>
     <div class="right">
       <div class="badge-plan" id="hdrPlan">חינם</div>
-      <button class="logout-btn" id="btnLogout" title="יציאה">🚪</button>
     </div>
   </div>
 
@@ -288,7 +287,7 @@ var CLUB_FIELD_WEEK_OFFSET = 0;
 var CLUB_FIELD_MONTH_OFFSET = 0;
 var CLUB_GROUPS_WEEK_OFFSET = 0;
 var CLUB_GROUPS_MONTH_OFFSET = 0;
-var CLUB_SCHEDULE_MODE = 'group';
+var IN_FIELD_MODAL = false;
 var CLUB_GROUP_PLANS = {};
 var CLUB_GROUP_PLANS_LOADED = {};
 var CLUB_SELECTED_GROUP = null;
@@ -421,17 +420,19 @@ function refreshPlanBadge(){
 }
 function isClub(){ return ME.coachPlan==='club_monthly' || ME.coachPlan==='club_yearly'; }
 
-document.getElementById('btnLogout').onclick = function(){
+function doLogout(){
   localStorage.removeItem('ath_uid');
   localStorage.removeItem('ath_name');
   localStorage.removeItem('ath_sport');
   localStorage.removeItem('ath_mode');
   ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
   PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
+  closeModal();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login').style.display = 'flex';
   document.getElementById('regName').value = '';
-};
+}
+document.getElementById('hdrMenuBtn').onclick = openHeaderMenu;
 
 /* auto-login if returning user */
 (function autoLogin(){
@@ -799,7 +800,11 @@ function shiftClubSchedule(id, dayDelta, slotDelta){
     s.time = s.start + '-' + addMinutesToTime(s.start, s.duration||30);
   }
   db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
-  renderTab(TAB===9?9:6);
+  refreshFieldsUI();
+}
+function refreshFieldsUI(){
+  if(IN_FIELD_MODAL){ openCalendarSettingsModal(); }
+  else { renderTab(TAB===9?9:6); }
 }
 function clubFieldsBoard(){
   if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
@@ -943,16 +948,7 @@ function tplClubGroupsSchedule(){
   CLUB_FIELDS.forEach(function(f){ fieldsById[f.id] = f.name; });
   var html = ''+
   '<div class="section-title">🗂️ לוז קבוצות</div>'+
-  '<div class="row" style="gap:6px;margin-bottom:10px">'+
-    '<button class="btn '+(CLUB_SCHEDULE_MODE==='group'?'':'ghost')+'" data-gsmode="group" style="flex:1;font-size:17px">קבוצות</button>'+
-    '<button class="btn '+(CLUB_SCHEDULE_MODE==='field'?'':'ghost')+'" data-gsmode="field" style="flex:1;font-size:17px">מגרש</button>'+
-  '</div>';
-
-  if(CLUB_SCHEDULE_MODE==='field'){
-    return html + clubFieldsBoard();
-  }
-
-  html += '<div class="tabs-mini" style="margin-bottom:10px">'+
+  '<div class="tabs-mini" style="margin-bottom:10px">'+
     [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
       return '<button class="tab-mini '+(CLUB_GROUPS_VIEW===v[0]?'sel':'')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
     }).join('')+
@@ -1001,9 +997,12 @@ function clubGroupsGrid(days, fieldsById){
           grpRowSkip[day] = maxSpan - 1;
           return '<td rowspan="'+maxSpan+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
             starting.map(function(s){
-              return '<div class="card tap" data-groupdetail="'+s.group+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;height:100%">'+
-                '<div style="font-weight:700">'+s.group+'</div>'+
-                '<div class="muted" style="font-size:10px">'+(s.time||s.start)+' · 🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
+              return '<div class="card" style="margin:0 0 3px;padding:5px 6px;font-size:11px;height:100%">'+
+                '<div class="row" style="align-items:flex-start"><div class="tap" data-groupdetail="'+s.group+'" style="flex:1;cursor:pointer">'+
+                  '<div style="font-weight:700">'+s.group+'</div>'+
+                  '<div class="muted" style="font-size:10px">'+(s.time||s.start)+' · 🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
+                '</div>'+
+                '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:11px;padding:0 2px">🗑</button></div>'+
               '</div>';
             }).join('')+
           '</td>';
@@ -1278,9 +1277,6 @@ function wireTab(i){
     if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
     if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
     if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
-    document.querySelectorAll('[data-gsmode]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_SCHEDULE_MODE = btn.dataset.gsmode; renderTab(9); };
-    });
     document.querySelectorAll('[data-gsview]').forEach(function(btn){
       btn.onclick = function(){
         CLUB_GROUPS_VIEW = btn.dataset.gsview;
@@ -1304,41 +1300,7 @@ function wireTab(i){
     document.querySelectorAll('[data-groupdetail]').forEach(function(card){
       card.onclick = function(){ openGroupDetailModal(card.dataset.groupdetail); };
     });
-    var fieldPicker = document.getElementById('fieldPicker');
-    if(fieldPicker) fieldPicker.onchange = function(){ CLUB_SELECTED_FIELD = fieldPicker.value; renderTab(9); };
-    document.querySelectorAll('[data-fieldview]').forEach(function(btn){
-      btn.onclick = function(){
-        CLUB_FIELD_VIEW = btn.dataset.fieldview;
-        CLUB_FIELD_WEEK_OFFSET = 0;
-        CLUB_FIELD_MONTH_OFFSET = 0;
-        if(CLUB_FIELD_VIEW==='daily') CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
-        renderTab(9);
-      };
-    });
-    document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; renderTab(9); };
-    });
-    document.querySelectorAll('[data-fieldweeknav]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_WEEK_OFFSET += parseInt(btn.dataset.fieldweeknav,10); renderTab(9); };
-    });
-    document.querySelectorAll('[data-fieldmonthnav]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_FIELD_MONTH_OFFSET += parseInt(btn.dataset.fieldmonthnav,10); renderTab(9); };
-    });
-    var addField = document.getElementById('btnAddField');
-    if(addField) addField.onclick = openAddFieldModal;
-    document.querySelectorAll('[data-delfield]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var id = btn.dataset.delfield;
-        db.collection(P+'clubfields').doc(id).delete();
-        CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
-        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
-        renderTab(9);
-      };
-    });
-    var addSch = document.getElementById('btnAddSchedule');
-    if(addSch) addSch.onclick = openAddScheduleModal;
-    document.querySelectorAll('[data-delsch]').forEach(function(btn){
+    document.querySelectorAll('#content [data-delsch]').forEach(function(btn){
       btn.onclick = function(e){
         e.stopPropagation();
         var id = btn.dataset.delsch;
@@ -1346,54 +1308,6 @@ function wireTab(i){
         CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
         renderTab(9);
       };
-    });
-    document.querySelectorAll('[data-shiftday]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var parts = btn.dataset.shiftday.split(':');
-        shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
-      };
-    });
-    document.querySelectorAll('[data-shifttime]').forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var parts = btn.dataset.shifttime.split(':');
-        shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/SLOT_MIN);
-      };
-    });
-    document.querySelectorAll('[data-dragsch]').forEach(function(card){
-      card.addEventListener('dragstart', function(e){
-        e.dataTransfer.setData('text/plain', card.dataset.dragsch);
-      });
-    });
-    document.querySelectorAll('[data-droptime]').forEach(function(cell){
-      cell.addEventListener('dragover', function(e){ e.preventDefault(); });
-      cell.addEventListener('drop', function(e){
-        e.preventDefault();
-        var id = e.dataTransfer.getData('text/plain');
-        var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
-        if(!s) return;
-        s.day = cell.dataset.dropday;
-        s.start = cell.dataset.droptime;
-        s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
-        db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
-        renderTab(9);
-      });
-      var lpTimer = null;
-      var startLongPress = function(e){
-        if(e.target !== cell) return;
-        lpTimer = setTimeout(function(){
-          lpTimer = null;
-          openAddScheduleModal({fieldId: CLUB_SELECTED_FIELD, day: cell.dataset.dropday, start: cell.dataset.droptime});
-        }, 500);
-      };
-      var cancelLongPress = function(){ if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; } };
-      cell.addEventListener('mousedown', startLongPress);
-      cell.addEventListener('mouseup', cancelLongPress);
-      cell.addEventListener('mouseleave', cancelLongPress);
-      cell.addEventListener('touchstart', startLongPress, {passive:true});
-      cell.addEventListener('touchend', cancelLongPress);
-      cell.addEventListener('touchmove', cancelLongPress);
     });
   }
   if(i===4){
@@ -1575,8 +1489,8 @@ function openAddFieldModal(){
     db.collection(P+'clubfields').doc(id).set(field).then(function(){
       CLUB_FIELDS.push(field);
       CLUB_SELECTED_FIELD = id;
-      closeModal();
-      renderTab(TAB===9?9:6);
+      if(!IN_FIELD_MODAL) closeModal();
+      refreshFieldsUI();
     });
   };
 }
@@ -1612,8 +1526,8 @@ function openAddScheduleModal(presets){
     db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
       CLUB_SCHEDULE.push(sch);
       CLUB_SELECTED_FIELD = sch.fieldId;
-      closeModal();
-      renderTab(TAB===9 ? 9 : 6);
+      if(!IN_FIELD_MODAL) closeModal();
+      refreshFieldsUI();
     });
   };
 }
@@ -2016,10 +1930,169 @@ function openModal(html){
 }
 function closeModal(){
   document.getElementById('modalBg').classList.remove('show');
+  IN_FIELD_MODAL = false;
 }
 document.getElementById('modalBg').onclick = function(e){
   if(e.target === document.getElementById('modalBg')) closeModal();
 };
+
+/* ---------------- Header menu / settings / profile ---------------- */
+function openHeaderMenu(){
+  openModal('<h3>'+(ME.name||'שחקן')+'</h3>'+
+    '<button class="btn ghost" id="btnOpenProfile" style="margin-bottom:8px;width:100%">👤 פרופיל אישי</button>'+
+    '<button class="btn ghost" id="btnOpenSettings" style="margin-bottom:8px;width:100%">⚙️ הגדרות</button>'+
+    '<button class="btn ghost" id="btnHdrLogout" style="width:100%">🚪 התנתקות</button>');
+  document.getElementById('btnOpenProfile').onclick = openProfileModal;
+  document.getElementById('btnOpenSettings').onclick = openSettingsModal;
+  document.getElementById('btnHdrLogout').onclick = doLogout;
+}
+function openProfileModal(){
+  openModal('<h3>👤 פרופיל אישי</h3>'+
+    '<div class="field"><label>שם</label><input id="profName" value="'+(ME.name||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<button class="btn" id="profSave">שמור</button>');
+  document.getElementById('profSave').onclick = function(){
+    var n = document.getElementById('profName').value.trim();
+    if(n){
+      ME.name = n;
+      localStorage.setItem('ath_name', n);
+      document.getElementById('hdrName').textContent = n;
+      document.getElementById('hdrAvatar').textContent = n.charAt(0);
+      syncProfile();
+    }
+    closeModal();
+  };
+}
+function openSettingsModal(){
+  openModal('<h3>⚙️ הגדרות</h3>'+
+    '<button class="btn ghost" id="btnOpenCalendarSettings" style="width:100%">📅 יומן</button>');
+  document.getElementById('btnOpenCalendarSettings').onclick = openCalendarSettingsModal;
+}
+function openCalendarSettingsModal(){
+  var locked = clubLockOrUpsell('יומן', 'ניהול מגרשים ולוח שעות אימונים');
+  if(locked!==null){
+    IN_FIELD_MODAL = false;
+    openModal(locked);
+    wireUpsellButtons();
+    return;
+  }
+  if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
+  if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
+  IN_FIELD_MODAL = true;
+  openModal('<h3>📅 יומן מגרשים</h3>'+clubFieldsBoard()+
+    '<button class="btn ghost" onclick="closeModal()" style="width:100%;margin-top:10px">סגור</button>');
+  wireFieldBoard();
+}
+function wireUpsellButtons(){
+  var sw = document.getElementById('switchCoachClub');
+  if(sw) sw.onclick = function(){
+    ME.mode = 'coach';
+    localStorage.setItem('ath_mode','coach');
+    refreshPlanBadge();
+    buildNav();
+    openCalendarSettingsModal();
+  };
+  document.querySelectorAll('[data-coachplan]').forEach(function(btn){
+    btn.onclick = function(){
+      ME.coachPlan = btn.dataset.coachplan;
+      refreshPlanBadge();
+      buildNav();
+      openCalendarSettingsModal();
+    };
+  });
+}
+function wireFieldBoard(){
+  var fieldPicker = document.getElementById('fieldPicker');
+  if(fieldPicker) fieldPicker.onchange = function(){ CLUB_SELECTED_FIELD = fieldPicker.value; refreshFieldsUI(); };
+  document.querySelectorAll('[data-fieldview]').forEach(function(btn){
+    btn.onclick = function(){
+      CLUB_FIELD_VIEW = btn.dataset.fieldview;
+      CLUB_FIELD_WEEK_OFFSET = 0;
+      CLUB_FIELD_MONTH_OFFSET = 0;
+      if(CLUB_FIELD_VIEW==='daily') CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
+      refreshFieldsUI();
+    };
+  });
+  document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; refreshFieldsUI(); };
+  });
+  document.querySelectorAll('[data-fieldweeknav]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_WEEK_OFFSET += parseInt(btn.dataset.fieldweeknav,10); refreshFieldsUI(); };
+  });
+  document.querySelectorAll('[data-fieldmonthnav]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_MONTH_OFFSET += parseInt(btn.dataset.fieldmonthnav,10); refreshFieldsUI(); };
+  });
+  var addField = document.getElementById('btnAddField');
+  if(addField) addField.onclick = openAddFieldModal;
+  document.querySelectorAll('[data-delfield]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var id = btn.dataset.delfield;
+      db.collection(P+'clubfields').doc(id).delete();
+      CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
+      CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
+      refreshFieldsUI();
+    };
+  });
+  var addSch = document.getElementById('btnAddSchedule');
+  if(addSch) addSch.onclick = openAddScheduleModal;
+  document.querySelectorAll('[data-delsch]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var id = btn.dataset.delsch;
+      db.collection(P+'clubschedule').doc(id).delete();
+      CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
+      refreshFieldsUI();
+    };
+  });
+  document.querySelectorAll('[data-shiftday]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var parts = btn.dataset.shiftday.split(':');
+      shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
+    };
+  });
+  document.querySelectorAll('[data-shifttime]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var parts = btn.dataset.shifttime.split(':');
+      shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/SLOT_MIN);
+    };
+  });
+  document.querySelectorAll('[data-dragsch]').forEach(function(card){
+    card.addEventListener('dragstart', function(e){
+      e.dataTransfer.setData('text/plain', card.dataset.dragsch);
+    });
+  });
+  document.querySelectorAll('[data-droptime]').forEach(function(cell){
+    cell.addEventListener('dragover', function(e){ e.preventDefault(); });
+    cell.addEventListener('drop', function(e){
+      e.preventDefault();
+      var id = e.dataTransfer.getData('text/plain');
+      var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+      if(!s) return;
+      s.day = cell.dataset.dropday;
+      s.start = cell.dataset.droptime;
+      s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
+      db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+      refreshFieldsUI();
+    });
+    var lpTimer = null;
+    var startLongPress = function(e){
+      if(e.target !== cell) return;
+      lpTimer = setTimeout(function(){
+        lpTimer = null;
+        openAddScheduleModal({fieldId: CLUB_SELECTED_FIELD, day: cell.dataset.dropday, start: cell.dataset.droptime});
+      }, 500);
+    };
+    var cancelLongPress = function(){ if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; } };
+    cell.addEventListener('mousedown', startLongPress);
+    cell.addEventListener('mouseup', cancelLongPress);
+    cell.addEventListener('mouseleave', cancelLongPress);
+    cell.addEventListener('touchstart', startLongPress, {passive:true});
+    cell.addEventListener('touchend', cancelLongPress);
+    cell.addEventListener('touchmove', cancelLongPress);
+  });
+}
 
 /* ---------------- Firestore (profile sync) ---------------- */
 function syncProfile(){
