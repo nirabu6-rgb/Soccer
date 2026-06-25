@@ -667,12 +667,39 @@ function tplClub(){
   var groupsInUse = AGE_GROUPS.filter(function(g){
     return MOCK_PLAYERS.some(function(p){return p.group===g;}) || CLUB_COACHES.some(function(c){return c.ageGroups && c.ageGroups.indexOf(g)!==-1;});
   });
+  var now = new Date();
+  var updatedThisMonth = CLUB_COACHES.filter(function(c){
+    if(!c.lastPlanUpdate) return false;
+    var d = new Date(c.lastPlanUpdate);
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  });
+  var notUpdated = CLUB_COACHES.filter(function(c){
+    if(!c.lastPlanUpdate) return true;
+    var d = new Date(c.lastPlanUpdate);
+    return !(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear());
+  });
   return ''+
-  '<div class="section-title">🏟️ דשבורד מועדון</div>'+
+  '<div class="section-title">🏟️ דשבורד ניהול מועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">תצוגה ייעודית להנהלת המועדון — שונה מדשבורד המאמן והשחקן, ומציגה את מצב הפעילות של כל הסגל</div>'+
   '<div class="grid3" style="margin-bottom:14px">'+
-    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">ילדים סה"כ</div></div>'+
-    '<div class="stat"><div class="v">'+groupsInUse.length+'</div><div class="l">קבוצות גיל</div></div>'+
     '<div class="stat"><div class="v">'+CLUB_COACHES.length+'</div><div class="l">מאמנים</div></div>'+
+    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים סה"כ</div></div>'+
+    '<div class="stat"><div class="v">'+updatedThisMonth.length+'</div><div class="l">תוכניות עודכנו החודש</div></div>'+
+  '</div>'+
+  '<div class="section-title" style="font-size:15px">📋 סטטוס עדכון תוכניות אימון</div>'+
+  '<div class="card" style="margin-bottom:14px">'+
+    '<div class="muted" style="margin-bottom:8px">ניתן לעדכן תוכנית שבועית/חודשית בכל שלב בשנה — אין חובה לעדכן בתחילתה</div>'+
+    (notUpdated.length===0 && CLUB_COACHES.length>0
+      ? '<div class="muted" style="color:#7ee787">✅ כל המאמנים עדכנו תוכנית החודש</div>'
+      : (CLUB_COACHES.length===0
+        ? '<div class="muted">עדיין לא נוספו מאמנים</div>'
+        : '<div class="muted" style="margin-bottom:6px">⏳ מאמנים שעדיין לא עדכנו תוכנית החודש:</div>'+
+          notUpdated.map(function(c){
+            return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+c.name+'</span>'+
+              '<span class="muted">'+(c.lastPlanUpdate ? 'עודכן לאחרונה ב-'+new Date(c.lastPlanUpdate).toLocaleDateString('he-IL') : 'אין עדכון עדיין')+'</span></div>';
+          }).join('')
+      )
+    )+
   '</div>'+
   '<div class="section-title" style="font-size:15px">קבוצות לפי גיל</div>'+
   '<div class="card" style="margin-bottom:14px">'+
@@ -841,7 +868,7 @@ function wireTab(i){
         TEAM_PLAN.map(function(d){
           var ex = (d.exerciseIdx!=null && CLUB_EXERCISES[d.exerciseIdx]) ? CLUB_EXERCISES[d.exerciseIdx] : null;
           return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div>'+
-            (d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t)+'</div>':'')+
+            (d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t, d.d)+'</div>':'')+
             (ex ? '<div class="muted" style="margin-top:6px">🎬 תרגיל: '+ex.name+(ex.description?' — '+ex.description:'')+'</div>'+(ex.imageData?'<img src="'+ex.imageData+'" style="width:100%;border-radius:10px;margin-top:6px">':'')+(ex.sketchNote?'<div class="muted" style="margin-top:4px">✏️ '+ex.sketchNote+'</div>':'') : '')+
           '</div></div>';
         }).join('')+
@@ -881,6 +908,7 @@ function wireTab(i){
         TEAM_SETTINGS.duration = parseInt(document.getElementById('tsDuration').value,10) || 0;
         TEAM_SETTINGS.waterBreakMin = parseInt(document.getElementById('tsWater').value,10) || 0;
         TEAM_SETTINGS.transitionSec = parseInt(document.getElementById('tsTransition').value,10) || 0;
+        markPlanUpdated();
         closeModal();
         renderTab(3);
       };
@@ -1101,7 +1129,7 @@ function openAddClubCoachModal(){
     if(!n) return;
     var code = genCode(6,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
     var password = genCode(6,'abcdefghjkmnpqrstuvwxyz23456789');
-    var coach = {name:n, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now()};
+    var coach = {name:n, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now(), lastPlanUpdate:null};
     db.collection(P+'clubcoaches').doc(code).set(coach).then(function(){
       CLUB_COACHES.push(coach);
       openModal('<h3>✅ המאמן נוצר בהצלחה</h3>'+
@@ -1122,12 +1150,38 @@ function openAddClubCoachModal(){
   };
 }
 
-function sessionBreakdown(focus){
+var WARMUP_LIBRARY = [
+  'ריצה קלה 5 דק\' + מתיחות דינמיות לרגליים',
+  'משחק תופסת/עוקץ לחימום כללי + הרמת דופק',
+  'חימום עם כדור: מסירות קצרות בזוגות + ריצת סלאלום בין קונוסים',
+  'חימום FIFA 11+ (מונע פציעות) — שיווי משקל, כוח ליבה וזריזות',
+  'דילוגי חבל + תרגילי קואורדינציה רגליים-ידיים',
+  'ריצות עליה/תאוצה קצרות (10 מ\') + מתיחות גמישות'
+];
+var COOLDOWN_LIBRARY = [
+  'הליכה קלה + מתיחות סטטיות לשרירי הרגליים',
+  'תרגילי נשימה והרפיה + מתיחות לגב התחתון',
+  'מתיחות זוגיות מודרכות + סיכום קצר עם הקבוצה'
+];
+function pickFromLibrary(lib, seed){
+  var h = 0;
+  for(var i=0;i<seed.length;i++) h += seed.charCodeAt(i);
+  return lib[h % lib.length];
+}
+function markPlanUpdated(){
+  if(!ME.subCoach) return;
+  var code = ME.uid.replace('coach_','');
+  db.collection(P+'clubcoaches').doc(code).set({lastPlanUpdate:Date.now()}, {merge:true});
+}
+function sessionBreakdown(focus, seed){
+  seed = seed || focus;
   var total = TEAM_SETTINGS.duration || 60;
   var warm = Math.max(Math.round(total*0.15),5);
   var cool = Math.max(Math.round(total*0.1),5);
   var main = Math.max(total - warm - cool, 10);
-  return 'חימום ('+warm+' דק\') ← '+focus+' ('+main+' דק\', הפסקת מים '+(TEAM_SETTINGS.waterBreakMin||0)+' דק\', מעברים '+(TEAM_SETTINGS.transitionSec||0)+' שנ\' בין תרגילים) ← שחרור ('+cool+' דק\')';
+  var warmupText = pickFromLibrary(WARMUP_LIBRARY, seed);
+  var cooldownText = pickFromLibrary(COOLDOWN_LIBRARY, seed+'_c');
+  return 'חימום ('+warm+' דק\'): '+warmupText+' ← '+focus+' ('+main+' דק\', הפסקת מים '+(TEAM_SETTINGS.waterBreakMin||0)+' דק\', מעברים '+(TEAM_SETTINGS.transitionSec||0)+' שנ\' בין תרגילים) ← שחרור ('+cool+' דק\'): '+cooldownText;
 }
 function planTextSummary(title, plan){
   return title+'\n'+plan.map(function(d){return d.d+': '+d.t;}).join('\n');
@@ -1286,6 +1340,7 @@ function openPlayerModal(idx){
       base[parseInt(inp.dataset.ppi,10)].t = inp.value;
     });
     p.plan = base;
+    markPlanUpdated();
     closeModal();
   };
   var rp = document.getElementById('pmResetPlan');
