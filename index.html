@@ -751,6 +751,18 @@ function addMinutesToTime(start, mins){
   var h = Math.floor(total/60), m = total%60;
   return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
 }
+function clubSlotItems(items, day, slot){
+  var startIdx = TIME_SLOTS.indexOf(slot);
+  var starting = items.filter(function(s){ return s.day===day && s.start===slot; });
+  var continuing = items.filter(function(s){
+    if(s.day!==day || s.start===slot) return false;
+    var sIdx = TIME_SLOTS.indexOf(s.start);
+    if(sIdx===-1) return false;
+    var span = Math.ceil((s.duration||30)/30);
+    return sIdx < startIdx && startIdx < sIdx+span;
+  });
+  return {starting:starting, continuing:continuing};
+}
 function shiftClubSchedule(id, dayDelta, slotDelta){
   var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
   if(!s) return;
@@ -809,9 +821,10 @@ function clubFieldsBoard(){
       return '<tr>'+
         '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
         fieldDays.map(function(day){
-          var items = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id && s.day===day && s.start===slot;});
+          var fieldItems = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id;});
+          var res = clubSlotItems(fieldItems, day, slot);
           return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
-            items.map(function(s){
+            res.starting.map(function(s){
               return '<div class="card" draggable="true" data-dragsch="'+s.id+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;cursor:grab">'+
                 '<div style="font-weight:700">'+s.group+'</div>'+
                 '<div class="muted" style="font-size:10px">'+(s.time||s.start)+'</div>'+
@@ -823,6 +836,9 @@ function clubFieldsBoard(){
                   '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:10px;padding:0 4px">🗑</button>'+
                 '</div>'+
               '</div>';
+            }).join('')+
+            res.continuing.map(function(s){
+              return '<div class="card" style="margin:0 0 3px;padding:3px 6px;font-size:10px;opacity:.55;border-style:dashed">'+s.group+' ⋯</div>';
             }).join('')+
           '</td>';
         }).join('')+
@@ -941,13 +957,16 @@ function clubGroupsGrid(days, fieldsById){
       return '<tr>'+
         '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
         days.map(function(day){
-          var items = CLUB_SCHEDULE.filter(function(s){return s.day===day && s.start===slot;});
+          var res = clubSlotItems(CLUB_SCHEDULE, day, slot);
           return '<td style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
-            items.map(function(s){
+            res.starting.map(function(s){
               return '<div class="card tap" data-groupdetail="'+s.group+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px">'+
                 '<div style="font-weight:700">'+s.group+'</div>'+
-                '<div class="muted" style="font-size:10px">🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
+                '<div class="muted" style="font-size:10px">'+(s.time||s.start)+' · 🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
               '</div>';
+            }).join('')+
+            res.continuing.map(function(s){
+              return '<div class="card" style="margin:0 0 3px;padding:3px 6px;font-size:10px;opacity:.55;border-style:dashed">'+s.group+' ⋯</div>';
             }).join('')+
           '</td>';
         }).join('')+
