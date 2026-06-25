@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
-  --bg:#0b0f1a; --card:#141b2d; --card2:#1b2438; --accent:#22d3ee; --accent2:#a78bfa;
+  --bg:#0b0f1a; --card:#141b2d; --card2:#1b2438; --accent:#9aa5b4; --accent2:#6b7585;
   --good:#34d399; --warn:#fbbf24; --bad:#f87171; --text:#e7ecf5; --sub:#8b96ad;
   --nav:64px; --sab:env(safe-area-inset-bottom,0px);
 }
@@ -699,15 +699,14 @@ function tplClubDashboard(){
   });
   return ''+
   '<div class="section-title">🏟️ דשבורד ניהול מועדון</div>'+
-  '<div class="muted" style="margin-bottom:10px">תצוגה ייעודית להנהלת המועדון — שונה מדשבורד המאמן והשחקן</div>'+
   '<div class="grid3" style="margin-bottom:14px">'+
     '<div class="stat"><div class="v">'+CLUB_COACHES.length+'</div><div class="l">מאמנים</div></div>'+
     '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים סה"כ</div></div>'+
     '<div class="stat"><div class="v">'+updatedThisMonth.length+'</div><div class="l">תוכניות עודכנו החודש</div></div>'+
   '</div>'+
   '<button class="btn ghost" id="btnGoRoster" style="margin-bottom:14px">👥 ניהול רשימת שחקנים</button>'+
-  '<div class="section-title" style="font-size:15px">📋 סטטוס עדכון תוכניות אימון</div>'+
-  '<div class="card" style="margin-bottom:14px">'+
+  '<details style="margin-bottom:10px"><summary class="btn ghost" style="display:list-item;cursor:pointer">📋 סטטוס עדכון תוכניות אימון</summary>'+
+  '<div class="card" style="margin-top:8px">'+
     '<div class="muted" style="margin-bottom:8px">ניתן לעדכן תוכנית שבועית/חודשית בכל שלב בשנה — אין חובה לעדכן בתחילתה</div>'+
     (notUpdated.length===0 && CLUB_COACHES.length>0
       ? '<div class="muted" style="color:#7ee787">✅ כל המאמנים עדכנו תוכנית החודש</div>'
@@ -720,14 +719,15 @@ function tplClubDashboard(){
           }).join('')
       )
     )+
-  '</div>'+
+  '</div></details>'+
   (injured.length
-    ? '<div class="card" style="margin-bottom:14px"><div class="muted" style="margin-bottom:6px">🩹 מצב רפואי במחלקה</div>'+
+    ? '<details style="margin-bottom:10px"><summary class="btn ghost" style="display:list-item;cursor:pointer">🩹 מצב רפואי במחלקה</summary>'+
+      '<div class="card" style="margin-top:8px">'+
         injured.map(function(p){
           return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+p.name+' (#'+p.jersey+')</span>'+
             '<span class="status-tag" style="background:'+STATUS_INFO[p.status].color+';color:#04111a">'+STATUS_INFO[p.status].ic+' '+STATUS_INFO[p.status].t+(p.expectedReturn?' · חזרה '+p.expectedReturn:'')+'</span></div>';
         }).join('')+
-      '</div>'
+      '</div></details>'
     : '')+
   '';
 }
@@ -766,19 +766,19 @@ function shiftClubSchedule(id, dayDelta, slotDelta){
 function clubFieldsBoard(){
   if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
   if(CLUB_SELECTED_FIELD && !CLUB_FIELDS.some(function(f){return f.id===CLUB_SELECTED_FIELD;})){ CLUB_SELECTED_FIELD = CLUB_FIELDS.length ? CLUB_FIELDS[0].id : null; }
-  var html = '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:10px;flex-wrap:wrap">'+
-    CLUB_FIELDS.map(function(f){
-      return '<button class="btn '+(CLUB_SELECTED_FIELD===f.id?'':'ghost')+'" style="white-space:nowrap" data-fieldtab="'+f.id+'">🏟 '+f.name+'</button>';
-    }).join('')+
-    '<button class="btn ghost" id="btnAddField">+ הוסף מגרש</button>'+
+  var html = '<div class="row" style="gap:6px;margin-bottom:10px">'+
+    '<select id="fieldPicker" style="flex:1">'+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(CLUB_SELECTED_FIELD===f.id?'selected':'')+'>🏟 '+f.name+'</option>'; }).join('')+
+    '</select>'+
+    '<button class="btn ghost" id="btnAddField">+ מגרש</button>'+
   '</div>';
   if(!CLUB_FIELDS.length){
     return html + '<div class="card" style="text-align:center;color:var(--sub);margin-bottom:14px">עדיין לא נוספו מגרשים — הוסף מגרש כדי לבנות לו לוח שבועי</div>';
   }
   var field = CLUB_FIELDS.filter(function(f){return f.id===CLUB_SELECTED_FIELD;})[0];
-  html += '<div class="row" style="margin-bottom:10px"><b>🏟 '+field.name+'</b>'+
-    '<div class="row" style="gap:6px"><button class="btn ghost" id="btnAddSchedule">+ הוסף אימון</button>'+
-    '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div></div>';
+  html += '<div class="row" style="margin-bottom:10px">'+
+    '<button class="btn ghost" id="btnAddSchedule">+ הוסף קבוצת אימון למגרש</button>'+
+    '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div>';
   html += '<div class="grid3" style="margin-bottom:10px">'+
     [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
       return '<button class="btn '+(CLUB_FIELD_VIEW===v[0]?'':'ghost')+'" data-fieldview="'+v[0]+'">'+v[1]+'</button>';
@@ -1247,9 +1247,8 @@ function wireTab(i){
     document.querySelectorAll('[data-groupdetail]').forEach(function(card){
       card.onclick = function(){ openGroupDetailModal(card.dataset.groupdetail); };
     });
-    document.querySelectorAll('[data-fieldtab]').forEach(function(btn){
-      btn.onclick = function(){ CLUB_SELECTED_FIELD = btn.dataset.fieldtab; renderTab(9); };
-    });
+    var fieldPicker = document.getElementById('fieldPicker');
+    if(fieldPicker) fieldPicker.onchange = function(){ CLUB_SELECTED_FIELD = fieldPicker.value; renderTab(9); };
     document.querySelectorAll('[data-fieldview]').forEach(function(btn){
       btn.onclick = function(){ CLUB_FIELD_VIEW = btn.dataset.fieldview; renderTab(9); };
     });
