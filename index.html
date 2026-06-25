@@ -205,6 +205,7 @@ var SPORTS = [
   {id:'run',ic:'🏃',t:'ריצה'},{id:'volley',ic:'🏐',t:'כדורעף'},
   {id:'fit',ic:'🏋️',t:'פיטנס'},{id:'other',ic:'🥇',t:'אחר'}
 ];
+var POSITIONS = ['שוער','מגן ימני','מגן שמאלי','בלם','קשר הגנתי','קשר התקפי','קשר ימני','קשר שמאלי','אגף ימני','אגף שמאלי','חלוץ'];
 var ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null};
 var TAB = 0;
 var selSport = 'soccer', selMode = 'player';
@@ -313,7 +314,7 @@ document.getElementById('btnLogout').onclick = function(){
   localStorage.removeItem('ath_sport');
   localStorage.removeItem('ath_mode');
   ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null};
-  PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = [];
+  PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
   document.getElementById('app').style.display = 'none';
   document.getElementById('login').style.display = 'flex';
   document.getElementById('regName').value = '';
@@ -631,26 +632,7 @@ function wireTab(i){
       };
     });
     var addP = document.getElementById('btnAddPlayer');
-    if(addP) addP.onclick = function(){
-      openModal('<h3>+ הוספת שחקן</h3>'+
-        '<div class="field"><label>שם השחקן</label><input id="npName" placeholder="שם מלא"></div>'+
-        '<div class="field"><label>תפקיד</label><input id="npPos" placeholder="לדוגמה: חלוץ"></div>'+
-        '<div class="field"><label>גיל</label><input id="npAge" type="number" placeholder="14"></div>'+
-        '<div class="field"><label>מספר חולצה</label><input id="npJersey" type="number" placeholder="10"></div>'+
-        '<button class="btn" id="npSave">שמור שחקן</button>');
-      document.getElementById('npSave').onclick = function(){
-        var n = document.getElementById('npName').value.trim();
-        if(!n) return;
-        MOCK_PLAYERS.push({
-          name:n, pos:document.getElementById('npPos').value||'שחקן',
-          age:parseInt(document.getElementById('npAge').value,10)||14,
-          jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
-          rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null
-        });
-        closeModal();
-        renderTab(3);
-      };
-    };
+    if(addP) addP.onclick = function(){ openAddPlayerModal({}); };
     document.querySelectorAll('[data-del]').forEach(function(btn){
       btn.onclick = function(e){
         e.stopPropagation();
@@ -717,6 +699,47 @@ function wireTab(i){
 }
 
 /* ---------------- Player detail modal (coach) ---------------- */
+/* ---------------- Add player modal (with on-field position picker) ---------------- */
+function openAddPlayerModal(draft){
+  draft = draft || {};
+  openModal('<h3>+ הוספת שחקן</h3>'+
+    '<div class="field"><label>שם השחקן</label><input id="npName" placeholder="שם מלא" value="'+(draft.name||'')+'"></div>'+
+    '<div class="field"><label>תפקיד</label><input id="npPos" placeholder="בחר תפקיד" readonly style="cursor:pointer" value="'+(draft.pos||'')+'"></div>'+
+    '<div class="field"><label>גיל</label><input id="npAge" type="number" placeholder="14" value="'+(draft.age||'')+'"></div>'+
+    '<div class="field"><label>מספר חולצה</label><input id="npJersey" type="number" placeholder="10" value="'+(draft.jersey||'')+'"></div>'+
+    '<button class="btn" id="npSave">שמור שחקן</button>');
+  document.getElementById('npPos').onclick = function(){ openPositionPicker(draft); };
+  document.getElementById('npSave').onclick = function(){
+    var n = document.getElementById('npName').value.trim();
+    if(!n) return;
+    MOCK_PLAYERS.push({
+      name:n, pos:document.getElementById('npPos').value||'שחקן',
+      age:parseInt(document.getElementById('npAge').value,10)||14,
+      jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
+      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null
+    });
+    closeModal();
+    renderTab(3);
+  };
+}
+function openPositionPicker(draft){
+  draft.name = document.getElementById('npName').value;
+  draft.age = document.getElementById('npAge').value;
+  draft.jersey = document.getElementById('npJersey').value;
+  openModal('<h3>בחר תפקיד על המגרש</h3>'+
+    '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
+      POSITIONS.map(function(pos){
+        return '<div class="sport" data-pos="'+pos+'" style="font-size:13px;padding:12px 6px">'+pos+'</div>';
+      }).join('')+
+    '</div>');
+  document.querySelectorAll('[data-pos]').forEach(function(el){
+    el.onclick = function(){
+      draft.pos = el.dataset.pos;
+      openAddPlayerModal(draft);
+    };
+  });
+}
+
 function openPlayerModal(idx){
   var p = MOCK_PLAYERS[idx];
   var plan = p.plan || TEAM_PLAN;
@@ -797,53 +820,82 @@ function renderAnalysis(a){
   '</div>';
 }
 
-/* ---------------- AI chat assistant (coach plan-building helper, rule-based) ---------------- */
-function aiBotReply(msg){
-  msg = (msg||'').toLowerCase();
-  if(/פציע|שיקום|חזרה/.test(msg)) return 'לתוכנית שיקום מדויקת אני צריך לדעת: סוג הפציעה, האזור הפגוע, כמה זמן עבר מהפציעה, והנחיות מהפיזיותרפיסט/רופא. עדכן את סטטוס השחקן בכרטיס שלו ואני אשקלל זאת בתוכנית.';
-  if(/תדיר|כמה ימים|פעמים בשבוע/.test(msg)) return 'מומלץ 3-5 אימונים בשבוע לפי גיל ורמת השחקן, עם יום מנוחה אחד לפחות. לקבוצות צעירות (מתחת לגיל 14) מומלץ לא לעבור 4 אימונים בשבוע.';
-  if(/וידאו|סרטון|ניתוח/.test(msg)) return 'העלה סרטון משחק וסמן את מספר החולצה של השחקן — אנתח מגעים בכדור, דיוק מסירות, ספרינטים ומרחק ריצה כדי לבנות תוכנית מבוססת נתונים.';
-  if(/מטרה|יעד|לשפר/.test(msg)) return 'כדי לבנות תוכנית מדויקת ספר לי: מה המטרה המרכזית (מהירות / כוח / טכניקה / סיבולת), גיל השחקנים, ורמת הניסיון שלהם.';
-  if(/מה אתה צריך|מה צריך|איך זה עובד/.test(msg)) return 'אני צריך: ענף ספורט, גיל ורמת השחקן/ים, מטרת האימון, תדירות שבועית רצויה, וכל מגבלה רפואית. עם הנתונים האלה אני בונה תוכנית קבוצתית ותוכניות אישיות מותאמות.';
-  return 'תודה! כדי לבנות לך תוכנית מדויקת, ספר לי על המטרה, גיל השחקנים, תדירות האימונים הרצויה ואם יש מגבלות רפואיות לשחקן כלשהו.';
-}
+/* ---------------- AI chat assistant — fixed-step wizard, no repeated questions ---------------- */
+var CHAT_QUESTIONS = [
+  {key:'target', q:'בשביל מי בונים את התוכנית? כתוב שם שחקן מהקבוצה, או "כל הקבוצה".'},
+  {key:'goal', q:'מה המטרה המרכזית? (מהירות / כוח / טכניקה / סיבולת)'},
+  {key:'freq', q:'כמה ימי אימון בשבוע רוצים?'},
+  {key:'injury', q:'יש מגבלה רפואית או פציעה שצריך להתחשב בה? אם לא — כתוב "לא".'}
+];
+var CHAT_STATE = {step:0, answers:{}, done:false};
+
 function openAiChatModal(){
   if(CHAT_LOG.length===0){
-    CHAT_LOG.push({who:'bot', text:'שלום! אני העוזר החכם לבניית תוכניות אימון. שאל אותי מה אתה צריך לתת לי כדי לקבל תוכנית מדויקת לקבוצה או לשחקן ספציפי.'});
+    CHAT_LOG.push({who:'bot', text:'בוא נבנה תוכנית מדויקת. אשאל אותך 4 שאלות קצרות ואז אכין תוכנית.'});
+    askNextQuestion();
   }
   renderChatModal();
 }
+function askNextQuestion(){
+  if(CHAT_STATE.step < CHAT_QUESTIONS.length){
+    CHAT_LOG.push({who:'bot', text:CHAT_QUESTIONS[CHAT_STATE.step].q});
+  }
+}
 function renderChatModal(){
+  var finished = CHAT_STATE.step >= CHAT_QUESTIONS.length;
   openModal(''+
-    '<h3>🤖 צ\'אט AI לבניית תוכנית</h3>'+
+    '<h3>🤖 בניית תוכנית עם AI</h3>'+
     '<div class="chat-wrap" id="chatWrap">'+
       CHAT_LOG.map(function(m){ return '<div class="msg '+(m.who==='me'?'me':'bot')+'">'+m.text+'</div>'; }).join('')+
     '</div>'+
-    '<div class="chip-row">'+
-      ['מה אתה צריך כדי לבנות תוכנית?','כמה ימים בשבוע מומלץ?','איך עובד ניתוח הוידאו?','איך לטפל בשחקן פצוע?'].map(function(q){
-        return '<div class="chip" data-q="'+q+'">'+q+'</div>';
-      }).join('')+
-    '</div>'+
-    '<div class="chat-input-row">'+
-      '<input id="chatInput" placeholder="כתוב שאלה...">'+
-      '<button class="btn" id="chatSend" style="width:auto;padding:13px 18px">שלח</button>'+
-    '</div>'+
-  '');
-  document.querySelectorAll('.chip').forEach(function(c){
-    c.onclick = function(){ sendChat(c.dataset.q); };
-  });
-  document.getElementById('chatSend').onclick = function(){
+    (finished
+      ? '<button class="btn" id="chatRestart">בנה תוכנית נוספת</button>'
+      : '<div class="chat-input-row"><input id="chatInput" placeholder="הקלד תשובה..."><button class="btn" id="chatSend" style="width:auto;padding:13px 18px">שלח</button></div>'
+    )
+  );
+  var send = document.getElementById('chatSend');
+  if(send) send.onclick = function(){
     var v = document.getElementById('chatInput').value.trim();
     if(!v) return;
-    sendChat(v);
+    answerChat(v);
+  };
+  var inp = document.getElementById('chatInput');
+  if(inp) inp.onkeydown = function(e){ if(e.key==='Enter') send.click(); };
+  var restart = document.getElementById('chatRestart');
+  if(restart) restart.onclick = function(){
+    CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
+    openAiChatModal();
   };
   var wrap = document.getElementById('chatWrap');
   if(wrap) wrap.scrollTop = wrap.scrollHeight;
 }
-function sendChat(text){
+function answerChat(text){
   CHAT_LOG.push({who:'me', text:text});
-  CHAT_LOG.push({who:'bot', text:aiBotReply(text)});
+  CHAT_STATE.answers[CHAT_QUESTIONS[CHAT_STATE.step].key] = text;
+  CHAT_STATE.step++;
+  if(CHAT_STATE.step < CHAT_QUESTIONS.length){
+    askNextQuestion();
+  } else {
+    CHAT_LOG.push({who:'bot', text:buildPlanFromChat(CHAT_STATE.answers)});
+  }
   renderChatModal();
+}
+function buildPlanFromChat(a){
+  var goalMap = {'מהירות':'speed','כוח':'strength','טכניקה':'technique','סיבולת':'endurance'};
+  var goalKey = goalMap[a.goal] || 'technique';
+  var freq = parseInt(a.freq,10) || 4;
+  var plan = genPlayerPlan(goalKey, freq, 'weekly');
+  var target = MOCK_PLAYERS.filter(function(p){return p.name===a.target.trim()})[0];
+  if(target){
+    target.plan = plan.weeks[0];
+    target.note = (target.note ? target.note+' | ' : '') + (a.injury && a.injury!=='לא' ? 'הערה מה-AI: '+a.injury : '');
+  } else {
+    TEAM_PLAN = plan.weeks[0];
+  }
+  var summary = (target ? 'תוכנית אישית ל'+target.name : 'תוכנית קבוצתית') + ' נבנתה בהצלחה ✅\n'+
+    'מטרה: '+a.goal+' · תדירות: '+freq+' בשבוע'+(a.injury && a.injury!=='לא' ? ' · בהתחשב ב: '+a.injury : '')+'.\n'+
+    plan.weeks[0].map(function(d){return d.d+': '+d.t;}).join(' | ');
+  return summary;
 }
 
 /* ---------------- Modal helpers ---------------- */
