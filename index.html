@@ -8,8 +8,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
-  --bg:#0b0f1a; --card:#141b2d; --card2:#1b2438; --accent:#9aa5b4; --accent2:#6b7585;
-  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --text:#e7ecf5; --sub:#8b96ad;
+  --bg:#f5f6f8; --card:#ffffff; --card2:#eef0f3; --accent:#8a94a3; --accent2:#5c6573;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --text:#1c2230; --sub:#6b7280;
   --nav:64px; --sab:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -17,7 +17,7 @@ html{height:100%;height:-webkit-fill-available}
 body{
   margin:0;height:100%;height:-webkit-fill-available;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
-  background:linear-gradient(160deg,#0b0f1a,#10162a 60%,#0b0f1a);
+  background:linear-gradient(160deg,#f5f6f8,#eef0f3 60%,#f5f6f8);
   color:var(--text);direction:rtl;overflow-x:hidden;
 }
 #login{min-height:100vh;min-height:-webkit-fill-available;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
@@ -27,16 +27,16 @@ body{
 .field{width:100%;max-width:340px;margin-bottom:12px;text-align:right}
 .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
 input,select{
-  width:100%;padding:13px 14px;border-radius:12px;border:1px solid #28304a;
+  width:100%;padding:13px 14px;border-radius:12px;border:1px solid #dde1e8;
   background:var(--card);color:var(--text);font-size:15px;outline:none;
 }
 input:focus,select:focus{border-color:var(--accent)}
 .sportgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:340px;margin-bottom:6px}
-.sport{background:var(--card);border:2px solid #28304a;border-radius:14px;padding:10px 4px;text-align:center;cursor:pointer;font-size:22px}
+.sport{background:var(--card);border:2px solid #dde1e8;border-radius:14px;padding:10px 4px;text-align:center;cursor:pointer;font-size:22px}
 .sport.sel{border-color:var(--accent);background:var(--card2)}
 .sport span{display:block;font-size:10px;color:var(--sub);margin-top:4px}
 .modegrid{display:flex;gap:10px;width:100%;max-width:340px;margin-bottom:18px}
-.mode{flex:1;background:var(--card);border:2px solid #28304a;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer}
+.mode{flex:1;background:var(--card);border:2px solid #dde1e8;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer}
 .mode.sel{border-color:var(--accent2);background:var(--card2)}
 .mode .ic{font-size:24px}
 .mode .t{font-size:13px;font-weight:700;margin-top:4px}
@@ -46,7 +46,7 @@ input:focus,select:focus{border-color:var(--accent)}
   background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04111a;
   font-weight:800;font-size:15px;cursor:pointer;margin-top:4px;
 }
-.btn.ghost{background:transparent;border:1px solid #28304a;color:var(--text);font-weight:600}
+.btn.ghost{background:transparent;border:1px solid #dde1e8;color:var(--text);font-weight:600}
 .btn:disabled{opacity:.4}
 .link{color:var(--accent);font-size:13px;margin-top:14px;cursor:pointer}
 
@@ -56,7 +56,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#04111a}
 .who .n{font-size:14px;font-weight:700}
 .who .s{font-size:11px;color:var(--sub)}
-.badge-plan{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--card2);border:1px solid #28304a;color:var(--accent)}
+.badge-plan{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--card2);border:1px solid #dde1e8;color:var(--accent)}
 .logout-btn{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;padding:6px;margin-right:4px}
 .topbar .right{display:flex;align-items:center}
 .week-block{margin-bottom:10px}
@@ -68,48 +68,48 @@ input:focus,select:focus{border-color:var(--accent)}
 .msg.bot{background:var(--card2);align-self:flex-start}
 .msg.me{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04111a;align-self:flex-end}
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.chip{font-size:11px;padding:6px 10px;border-radius:14px;background:var(--card2);border:1px solid #28304a;cursor:pointer}
+.chip{font-size:11px;padding:6px 10px;border-radius:14px;background:var(--card2);border:1px solid #dde1e8;cursor:pointer}
 .chat-input-row{display:flex;gap:8px}
 .chat-input-row input{flex:1}
 .jersey{display:inline-flex;width:22px;height:22px;border-radius:5px;background:var(--card2);align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:4px}
 
 .content{flex:1;overflow-y:auto;padding:6px 14px calc(var(--nav) + var(--sab) + 14px);-webkit-overflow-scrolling:touch}
 .section-title{font-size:18px;font-weight:800;margin:14px 0 10px}
-.card{background:var(--card);border:1px solid #1f2740;border-radius:16px;padding:16px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid #e3e6ec;border-radius:16px;padding:16px;margin-bottom:12px}
 .card.tap{cursor:pointer;transition:transform .1s}
 .card.tap:active{transform:scale(.98)}
 .row{display:flex;align-items:center;justify-content:space-between}
 .muted{color:var(--sub);font-size:12px}
-.pill{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;background:var(--card2);border:1px solid #28304a;margin-left:6px}
+.pill{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;background:var(--card2);border:1px solid #dde1e8;margin-left:6px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .stat{background:var(--card2);border-radius:12px;padding:12px;text-align:center}
 .stat .v{font-size:20px;font-weight:800}
 .stat .l{font-size:11px;color:var(--sub);margin-top:2px}
-.bar-outer{height:8px;border-radius:5px;background:#222b42;overflow:hidden;margin-top:8px}
+.bar-outer{height:8px;border-radius:5px;background:#e5e8ed;overflow:hidden;margin-top:8px}
 .bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
-.upload-box{border:2px dashed #2c3656;border-radius:16px;padding:30px 16px;text-align:center;color:var(--sub);margin-bottom:14px}
+.upload-box{border:2px dashed #c7cdd8;border-radius:16px;padding:30px 16px;text-align:center;color:var(--sub);margin-bottom:14px}
 .upload-box .ic{font-size:34px;margin-bottom:8px}
 .tabs-mini{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
-.tab-mini{padding:7px 14px;border-radius:20px;background:var(--card);border:1px solid #28304a;font-size:12px;white-space:nowrap;cursor:pointer}
+.tab-mini{padding:7px 14px;border-radius:20px;background:var(--card);border:1px solid #dde1e8;font-size:12px;white-space:nowrap;cursor:pointer}
 .tab-mini.sel{background:var(--accent);color:#04111a;font-weight:700;border-color:var(--accent)}
-.plan-day{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1f2740}
+.plan-day{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e3e6ec}
 .plan-day:last-child{border-bottom:none}
 .daydot{width:34px;height:34px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .daydot.done{background:var(--good);color:#04201a}
-.player-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1f2740;cursor:pointer}
+.player-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e3e6ec;cursor:pointer}
 .player-row:last-child{border-bottom:none}
 .player-row .pavatar{width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
 .status-tag{font-size:10px;padding:2px 8px;border-radius:10px;margin-top:3px;display:inline-block}
-textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #28304a;background:var(--card);color:var(--text);font-size:14px;outline:none;resize:vertical;font-family:inherit}
+textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #dde1e8;background:var(--card);color:var(--text);font-size:14px;outline:none;resize:vertical;font-family:inherit}
 textarea:focus{border-color:var(--accent)}
 .badge-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
 .badge-item{flex-shrink:0;width:72px;text-align:center}
 .badge-item .ic{font-size:30px;background:var(--card2);border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px}
 .badge-item.locked .ic{opacity:.3}
 .badge-item .t{font-size:10px;color:var(--sub)}
-.plan-card{border:1px solid #28304a;border-radius:16px;padding:16px;margin-bottom:12px}
-.plan-card.featured{border-color:var(--accent);background:linear-gradient(160deg,#15233a,#141b2d)}
+.plan-card{border:1px solid #dde1e8;border-radius:16px;padding:16px;margin-bottom:12px}
+.plan-card.featured{border-color:var(--accent);background:linear-gradient(160deg,#eef0f3,#ffffff)}
 .plan-card .price{font-size:26px;font-weight:800;margin:8px 0}
 .plan-card .price span{font-size:13px;color:var(--sub);font-weight:400}
 .plan-card ul{padding-right:18px;margin:10px 0;font-size:13px;color:var(--text)}
@@ -119,7 +119,7 @@ textarea:focus{border-color:var(--accent)}
 .nav{
   position:relative;flex-shrink:0;display:flex;
   height:calc(var(--nav) + var(--sab));padding-bottom:var(--sab);
-  background:rgba(15,20,33,.95);border-top:1px solid #1f2740;backdrop-filter:blur(10px);
+  background:rgba(255,255,255,.92);border-top:1px solid #e3e6ec;backdrop-filter:blur(10px);
 }
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--sub);font-size:10px;cursor:pointer;border:none;background:none}
 .nav-btn .ic{font-size:19px}
@@ -714,7 +714,7 @@ function tplClubDashboard(){
         ? '<div class="muted">עדיין לא נוספו מאמנים</div>'
         : '<div class="muted" style="margin-bottom:6px">⏳ מאמנים שעדיין לא עדכנו תוכנית החודש:</div>'+
           notUpdated.map(function(c){
-            return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+c.name+'</span>'+
+            return '<div class="row" style="padding:6px 0;border-bottom:1px solid #e3e6ec"><span>'+c.name+'</span>'+
               '<span class="muted">'+(c.lastPlanUpdate ? 'עודכן לאחרונה ב-'+new Date(c.lastPlanUpdate).toLocaleDateString('he-IL') : 'אין עדכון עדיין')+'</span></div>';
           }).join('')
       )
@@ -724,7 +724,7 @@ function tplClubDashboard(){
     ? '<details style="margin-bottom:10px"><summary class="btn ghost" style="display:list-item;cursor:pointer">🩹 מצב רפואי במחלקה</summary>'+
       '<div class="card" style="margin-top:8px">'+
         injured.map(function(p){
-          return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1f2740"><span>'+p.name+' (#'+p.jersey+')</span>'+
+          return '<div class="row" style="padding:6px 0;border-bottom:1px solid #e3e6ec"><span>'+p.name+' (#'+p.jersey+')</span>'+
             '<span class="status-tag" style="background:'+STATUS_INFO[p.status].color+';color:#04111a">'+STATUS_INFO[p.status].ic+' '+STATUS_INFO[p.status].t+(p.expectedReturn?' · חזרה '+p.expectedReturn:'')+'</span></div>';
         }).join('')+
       '</div></details>'
@@ -810,11 +810,11 @@ function clubFieldsBoard(){
           if(fieldRowSkip[day] > 0){ fieldRowSkip[day]--; return ''; }
           var starting = fieldItemsAll.filter(function(s){return s.day===day && s.start===slot;});
           if(!starting.length){
-            return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px"></td>';
+            return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
           }
           var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/30); }));
           fieldRowSkip[day] = maxSpan - 1;
-          return '<td rowspan="'+maxSpan+'" data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
+          return '<td rowspan="'+maxSpan+'" data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
             starting.map(function(s){
               return '<div class="card" draggable="true" data-dragsch="'+s.id+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;cursor:grab;height:100%">'+
                 '<div style="font-weight:700">'+s.group+'</div>'+
@@ -870,7 +870,7 @@ function tplClubTraining(){
         (gp
           ? '<div class="muted" style="margin:8px 0"><b>שבועי:</b> '+(gp.weekly||'-')+'</div>'+
             '<div class="muted" style="margin:8px 0"><b>שנתי:</b> '+(gp.yearly||'-')+'</div>'+
-            (gp.daily||[]).map(function(d){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+d.d+'</span><span class="muted">'+d.t+'</span></div>'; }).join('')
+            (gp.daily||[]).map(function(d){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #e3e6ec"><span>'+d.d+'</span><span class="muted">'+d.t+'</span></div>'; }).join('')
           : '<div class="muted" style="margin:8px 0">עדיין לא נבנתה תוכנית לקבוצה זו</div>')+
         '<button class="btn" id="btnEditGroupPlan" style="margin-top:10px">✏️ '+(gp?'עריכת תוכנית הקבוצה':'בניית תוכנית לקבוצה')+'</button>'+
       '</div>'
@@ -950,11 +950,11 @@ function clubGroupsGrid(days, fieldsById){
           if(grpRowSkip[day] > 0){ grpRowSkip[day]--; return ''; }
           var starting = CLUB_SCHEDULE.filter(function(s){return s.day===day && s.start===slot;});
           if(!starting.length){
-            return '<td style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px"></td>';
+            return '<td style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
           }
           var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/30); }));
           grpRowSkip[day] = maxSpan - 1;
-          return '<td rowspan="'+maxSpan+'" style="border:1px solid #1f2740;padding:2px;vertical-align:top;min-width:90px">'+
+          return '<td rowspan="'+maxSpan+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
             starting.map(function(s){
               return '<div class="card tap" data-groupdetail="'+s.group+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;height:100%">'+
                 '<div style="font-weight:700">'+s.group+'</div>'+
@@ -978,7 +978,7 @@ function openGroupDetailModal(group){
     '<div class="section-title" style="font-size:14px">⚽ שחקנים ('+players.length+')</div>'+
     (players.length===0
       ? '<div class="muted">אין שחקנים בקבוצה זו</div>'
-      : players.map(function(p){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #1f2740"><span>'+p.name+' · '+p.pos+'</span><span class="muted">#'+p.jersey+'</span></div>'; }).join(''))+
+      : players.map(function(p){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #e3e6ec"><span>'+p.name+' · '+p.pos+'</span><span class="muted">#'+p.jersey+'</span></div>'; }).join(''))+
     '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
 }
 
