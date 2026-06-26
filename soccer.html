@@ -353,9 +353,15 @@ function pitchSvgMarkup(elements, small, orientation, svgId){
   var dims = small ? {w:60,h:40} : pitchDims(orientation);
   var w = dims.w, h = dims.h;
   var sx = small ? 60/BASE_W : 1, sy = small ? 40/BASE_H : 1;
-  var lines = '<rect x="2" y="2" width="'+(w-4)+'" height="'+(h-4)+'" fill="none" stroke="#fff" stroke-width="'+(small?1:2)+'"/>'+
-    '<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+(small?1:2)+'"/>'+
-    '<circle cx="'+(w/2)+'" cy="'+(h/2)+'" r="'+(small?6:40)+'" fill="none" stroke="#fff" stroke-width="'+(small?1:2)+'"/>';
+  var sw = small ? 1 : 2;
+  var boxDepth = w*0.16, boxH = h*0.6, gaDepth = w*0.06, gaH = h*0.3;
+  var lines = '<rect x="2" y="2" width="'+(w-4)+'" height="'+(h-4)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<circle cx="'+(w/2)+'" cy="'+(h/2)+'" r="'+(small?6:40)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<rect x="2" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<rect x="'+(w-2-boxDepth)+'" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<rect x="2" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+    '<rect x="'+(w-2-gaDepth)+'" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>';
   var linesHtml = elements.filter(function(el){ return LINE_TYPES.indexOf(el.type)>=0; }).map(function(el){
     var p1 = small ? {x:el.x1, y:el.y1} : dispXY(el.x1, el.y1, orientation);
     var p2 = small ? {x:el.x2, y:el.y2} : dispXY(el.x2, el.y2, orientation);
