@@ -456,7 +456,9 @@ function pitchSvgMarkup(elements, small, orientation, svgId, view){
     var sel = (!small && el.id===selectedElId) ? '<circle r="'+(el.type==='player'?17:13)+'" fill="none" stroke="#fff200" stroke-width="2"/>' : '';
     return '<g class="elem-token" data-id="'+el.id+'" data-type="'+el.type+'" transform="translate('+dx+','+dy+')" style="cursor:'+(small?'default':'grab')+'">'+sel+shapeMarkup(el, small)+'</g>';
   }).join('');
-  var tiltStyle = (!small && view==='angle') ? ' style="transform:perspective(650px) rotateX(48deg) scale(1.08);transform-origin:50% 100%;"' : '';
+  var tiltStyle = '';
+  if(!small && view==='angle') tiltStyle = ' style="transform:perspective(650px) rotateX(48deg) scale(1.08);transform-origin:50% 100%;"';
+  else if(!small && view==='side') tiltStyle = ' style="transform:perspective(700px) rotateY(55deg) scale(1.15);transform-origin:50% 50%;"';
   return '<svg id="'+(svgId||'pitchSvg')+'" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg"'+tiltStyle+'>'+
     '<defs><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fff200"/></marker></defs>'+
     lines + linesHtml + pointsHtml +
@@ -465,8 +467,24 @@ function pitchSvgMarkup(elements, small, orientation, svgId, view){
 function openPlanBuilder(idx){
   editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[]};
   editingDrills = editingPlan.drills ? editingPlan.drills.slice() : [];
-  boardState = {elements:[], orientation:'h', view:'top'};
   addMode = null; lineStart = null; selectedElId = null; editingDrillIndex = null;
+  showViewChooser();
+}
+function showViewChooser(){
+  var html = '<h3 style="margin-bottom:14px">בחר/י תצוגת מגרש</h3>'+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+      '<button class="btn" id="vcTop">🗺️ מלמעלה</button>'+
+      '<button class="btn" id="vcSide">📐 מהצד</button>'+
+      '<button class="btn" id="vcAngle">🎥 באלכסון (תלת מימדי)</button>'+
+    '</div>';
+  openModal(html);
+  document.getElementById('vcTop').onclick = function(){ startPlanBuilderWithView('top'); };
+  document.getElementById('vcSide').onclick = function(){ startPlanBuilderWithView('side'); };
+  document.getElementById('vcAngle').onclick = function(){ startPlanBuilderWithView('angle'); };
+}
+function startPlanBuilderWithView(view){
+  boardState = {elements:[], orientation:'h', view:view};
+  closeModal();
   renderPlanBuilderModal();
 }
 function loadDrillToBoard(i){
@@ -532,7 +550,7 @@ function renderPlanBuilderModal(){
   '</div>') : '')+
   '<div class="action-row">'+
     '<button id="btnRotateBoard">🔄 סובב מגרש</button>'+
-    '<button id="btnToggleView">'+(boardState.view==='angle'?'🗺️ תצוגה שטוחה':'🎥 תצוגה תלת מימדית')+'</button>'+
+    '<button id="btnToggleView">'+(boardState.view==='top'?'📐 מהצד':(boardState.view==='side'?'🎥 אלכסון':'🗺️ מלמעלה'))+'</button>'+
     '<button id="btnClearBoard">🧹 נקה הכל</button>'+
   '</div>'+
   '<div class="field"><label>הערה לפריים</label><textarea id="drillNoteInput" rows="2" placeholder="מה קורה בפריים הזה...">'+(editingDrillIndex!==null && editingDrills[editingDrillIndex] ? (editingDrills[editingDrillIndex].note||'') : '')+'</textarea></div>'+
@@ -597,7 +615,7 @@ function wirePlanBuilderModal(){
   };
   var viewBtn = document.getElementById('btnToggleView');
   if(viewBtn) viewBtn.onclick = function(){
-    boardState.view = boardState.view==='angle' ? 'top' : 'angle';
+    boardState.view = boardState.view==='top' ? 'side' : (boardState.view==='side' ? 'angle' : 'top');
     renderPlanBuilderModal();
   };
   var delSelBtn = document.getElementById('btnDelSelected');
