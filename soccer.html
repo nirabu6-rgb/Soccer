@@ -367,19 +367,20 @@ function canonXY(x, y, orientation){
   return orientation==='v' ? {x:y, y:x} : {x:x, y:y};
 }
 function shapeMarkup(el, small){
+  var sc = small ? 1 : (el.scale||1);
   if(el.type==='player'){
-    return '<circle r="'+(small?4:14)+'" fill="'+el.color+'" stroke="#fff" stroke-width="'+(small?0.5:2)+'"/>'+
-      (small?'':'<text x="0" y="4" text-anchor="middle" font-size="11" fill="'+(el.color==='#ffffff'?'#1c2230':'#fff')+'">'+(el.num||'')+'</text>');
+    return '<circle r="'+((small?4:14)*sc)+'" fill="'+el.color+'" stroke="#fff" stroke-width="'+(small?0.5:2)+'"/>'+
+      (small?'':'<text x="0" y="4" text-anchor="middle" font-size="'+(11*sc)+'" fill="'+(el.color==='#ffffff'?'#1c2230':'#fff')+'">'+(el.num||'')+'</text>');
   }
   if(el.type==='ball'){
-    return '<circle r="'+(small?3:10)+'" fill="#fff" stroke="#1c2230" stroke-width="'+(small?0.5:1.5)+'"/>';
+    return '<circle r="'+((small?3:10)*sc)+'" fill="#fff" stroke="#1c2230" stroke-width="'+(small?0.5:1.5)+'"/>';
   }
   if(el.type==='goal'){
-    var gw = small?8:22, gh = small?5:14;
+    var gw = (small?8:22)*sc, gh = (small?5:14)*sc;
     return '<rect x="'+(-gw/2)+'" y="'+(-gh/2)+'" width="'+gw+'" height="'+gh+'" fill="none" stroke="#fff" stroke-width="'+(small?1:2)+'"/>';
   }
   if(el.type==='cone'){
-    var s = small?5:10;
+    var s = (small?5:10)*sc;
     return '<path d="M0,-'+s+' L'+s+','+s+' L-'+s+','+s+' Z" fill="#f4731c" stroke="#fff" stroke-width="'+(small?0.5:1.5)+'"/>';
   }
   return '';
@@ -436,6 +437,23 @@ function newDrillFrame(){
   selectedElId = null; addMode = null; lineStart = null;
   renderPlanBuilderModal();
 }
+function saveCurrentFrame(){
+  var frame = {
+    elements: boardState.elements.map(function(e){
+      var c = {id:e.id, type:e.type};
+      if(POINT_TYPES.indexOf(e.type)>=0){ c.x=e.x; c.y=e.y; c.scale=e.scale||1; if(e.type==='player'){ c.color=e.color; c.num=e.num; } }
+      else { c.x1=e.x1; c.y1=e.y1; c.x2=e.x2; c.y2=e.y2; }
+      return c;
+    }),
+    note: (document.getElementById('drillNoteInput').value||'').trim()
+  };
+  if(editingDrillIndex!==null){
+    editingDrills[editingDrillIndex] = frame;
+  } else {
+    editingDrills.push(frame);
+    editingDrillIndex = editingDrills.length-1;
+  }
+}
 function nextPlayerNum(){
   var nums = boardState.elements.filter(function(e){return e.type==='player';}).map(function(e){return e.num;});
   var n = 1;
@@ -459,14 +477,23 @@ function renderPlanBuilderModal(){
         return '<button class="color-sw '+(pendingPlayerColor===c?'sel':'')+'" data-color="'+c+'" style="background:'+c+'"></button>';
       }).join('')+'</div>'
     : '')+
-  '<div class="muted" style="margin-bottom:10px;text-align:center">'+(addMode?'לחץ/י על המגרש כדי להוסיף':'גרור/י אלמנט קיים להזיז, או בחר/י כלי מעל')+'</div>'+
+  '<div class="muted" style="margin-bottom:10px;text-align:center">'+(addMode?'לחץ/י על המגרש כדי להוסיף':(selectedElId?'גרור/י להזיז, או הגדל/הקטן למטה':'גרור/י אלמנט קיים להזיז, או בחר/י כלי מעל'))+'</div>'+
+  (selectedElId ? (
   '<div class="action-row">'+
-    '<button id="btnRotateBoard">🔄 סובב</button>'+
+    '<button id="btnGrowSelected">🔍+ הגדל</button>'+
+    '<button id="btnShrinkSelected">🔍- הקטן</button>'+
     '<button id="btnDelSelected">🗑 מחק נבחר</button>'+
+  '</div>') : '')+
+  '<div class="action-row">'+
+    '<button id="btnRotateBoard">🔄 סובב מגרש</button>'+
     '<button id="btnClearBoard">🧹 נקה הכל</button>'+
   '</div>'+
   '<div class="field"><label>הערה לפריים</label><textarea id="drillNoteInput" rows="2" placeholder="מה קורה בפריים הזה...">'+(editingDrillIndex!==null && editingDrills[editingDrillIndex] ? (editingDrills[editingDrillIndex].note||'') : '')+'</textarea></div>'+
-  '<button class="btn" id="btnAddDrill" style="margin-bottom:14px">'+(editingDrillIndex!==null?'💾 עדכן פריים '+(editingDrillIndex+1):'➕ הוסף פריים לתוכנית')+'</button>'+
+  '<div class="action-row">'+
+    '<button class="btn" id="btnAddDrill" style="flex:1">'+(editingDrillIndex!==null?'💾 עדכן פריים '+(editingDrillIndex+1):'➕ הוסף פריים לתוכנית')+'</button>'+
+    '<button class="btn ghost" id="btnAddAndNext" style="flex:1">📸 שמור והמשך לפריים הבא</button>'+
+  '</div>'+
+  '<div style="height:14px"></div>'+
   '<div class="section-title" style="font-size:14px">פריימים ('+editingDrills.length+')</div>'+
   (editingDrills.length===0
     ? '<div class="muted" style="margin-bottom:10px">עדיין אין פריימים — בנה/י עמדה ולחצ/י "הוסף פריים לתוכנית"</div>'
@@ -520,33 +547,27 @@ function wirePlanBuilderModal(){
     boardState.orientation = boardState.orientation==='h' ? 'v' : 'h';
     renderPlanBuilderModal();
   };
-  document.getElementById('btnDelSelected').onclick = function(){
+  var delSelBtn = document.getElementById('btnDelSelected');
+  if(delSelBtn) delSelBtn.onclick = function(){
     if(!selectedElId) return;
     boardState.elements = boardState.elements.filter(function(e){return e.id!==selectedElId;});
     selectedElId = null;
     renderPlanBuilderModal();
   };
+  var growBtn = document.getElementById('btnGrowSelected');
+  if(growBtn) growBtn.onclick = function(){ resizeSelected(0.2); };
+  var shrinkBtn = document.getElementById('btnShrinkSelected');
+  if(shrinkBtn) shrinkBtn.onclick = function(){ resizeSelected(-0.2); };
   document.getElementById('btnClearBoard').onclick = function(){
     boardState.elements = [];
     selectedElId = null;
     renderPlanBuilderModal();
   };
-  document.getElementById('btnAddDrill').onclick = function(){
-    var frame = {
-      elements: boardState.elements.map(function(e){
-        var c = {id:e.id, type:e.type};
-        if(POINT_TYPES.indexOf(e.type)>=0){ c.x=e.x; c.y=e.y; if(e.type==='player'){ c.color=e.color; c.num=e.num; } }
-        else { c.x1=e.x1; c.y1=e.y1; c.x2=e.x2; c.y2=e.y2; }
-        return c;
-      }),
-      note: document.getElementById('drillNoteInput').value.trim()
-    };
-    if(editingDrillIndex!==null){
-      editingDrills[editingDrillIndex] = frame;
-    } else {
-      editingDrills.push(frame);
-      editingDrillIndex = editingDrills.length-1;
-    }
+  document.getElementById('btnAddDrill').onclick = function(){ saveCurrentFrame(); renderPlanBuilderModal(); };
+  document.getElementById('btnAddAndNext').onclick = function(){
+    saveCurrentFrame();
+    editingDrillIndex = null;
+    selectedElId = null; addMode = null; lineStart = null;
     renderPlanBuilderModal();
   };
   document.getElementById('btnNewFrame').onclick = function(){ newDrillFrame(); };
@@ -580,13 +601,36 @@ function playDrills(){
 function svgPoint(svg, evt){
   var rect = svg.getBoundingClientRect();
   var vb = svg.viewBox.baseVal;
-  var clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-  var clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  var touch = (evt.changedTouches && evt.changedTouches[0]) || (evt.touches && evt.touches[0]);
+  var clientX = touch ? touch.clientX : evt.clientX;
+  var clientY = touch ? touch.clientY : evt.clientY;
   var x = (clientX - rect.left) / rect.width * vb.width;
   var y = (clientY - rect.top) / rect.height * vb.height;
   return {x:x, y:y};
 }
 var pitchDragging = null;
+var pitchTapHandled = false;
+function handlePitchTap(svg, evt){
+  if(pitchDragging) return;
+  if(evt.target && evt.target.closest && evt.target.closest('.elem-token')) return;
+  if(!addMode) return;
+  var pt = svgPoint(svg, evt);
+  var canon = canonXY(pt.x, pt.y, boardState.orientation);
+  if(POINT_TYPES.indexOf(addMode)>=0){
+    var el = {id:genCode(6), type:addMode, x:canon.x, y:canon.y, scale:1};
+    if(addMode==='player'){ el.color = pendingPlayerColor; el.num = nextPlayerNum(); }
+    boardState.elements.push(el);
+    renderPlanBuilderModal();
+  } else {
+    if(!lineStart){
+      lineStart = canon;
+    } else {
+      boardState.elements.push({id:genCode(6), type:addMode, x1:lineStart.x, y1:lineStart.y, x2:canon.x, y2:canon.y});
+      lineStart = null;
+      renderPlanBuilderModal();
+    }
+  }
+}
 function wirePitchSvg(){
   var svg = document.getElementById('pitchSvg');
   if(!svg) return;
@@ -595,25 +639,13 @@ function wirePitchSvg(){
     token.addEventListener('touchstart', function(e){ startDrag(token); e.stopPropagation(); }, {passive:true});
   });
   svg.addEventListener('click', function(e){
-    if(pitchDragging) return;
-    if(e.target && e.target.closest && e.target.closest('.elem-token')) return;
-    if(!addMode) return;
-    var pt = svgPoint(svg, e);
-    var canon = canonXY(pt.x, pt.y, boardState.orientation);
-    if(POINT_TYPES.indexOf(addMode)>=0){
-      var el = {id:genCode(6), type:addMode, x:canon.x, y:canon.y};
-      if(addMode==='player'){ el.color = pendingPlayerColor; el.num = nextPlayerNum(); }
-      boardState.elements.push(el);
-      renderPlanBuilderModal();
-    } else {
-      if(!lineStart){
-        lineStart = canon;
-      } else {
-        boardState.elements.push({id:genCode(6), type:addMode, x1:lineStart.x, y1:lineStart.y, x2:canon.x, y2:canon.y});
-        lineStart = null;
-        renderPlanBuilderModal();
-      }
-    }
+    if(pitchTapHandled){ pitchTapHandled = false; return; }
+    handlePitchTap(svg, e);
+  });
+  svg.addEventListener('touchend', function(e){
+    pitchTapHandled = true;
+    e.preventDefault();
+    handlePitchTap(svg, e);
   });
 }
 function startDrag(token){
@@ -621,6 +653,13 @@ function startDrag(token){
   var id = token.dataset.id;
   selectedElId = id;
   pitchDragging = boardState.elements.filter(function(e){return e.id===id;})[0];
+}
+function resizeSelected(delta){
+  if(!selectedElId) return;
+  var el = boardState.elements.filter(function(e){return e.id===selectedElId;})[0];
+  if(!el || POINT_TYPES.indexOf(el.type)<0) return;
+  el.scale = Math.max(0.5, Math.min(2.5, (el.scale||1)+delta));
+  renderPlanBuilderModal();
 }
 document.addEventListener('mousemove', onPitchDragMove);
 document.addEventListener('touchmove', onPitchDragMove, {passive:false});
