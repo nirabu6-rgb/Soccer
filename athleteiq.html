@@ -772,6 +772,12 @@ function weekNavRow(navAttr, offset){
     '<button class="logout-btn" data-'+navAttr+'="1" title="שבוע הבא" style="font-size:16px">▶</button>'+
   '</div>';
 }
+function weekDayHeader(day, offsetWeeks){
+  var idx = DAY_NAMES.indexOf(day);
+  var d = startOfWeek(offsetWeeks);
+  d.setDate(d.getDate() + idx);
+  return '<div style="font-weight:700">'+d.getDate()+'</div><div style="font-size:10px">'+day+'</div>';
+}
 function monthNavRow(navAttr, offset){
   return '<div class="row" style="margin-bottom:10px;gap:6px">'+
     '<button class="logout-btn" data-'+navAttr+'="-1" title="חודש קודם" style="font-size:16px">◀</button>'+
@@ -848,7 +854,7 @@ function clubFieldsBoard(){
   var fieldItemsAll = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id;});
   html += '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:680px">'+
     '<tr><td style="width:50px"></td>'+
-      fieldDays.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px;font-weight:700">'+d+'</td>'; }).join('')+
+      fieldDays.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px">'+weekDayHeader(d, CLUB_FIELD_WEEK_OFFSET)+'</td>'; }).join('')+
     '</tr>'+
     TIME_SLOTS.map(function(slot){
       return '<tr>'+
@@ -961,20 +967,21 @@ function tplClubGroupsSchedule(){
     html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:12px;flex-wrap:wrap">'+
       DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_DAILY_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-daytab="'+d+'">'+d+'</button>'; }).join('')+
     '</div>'+
-    clubGroupsGrid([CLUB_DAILY_DAY], fieldsById);
+    clubGroupsGrid([CLUB_DAILY_DAY], fieldsById, CLUB_GROUPS_WEEK_OFFSET);
   } else if(CLUB_GROUPS_VIEW==='weekly'){
     html += weekNavRow('gsweeknav', CLUB_GROUPS_WEEK_OFFSET);
     html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל הקבוצות — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
-    clubGroupsGrid(DAY_NAMES, fieldsById);
+    clubGroupsGrid(DAY_NAMES, fieldsById, CLUB_GROUPS_WEEK_OFFSET);
   } else {
     var lbl = CLUB_GROUPS_VIEW==='monthly' ? 'חודשי' : 'שנתי';
     html += monthNavRow('gsmonthnav', CLUB_GROUPS_MONTH_OFFSET);
     html += '<div class="muted" style="margin-bottom:10px">תצוגה '+lbl+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lbl+'</div>'+
-    clubGroupsGrid(DAY_NAMES, fieldsById);
+    clubGroupsGrid(DAY_NAMES, fieldsById, 0);
   }
   return html;
 }
-function clubGroupsGrid(days, fieldsById){
+function clubGroupsGrid(days, fieldsById, weekOffset){
+  weekOffset = weekOffset || 0;
   if(!CLUB_SCHEDULE.length){
     return '<div class="card" style="text-align:center;color:var(--sub)">אין קבוצות מתוזמנות בתצוגה זו</div>';
   }
@@ -982,7 +989,7 @@ function clubGroupsGrid(days, fieldsById){
   days.forEach(function(d){ grpRowSkip[d] = 0; });
   return '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:'+(days.length>1?680:240)+'px">'+
     '<tr><td style="width:50px"></td>'+
-      days.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px;font-weight:700">'+d+'</td>'; }).join('')+
+      days.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px">'+weekDayHeader(d, weekOffset)+'</td>'; }).join('')+
     '</tr>'+
     TIME_SLOTS.map(function(slot){
       return '<tr>'+
@@ -1523,6 +1530,7 @@ function openAddScheduleModal(presets){
     var sch = {id:id, fieldId:document.getElementById('schField').value, day:document.getElementById('schDay').value,
       start:start, duration:duration, time:start+'-'+addMinutesToTime(start,duration),
       group:document.getElementById('schGroup').value, clubUid:ME.uid};
+    sch.recurAllYear = confirm('הלוז נקבע על בסיס שבועי ביום '+sch.day+' — להחיל אותו לאורך כל השנה?');
     db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
       CLUB_SCHEDULE.push(sch);
       CLUB_SELECTED_FIELD = sch.fieldId;
