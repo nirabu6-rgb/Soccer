@@ -190,6 +190,20 @@ auth.onAuthStateChanged(function(user){
   }
 });
 
+/* ---------------- TEMP: login disabled, auto-enter with local profile ----------------
+   Phone OTP login is built but disabled for now (Firebase Phone provider / billing
+   not yet enabled) -- re-enable by removing this block once it's ready. */
+var LOGIN_DISABLED = true;
+if(LOGIN_DISABLED){
+  ME.uid = localStorage.getItem('fc_uid') || ('local_' + Math.random().toString(36).slice(2,10));
+  ME.name = localStorage.getItem('fc_name') || 'מאמן';
+  ME.role = localStorage.getItem('fc_role') || 'coach';
+  localStorage.setItem('fc_uid', ME.uid);
+  localStorage.setItem('fc_name', ME.name);
+  localStorage.setItem('fc_role', ME.role);
+  enterApp();
+}
+
 function roleLabel(r){ return r==='manager' ? 'מנהל מקצועי' : 'מאמן'; }
 function enterApp(){
   document.getElementById('loginScreen').style.display = 'none';
