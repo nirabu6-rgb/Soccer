@@ -570,7 +570,8 @@ function wirePlanBuilderModal(){
     selectedElId = null; addMode = null; lineStart = null;
     renderPlanBuilderModal();
   };
-  document.getElementById('btnNewFrame').onclick = function(){ newDrillFrame(); };
+  var newFrameBtn = document.getElementById('btnNewFrame');
+  if(newFrameBtn) newFrameBtn.onclick = function(){ newDrillFrame(); };
   var delCurBtn = document.getElementById('btnDelCurrentFrame');
   if(delCurBtn) delCurBtn.onclick = function(){
     editingDrills.splice(editingDrillIndex,1);
