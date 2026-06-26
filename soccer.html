@@ -489,21 +489,18 @@ function renderPlanBuilderModal(){
     '<button id="btnClearBoard">🧹 נקה הכל</button>'+
   '</div>'+
   '<div class="field"><label>הערה לפריים</label><textarea id="drillNoteInput" rows="2" placeholder="מה קורה בפריים הזה...">'+(editingDrillIndex!==null && editingDrills[editingDrillIndex] ? (editingDrills[editingDrillIndex].note||'') : '')+'</textarea></div>'+
-  '<div class="action-row">'+
-    '<button class="btn" id="btnAddDrill" style="flex:1">'+(editingDrillIndex!==null?'💾 עדכן פריים '+(editingDrillIndex+1):'➕ הוסף פריים לתוכנית')+'</button>'+
-    '<button class="btn ghost" id="btnAddAndNext" style="flex:1">📸 שמור והמשך לפריים הבא</button>'+
-  '</div>'+
-  '<div style="height:14px"></div>'+
+  '<button class="btn" id="btnAddDrill" style="margin-bottom:10px">'+(editingDrillIndex!==null?'💾 עדכן פריים '+(editingDrillIndex+1)+' והמשך':'➕ הוסף פריים והמשך הלאה')+'</button>'+
+  '<div class="muted" style="margin-bottom:14px;text-align:center">לאחר ההוספה הלוח יישמר כפי שהוא — תזיז/י רק את מה שצריך לפריים הבא (למשל מסירה משחקן 1 לשחקן 2)</div>'+
   '<div class="section-title" style="font-size:14px">פריימים ('+editingDrills.length+')</div>'+
   (editingDrills.length===0
-    ? '<div class="muted" style="margin-bottom:10px">עדיין אין פריימים — בנה/י עמדה ולחצ/י "הוסף פריים לתוכנית"</div>'
+    ? '<div class="muted" style="margin-bottom:10px">עדיין אין פריימים — בנה/י עמדה ולחצ/י "הוסף פריים והמשך הלאה"</div>'
     : ('<button class="btn ghost" id="btnPlayDrills" style="margin-bottom:10px">▶ הפעל כסרטון</button>'+
        '<div id="drillPlayArea" style="margin-bottom:10px"></div>'+
        '<div class="frames-strip">'+
          editingDrills.map(function(d,i){
            return '<div class="frame-chip '+(editingDrillIndex===i?'active':'')+'" data-loaddrill="'+i+'">'+pitchSvgMarkup(d.elements, true, 'h', 'drillThumb'+i)+'<div class="lbl">פריים '+(i+1)+'</div></div>';
          }).join('')+
-         '<button class="frame-add-chip" id="btnNewFrame">+</button>'+
+         '<button class="frame-add-chip" id="btnNewFrame" title="התחל פריים ריק">🧹</button>'+
        '</div>'+
        (editingDrillIndex!==null ? '<button class="btn ghost" id="btnDelCurrentFrame" style="margin-bottom:10px">🗑 מחק פריים '+(editingDrillIndex+1)+'</button>' : '')))+
   '';
@@ -563,8 +560,7 @@ function wirePlanBuilderModal(){
     selectedElId = null;
     renderPlanBuilderModal();
   };
-  document.getElementById('btnAddDrill').onclick = function(){ saveCurrentFrame(); renderPlanBuilderModal(); };
-  document.getElementById('btnAddAndNext').onclick = function(){
+  document.getElementById('btnAddDrill').onclick = function(){
     saveCurrentFrame();
     editingDrillIndex = null;
     selectedElId = null; addMode = null; lineStart = null;
