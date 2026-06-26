@@ -437,26 +437,39 @@ var BG_STYLES = {
   light: {a:'#6fc977', b:'#62b86a'},
   blue: {a:'#2e6fb0', b:'#27619c'}
 };
-function pitchSvgMarkup(elements, small, orientation, svgId, view, bgStyle){
+function pitchSvgMarkup(elements, small, orientation, svgId, bgStyle){
   var dims = small ? {w:60,h:40} : pitchDims(orientation);
   var w = dims.w, h = dims.h;
   var sx = small ? 60/BASE_W : 1, sy = small ? 40/BASE_H : 1;
   var sw = small ? 1 : 2;
-  var boxDepth = w*0.16, boxH = h*0.6, gaDepth = w*0.06, gaH = h*0.3;
+  var portrait = !small && orientation==='v';
+  var boxDepth = portrait ? h*0.16 : w*0.16, boxH = portrait ? w*0.6 : h*0.6;
+  var gaDepth = portrait ? h*0.06 : w*0.06, gaH = portrait ? w*0.3 : h*0.3;
   var bg = BG_STYLES[bgStyle] || BG_STYLES.classic;
   var stripes = '';
   var stripeCount = small ? 6 : 12;
-  var stripeW = w/stripeCount;
+  var stripeW = portrait ? h/stripeCount : w/stripeCount;
   for(var si=0; si<stripeCount; si++){
-    stripes += '<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?bg.a:bg.b)+'"/>';
+    stripes += portrait ?
+      ('<rect x="0" y="'+(si*stripeW)+'" width="'+w+'" height="'+stripeW+'" fill="'+(si%2===0?bg.a:bg.b)+'"/>') :
+      ('<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?bg.a:bg.b)+'"/>');
   }
   var lines = stripes+'<rect x="2" y="2" width="'+(w-4)+'" height="'+(h-4)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
-    '<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+sw+'"/>'+
+    (portrait ?
+      ('<line x1="2" y1="'+(h/2)+'" x2="'+(w-2)+'" y2="'+(h/2)+'" stroke="#fff" stroke-width="'+sw+'"/>') :
+      ('<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+sw+'"/>')
+    )+
     '<circle cx="'+(w/2)+'" cy="'+(h/2)+'" r="'+(small?6:40)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
-    '<rect x="2" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
-    '<rect x="'+(w-2-boxDepth)+'" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
-    '<rect x="2" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
-    '<rect x="'+(w-2-gaDepth)+'" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>';
+    (portrait ?
+      ('<rect x="'+((w-boxH)/2)+'" y="2" width="'+boxH+'" height="'+boxDepth+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="'+((w-boxH)/2)+'" y="'+(h-2-boxDepth)+'" width="'+boxH+'" height="'+boxDepth+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="'+((w-gaH)/2)+'" y="2" width="'+gaH+'" height="'+gaDepth+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="'+((w-gaH)/2)+'" y="'+(h-2-gaDepth)+'" width="'+gaH+'" height="'+gaDepth+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>') :
+      ('<rect x="2" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="'+(w-2-boxDepth)+'" y="'+((h-boxH)/2)+'" width="'+boxDepth+'" height="'+boxH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="2" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
+       '<rect x="'+(w-2-gaDepth)+'" y="'+((h-gaH)/2)+'" width="'+gaDepth+'" height="'+gaH+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>')
+    );
   var linesHtml = elements.filter(function(el){ return LINE_TYPES.indexOf(el.type)>=0; }).map(function(el){
     var p1 = small ? {x:el.x1, y:el.y1} : dispXY(el.x1, el.y1, orientation);
     var p2 = small ? {x:el.x2, y:el.y2} : dispXY(el.x2, el.y2, orientation);
@@ -470,10 +483,7 @@ function pitchSvgMarkup(elements, small, orientation, svgId, view, bgStyle){
     var sel = (!small && el.id===selectedElId) ? selHighlight(el) : '';
     return '<g class="elem-token" data-id="'+el.id+'" data-type="'+el.type+'" transform="translate('+dx+','+dy+')" style="cursor:'+(small?'default':'grab')+'">'+sel+shapeMarkup(el, small)+'</g>';
   }).join('');
-  var tiltStyle = '';
-  if(!small && view==='angle') tiltStyle = ' style="transform:perspective(650px) rotateX(48deg) scale(1.08);transform-origin:50% 100%;"';
-  else if(!small && view==='side') tiltStyle = ' style="transform:perspective(700px) rotateY(55deg) scale(1.15);transform-origin:50% 50%;"';
-  return '<svg id="'+(svgId||'pitchSvg')+'" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg"'+tiltStyle+'>'+
+  return '<svg id="'+(svgId||'pitchSvg')+'" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg">'+
     '<defs><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fff200"/></marker></defs>'+
     lines + linesHtml + pointsHtml +
   '</svg>';
@@ -482,24 +492,8 @@ function openPlanBuilder(idx){
   editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[]};
   editingDrills = editingPlan.drills ? editingPlan.drills.slice() : [];
   addMode = null; lineStart = null; selectedElId = null; editingDrillIndex = null;
-  showViewChooser();
-}
-function showViewChooser(){
-  var html = '<h3 style="margin-bottom:14px">בחר/י תצוגת מגרש</h3>'+
-    '<div style="display:flex;flex-direction:column;gap:10px">'+
-      '<button class="btn" id="vcTop">🗺️ מלמעלה</button>'+
-      '<button class="btn" id="vcSide">📐 מהצד</button>'+
-      '<button class="btn" id="vcAngle">🎥 באלכסון (תלת מימדי)</button>'+
-    '</div>';
-  openModal(html);
-  document.getElementById('vcTop').onclick = function(){ startPlanBuilderWithView('top'); };
-  document.getElementById('vcSide').onclick = function(){ startPlanBuilderWithView('side'); };
-  document.getElementById('vcAngle').onclick = function(){ startPlanBuilderWithView('angle'); };
-}
-function startPlanBuilderWithView(view){
-  boardState = {elements:[], orientation:'h', view:view, bgStyle:'classic'};
+  boardState = {elements:[], orientation:'h', bgStyle:'classic'};
   boardHistory = [];
-  closeModal();
   renderPlanBuilderModal();
 }
 function showBgStylePicker(){
@@ -574,7 +568,7 @@ function renderPlanBuilderModal(){
   var body = ''+
   '<div class="frame-status">'+frameLabel+(addMode?' · לחץ/י על המגרש למיקום ה'+(TOOLBOX_ITEMS.filter(function(t){return t.type===addMode;})[0]||{}).label:'')+'</div>'+
   '<div class="pitch-stage">'+
-    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.view, boardState.bgStyle)+'</div>'+
+    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.bgStyle)+'</div>'+
   '</div>'+
   '<div class="tool-strip">'+
     TOOLBOX_ITEMS.map(function(item){
@@ -595,7 +589,6 @@ function renderPlanBuilderModal(){
   '</div>') : '')+
   '<div class="action-row">'+
     '<button id="btnRotateBoard">🔄 סובב מגרש</button>'+
-    '<button id="btnToggleView">'+(boardState.view==='top'?'📐 מהצד':(boardState.view==='side'?'🎥 אלכסון':'🗺️ מלמעלה'))+'</button>'+
     '<button id="btnBgStyle">🎨 רקע מגרש</button>'+
   '</div>'+
   '<div class="action-row">'+
@@ -659,13 +652,18 @@ function wirePlanBuilderModal(){
     btn.onclick = function(){ pendingPlayerColor = btn.dataset.color; renderPlanBuilderModal(); };
   });
   document.getElementById('btnRotateBoard').onclick = function(){
-    boardState.orientation = boardState.orientation==='h' ? 'v' : 'h';
-    renderPlanBuilderModal();
-  };
-  var viewBtn = document.getElementById('btnToggleView');
-  if(viewBtn) viewBtn.onclick = function(){
-    boardState.view = boardState.view==='top' ? 'side' : (boardState.view==='side' ? 'angle' : 'top');
-    renderPlanBuilderModal();
+    var svg = document.getElementById('pitchSvg');
+    if(svg){
+      svg.style.transition = 'transform 0.4s ease';
+      svg.style.transform = 'rotate(90deg)';
+      setTimeout(function(){
+        boardState.orientation = boardState.orientation==='h' ? 'v' : 'h';
+        renderPlanBuilderModal();
+      }, 400);
+    } else {
+      boardState.orientation = boardState.orientation==='h' ? 'v' : 'h';
+      renderPlanBuilderModal();
+    }
   };
   var delSelBtn = document.getElementById('btnDelSelected');
   if(delSelBtn) delSelBtn.onclick = function(){
@@ -729,7 +727,7 @@ function stopPlayback(){
   if(playState.interval){ clearInterval(playState.interval); playState.interval = null; }
 }
 function animateFrameTransition(area, fromEls, toEls, onDone, speed){
-  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg', boardState.view, boardState.bgStyle);
+  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg', boardState.bgStyle);
   var fromById = {};
   fromEls.forEach(function(e){ if(POINT_TYPES.indexOf(e.type)>=0) fromById[e.id] = e; });
   var moves = [];
@@ -784,7 +782,7 @@ function playDrills(){
   var area = document.getElementById('drillPlayArea');
   if(!area || editingDrills.length===0) return;
   playState.playing = true;
-  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg', boardState.view, boardState.bgStyle);
+  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg', boardState.bgStyle);
   var i = 0;
   function nextFrame(){
     if(!playState.playing) return;
