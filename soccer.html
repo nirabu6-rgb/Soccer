@@ -75,6 +75,14 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .frame-add-chip{flex:none;width:78px;height:52px;border-radius:8px;border:2px dashed #c8cdd5;background:none;font-size:24px;color:var(--sub);cursor:pointer}
 .drill-card{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:10px;padding:8px;margin-bottom:8px}
 .drill-card svg{width:60px;height:40px;background:#3eac46;border-radius:6px;flex:none}
+.week-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.week-dayhead{display:flex;min-width:610px}
+.week-daycol-head{flex:1;min-width:80px;text-align:center;font-size:12px;font-weight:700;padding-bottom:4px}
+.week-grid{display:flex;min-width:610px;position:relative}
+.week-hourcol{width:46px;flex:none;position:relative}
+.hour-line{position:absolute;left:0;right:0;border-top:1px solid #eceff3;font-size:10px;color:var(--sub);padding-right:2px;white-space:nowrap}
+.week-daycol{flex:1;min-width:80px;position:relative;border-right:1px solid #eceff3;touch-action:none}
+.session-block{position:absolute;left:2px;right:2px;border-radius:6px;color:#fff;font-size:10px;line-height:1.3;padding:2px 4px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:70}
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
@@ -517,58 +525,141 @@ function closePitchDetail(){
   document.getElementById('pitchScreen').style.display = 'none';
   currentPitchIdx = null;
 }
+var GRID_ROW_H = 18;
+var GRID_START_MIN = 14*60;
+var GRID_END_MIN = 23*60;
+var SESSION_COLORS = ['#22b8d8','#34d399','#fbbf24','#f87171','#a78bfa','#fb923c'];
+function timeToMin(t){ var p = t.split(':'); return parseInt(p[0],10)*60+parseInt(p[1],10); }
+function minToTime(m){ var h = Math.floor(m/60), mm = m%60; return (h<10?'0':'')+h+':'+(mm===0?'00':mm); }
 function renderPitchDetail(){
   var p = PITCHES[currentPitchIdx];
   document.getElementById('pitchScreenTitle').textContent = p.name;
-  var sessions = p.schedule[currentPitchDay] || [];
+  var gridH = ((GRID_END_MIN-GRID_START_MIN)/15)*GRID_ROW_H;
+  var hourLines = '';
+  for(var hm=GRID_START_MIN; hm<=GRID_END_MIN; hm+=60){
+    var top = ((hm-GRID_START_MIN)/15)*GRID_ROW_H;
+    hourLines += '<div class="hour-line" style="top:'+top+'px">'+minToTime(hm)+'</div>';
+  }
   var body = document.getElementById('pitchScreenBody');
   body.innerHTML =
-    '<div class="tool-strip" style="margin-bottom:12px">'+
-      DAYS.map(function(d){
-        return '<button class="tbx-btn" data-day="'+d.k+'" style="flex:none;min-width:54px;padding:8px 4px;font-size:12px'+(currentPitchDay===d.k?';background:var(--accent);color:#fff;border-color:var(--accent)':'')+'">'+d.l+'</button>';
-      }).join('')+
-    '</div>'+
-    (sessions.length===0
-      ? '<div class="muted" style="margin-bottom:10px">אין עדיין אימונים ביום זה</div>'
-      : sessions.map(function(s,i){
-          return '<div class="card"><div class="row"><div><b>'+s.category+'</b><div class="muted">'+s.start+' - '+s.end+'</div></div>'+
-            '<button class="logout-btn" data-delsession="'+i+'" title="מחק">🗑</button></div></div>';
-        }).join('')
-    )+
-    '<button class="btn" id="btnAddSession">+ הוסף אימון</button>';
-  document.querySelectorAll('[data-day]').forEach(function(btn){
-    btn.onclick = function(){ currentPitchDay = btn.dataset.day; renderPitchDetail(); };
-  });
-  document.querySelectorAll('[data-delsession]').forEach(function(btn){
-    btn.onclick = function(){
-      sessions.splice(parseInt(btn.dataset.delsession,10),1);
-      savePitch(p);
-      renderPitchDetail();
+    '<div class="muted" style="margin-bottom:8px">לחיצה ארוכה על שעה ריקה בלוז מוסיפה אימון חדש. לחיצה על אימון קיים פותחת פרטים.</div>'+
+    '<button class="btn ghost sm" id="btnAddSession" style="margin-bottom:10px">+ הוספת אימון</button>'+
+    '<div class="week-grid-wrap">'+
+      '<div class="week-dayhead"><div class="week-hourcol"></div>'+
+        DAYS.map(function(d){ return '<div class="week-daycol-head">'+d.l+'</div>'; }).join('')+
+      '</div>'+
+      '<div class="week-grid">'+
+        '<div class="week-hourcol" style="height:'+gridH+'px">'+hourLines+'</div>'+
+        DAYS.map(function(d){
+          var sessions = p.schedule[d.k] || [];
+          var blocks = sessions.map(function(s,i){
+            var top = ((timeToMin(s.start)-GRID_START_MIN)/15)*GRID_ROW_H;
+            var h = ((timeToMin(s.end)-timeToMin(s.start))/15)*GRID_ROW_H;
+            return '<div class="session-block" data-day="'+d.k+'" data-sessidx="'+i+'" style="top:'+top+'px;height:'+(h-2)+'px;background:'+(s.color||SESSION_COLORS[0])+'">'+
+              '<b>'+s.category+'</b><br>'+s.start+'-'+s.end+
+            '</div>';
+          }).join('');
+          return '<div class="week-daycol" data-day="'+d.k+'" style="height:'+gridH+'px">'+blocks+'</div>';
+        }).join('')+
+      '</div>'+
+    '</div>';
+  document.getElementById('btnAddSession').onclick = function(){ openAddSessionModal(currentPitchDay||'sun', null); };
+  document.querySelectorAll('.session-block').forEach(function(el){
+    el.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    el.onclick = function(e){
+      e.stopPropagation();
+      openSessionDetailModal(el.dataset.day, parseInt(el.dataset.sessidx,10));
     };
   });
-  document.getElementById('btnAddSession').onclick = function(){ openAddSessionModal(); };
+  document.querySelectorAll('.week-daycol').forEach(function(col){
+    var pressTimer = null;
+    col.addEventListener('pointerdown', function(e){
+      if(e.target.closest && e.target.closest('.session-block')) return;
+      var rect = col.getBoundingClientRect();
+      var y = e.clientY - rect.top;
+      pressTimer = setTimeout(function(){
+        pressTimer = null;
+        var startMin = GRID_START_MIN + Math.round(y/GRID_ROW_H)*15;
+        if(startMin > GRID_END_MIN-15) startMin = GRID_END_MIN-15;
+        openAddSessionModal(col.dataset.day, minToTime(startMin));
+      }, 550);
+    });
+    ['pointerup','pointermove','pointercancel','pointerleave'].forEach(function(evt){
+      col.addEventListener(evt, function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } });
+    });
+  });
 }
-function openAddSessionModal(){
+function openAddSessionModal(day, startTime){
+  var start = startTime || TIME_SLOTS[0];
+  var startIdx = TIME_SLOTS.indexOf(start);
+  var defEnd = TIME_SLOTS[Math.min(startIdx+4, TIME_SLOTS.length-1)];
   var html = '<h3 style="margin-bottom:14px">הוספת אימון</h3>'+
+    '<div class="field"><label>יום</label><select id="sessionDayInput">'+
+      DAYS.map(function(d){ return '<option value="'+d.k+'"'+(d.k===day?' selected':'')+'>'+d.l+'</option>'; }).join('')+
+    '</select></div>'+
     '<div class="field"><label>קבוצה</label><select id="sessionCatInput">'+
       AGE_GROUPS.map(function(cat){ return '<option value="'+cat+'">'+cat+'</option>'; }).join('')+
     '</select></div>'+
+    '<div class="field"><label>מאמן</label><input id="sessionCoachInput" placeholder="שם המאמן"></div>'+
     '<div class="field"><label>משעה</label><select id="sessionStartInput">'+
-      TIME_SLOTS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+      TIME_SLOTS.map(function(t){ return '<option value="'+t+'"'+(t===start?' selected':'')+'>'+t+'</option>'; }).join('')+
     '</select></div>'+
     '<div class="field"><label>עד שעה</label><select id="sessionEndInput">'+
-      TIME_SLOTS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+      TIME_SLOTS.map(function(t){ return '<option value="'+t+'"'+(t===defEnd?' selected':'')+'>'+t+'</option>'; }).join('')+
     '</select></div>'+
     '<button class="btn" id="btnSaveSession">הוסף</button>';
   openModal(html);
   document.getElementById('btnSaveSession').onclick = function(){
     var p = PITCHES[currentPitchIdx];
+    var d = document.getElementById('sessionDayInput').value;
     var cat = document.getElementById('sessionCatInput').value;
-    var start = document.getElementById('sessionStartInput').value;
-    var end = document.getElementById('sessionEndInput').value;
-    if(end<=start) return;
-    p.schedule[currentPitchDay].push({category:cat, start:start, end:end});
-    p.schedule[currentPitchDay].sort(function(a,b){ return a.start<b.start?-1:1; });
+    var coach = document.getElementById('sessionCoachInput').value.trim();
+    var st = document.getElementById('sessionStartInput').value;
+    var en = document.getElementById('sessionEndInput').value;
+    if(en<=st) return;
+    currentPitchDay = d;
+    p.schedule[d].push({category:cat, coach:coach, start:st, end:en, color:SESSION_COLORS[0]});
+    p.schedule[d].sort(function(a,b){ return a.start<b.start?-1:1; });
+    savePitch(p);
+    closeModal();
+    renderPitchDetail();
+  };
+}
+function openSessionDetailModal(day, idx){
+  var p = PITCHES[currentPitchIdx];
+  var s = p.schedule[day][idx];
+  var html = '<div class="row" style="margin-bottom:6px"><h3 style="margin:0">'+s.category+'</h3><button class="logout-btn" id="btnSessMenu" title="עוד">⋮</button></div>'+
+    '<div class="muted" style="margin-bottom:14px">'+s.start+' - '+s.end+'</div>'+
+    '<div class="field"><label>מאמן</label><input id="sessDetailCoach" value="'+(s.coach||'')+'" placeholder="שם המאמן"></div>'+
+    '<button class="btn" id="btnSaveSessDetail" style="margin-bottom:14px">שמור</button>'+
+    '<div id="sessMenuBox" style="display:none">'+
+      '<div class="muted" style="margin-bottom:8px">צבע ביומן</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:14px">'+
+        SESSION_COLORS.map(function(c){ return '<button class="color-sw sessColorBtn" data-color="'+c+'" style="background:'+c+'"></button>'; }).join('')+
+      '</div>'+
+      '<button class="btn ghost sm" id="btnDelSession" style="color:#f87171;border-color:#f87171">🗑 מחק אימון</button>'+
+    '</div>';
+  openModal(html);
+  document.getElementById('btnSessMenu').onclick = function(){
+    var box = document.getElementById('sessMenuBox');
+    box.style.display = box.style.display==='none' ? 'block' : 'none';
+  };
+  document.getElementById('btnSaveSessDetail').onclick = function(){
+    s.coach = document.getElementById('sessDetailCoach').value.trim();
+    savePitch(p);
+    closeModal();
+    renderPitchDetail();
+  };
+  document.querySelectorAll('.sessColorBtn').forEach(function(btn){
+    btn.onclick = function(){
+      s.color = btn.dataset.color;
+      savePitch(p);
+      closeModal();
+      renderPitchDetail();
+    };
+  });
+  document.getElementById('btnDelSession').onclick = function(){
+    p.schedule[day].splice(idx,1);
     savePitch(p);
     closeModal();
     renderPitchDetail();
