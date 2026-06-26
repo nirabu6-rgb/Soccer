@@ -35,7 +35,7 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .muted{color:var(--sub);font-size:13px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .pitch-wrap{background:var(--card);border-radius:14px;padding:10px;margin-bottom:12px;overflow:hidden}
-#pitchSvg{width:100%;height:auto;touch-action:none;background:#2e9e4f;border-radius:10px}
+#pitchSvg{width:100%;height:auto;touch-action:none;background:#3eac46;border-radius:10px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .toolbar button{flex:1;min-width:90px;padding:9px 6px;border-radius:8px;border:1px solid #dde1e7;background:#fff;font-size:12px;cursor:pointer}
 .toolbar button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -68,12 +68,12 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .action-row button{flex:1;padding:10px 4px;border-radius:10px;border:1px solid #dde1e7;background:#fff;font-size:12px;cursor:pointer}
 .frames-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch}
 .frame-chip{flex:none;width:78px;text-align:center;cursor:pointer}
-.frame-chip svg{width:78px;height:52px;background:#2e9e4f;border-radius:8px;border:2px solid transparent}
+.frame-chip svg{width:78px;height:52px;background:#3eac46;border-radius:8px;border:2px solid transparent}
 .frame-chip.active svg{border-color:var(--accent)}
 .frame-chip .lbl{font-size:11px;color:var(--sub);margin-top:3px}
 .frame-add-chip{flex:none;width:78px;height:52px;border-radius:8px;border:2px dashed #c8cdd5;background:none;font-size:24px;color:var(--sub);cursor:pointer}
 .drill-card{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:10px;padding:8px;margin-bottom:8px}
-.drill-card svg{width:60px;height:40px;background:#2e9e4f;border-radius:6px;flex:none}
+.drill-card svg{width:60px;height:40px;background:#3eac46;border-radius:6px;flex:none}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
@@ -336,7 +336,7 @@ function wireTab(i){
 
 /* ---------------- Pitch board (toolbox-based tactics editor) ---------------- */
 var BASE_W = 600, BASE_H = 380;
-var boardState = {elements:[], orientation:'h'};
+var boardState = {elements:[], orientation:'h', view:'top'};
 var addMode = null;
 var pendingPlayerColor = '#1c2230';
 var lineStart = null;
@@ -381,7 +381,9 @@ function shapeMarkup(el, small){
     var body = '<rect x="'+(-bw/2)+'" y="'+(-bh/2+1.5*sc)+'" width="'+bw+'" height="'+bh+'" rx="'+(2.5*sc)+'" fill="'+el.color+'" stroke="#fff" stroke-width="1"/>';
     var collar = '<path d="M'+(-2.4*sc)+','+(-bh/2+2*sc)+' L0,'+(-bh/2+4.6*sc)+' L'+(2.4*sc)+','+(-bh/2+2*sc)+'" fill="none" stroke="#fff" stroke-width="0.9"/>';
     var num = '<text x="0" y="'+(3.5*sc)+'" text-anchor="middle" font-size="'+(9*sc)+'" font-weight="bold" fill="'+txtFill+'">'+(el.num||'')+'</text>';
-    return sleeveL + sleeveR + body + collar + num;
+    var legs = '<path d="M'+(-3*sc)+','+(bh/2+1.5*sc)+' L'+(-3.5*sc)+','+(bh/2+5*sc)+' M'+(3*sc)+','+(bh/2+1.5*sc)+' L'+(3.5*sc)+','+(bh/2+5*sc)+'" fill="none" stroke="#3b2a1a" stroke-width="'+(2.2*sc)+'" stroke-linecap="round"/>';
+    var head = '<circle cx="0" cy="'+(-bh/2-2.6*sc)+'" r="'+(2.6*sc)+'" fill="#e3ad7c" stroke="#3b2a1a" stroke-width="0.5"/>';
+    return legs + sleeveL + sleeveR + body + collar + head + num;
   }
   if(el.type==='ball'){
     var r = (small?3:10)*sc;
@@ -421,7 +423,7 @@ function shapeMarkup(el, small){
   }
   return '';
 }
-function pitchSvgMarkup(elements, small, orientation, svgId){
+function pitchSvgMarkup(elements, small, orientation, svgId, view){
   var dims = small ? {w:60,h:40} : pitchDims(orientation);
   var w = dims.w, h = dims.h;
   var sx = small ? 60/BASE_W : 1, sy = small ? 40/BASE_H : 1;
@@ -431,7 +433,7 @@ function pitchSvgMarkup(elements, small, orientation, svgId){
   var stripeCount = small ? 6 : 12;
   var stripeW = w/stripeCount;
   for(var si=0; si<stripeCount; si++){
-    stripes += '<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?'#2e9e4f':'#2a934a')+'"/>';
+    stripes += '<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?'#3eac46':'#369b3d')+'"/>';
   }
   var lines = stripes+'<rect x="2" y="2" width="'+(w-4)+'" height="'+(h-4)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
     '<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+sw+'"/>'+
@@ -453,7 +455,8 @@ function pitchSvgMarkup(elements, small, orientation, svgId){
     var sel = (!small && el.id===selectedElId) ? '<circle r="'+(el.type==='player'?17:13)+'" fill="none" stroke="#fff200" stroke-width="2"/>' : '';
     return '<g class="elem-token" data-id="'+el.id+'" data-type="'+el.type+'" transform="translate('+dx+','+dy+')" style="cursor:'+(small?'default':'grab')+'">'+sel+shapeMarkup(el, small)+'</g>';
   }).join('');
-  return '<svg id="'+(svgId||'pitchSvg')+'" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg">'+
+  var tiltStyle = (!small && view==='angle') ? ' style="transform:perspective(650px) rotateX(48deg) scale(1.08);transform-origin:50% 100%;"' : '';
+  return '<svg id="'+(svgId||'pitchSvg')+'" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg"'+tiltStyle+'>'+
     '<defs><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fff200"/></marker></defs>'+
     lines + linesHtml + pointsHtml +
   '</svg>';
@@ -461,7 +464,7 @@ function pitchSvgMarkup(elements, small, orientation, svgId){
 function openPlanBuilder(idx){
   editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[]};
   editingDrills = editingPlan.drills ? editingPlan.drills.slice() : [];
-  boardState = {elements:[], orientation:'h'};
+  boardState = {elements:[], orientation:'h', view:'top'};
   addMode = null; lineStart = null; selectedElId = null; editingDrillIndex = null;
   renderPlanBuilderModal();
 }
@@ -507,7 +510,7 @@ function renderPlanBuilderModal(){
   var body = ''+
   '<div class="frame-status">'+frameLabel+(addMode?' · לחץ/י על המגרש למיקום ה'+(TOOLBOX_ITEMS.filter(function(t){return t.type===addMode;})[0]||{}).label:'')+'</div>'+
   '<div class="pitch-stage">'+
-    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg')+'</div>'+
+    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.view)+'</div>'+
   '</div>'+
   '<div class="tool-strip">'+
     TOOLBOX_ITEMS.map(function(item){
@@ -528,6 +531,7 @@ function renderPlanBuilderModal(){
   '</div>') : '')+
   '<div class="action-row">'+
     '<button id="btnRotateBoard">🔄 סובב מגרש</button>'+
+    '<button id="btnToggleView">'+(boardState.view==='angle'?'🗺️ תצוגה שטוחה':'🎥 תצוגה תלת מימדית')+'</button>'+
     '<button id="btnClearBoard">🧹 נקה הכל</button>'+
   '</div>'+
   '<div class="field"><label>הערה לפריים</label><textarea id="drillNoteInput" rows="2" placeholder="מה קורה בפריים הזה...">'+(editingDrillIndex!==null && editingDrills[editingDrillIndex] ? (editingDrills[editingDrillIndex].note||'') : '')+'</textarea></div>'+
@@ -590,6 +594,11 @@ function wirePlanBuilderModal(){
     boardState.orientation = boardState.orientation==='h' ? 'v' : 'h';
     renderPlanBuilderModal();
   };
+  var viewBtn = document.getElementById('btnToggleView');
+  if(viewBtn) viewBtn.onclick = function(){
+    boardState.view = boardState.view==='angle' ? 'top' : 'angle';
+    renderPlanBuilderModal();
+  };
   var delSelBtn = document.getElementById('btnDelSelected');
   if(delSelBtn) delSelBtn.onclick = function(){
     if(!selectedElId) return;
@@ -646,7 +655,7 @@ function stopPlayback(){
   if(playState.interval){ clearInterval(playState.interval); playState.interval = null; }
 }
 function animateFrameTransition(area, fromEls, toEls, onDone, speed){
-  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg');
+  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg', boardState.view);
   var fromById = {};
   fromEls.forEach(function(e){ if(POINT_TYPES.indexOf(e.type)>=0) fromById[e.id] = e; });
   var moves = [];
@@ -688,7 +697,7 @@ function playDrills(){
   var area = document.getElementById('drillPlayArea');
   if(!area || editingDrills.length===0) return;
   playState.playing = true;
-  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg');
+  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg', boardState.view);
   var i = 0;
   function nextFrame(){
     if(!playState.playing) return;
