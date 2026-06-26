@@ -75,7 +75,7 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .frame-add-chip{flex:none;width:78px;height:52px;border-radius:8px;border:2px dashed #c8cdd5;background:none;font-size:24px;color:var(--sub);cursor:pointer}
 .drill-card{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:10px;padding:8px;margin-bottom:8px}
 .drill-card svg{width:60px;height:40px;background:#3eac46;border-radius:6px;flex:none}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:70}
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
 .logout-btn{background:transparent;border:none;font-size:16px;cursor:pointer;padding:2px 6px}
@@ -337,7 +337,8 @@ function wireTab(i){
 
 /* ---------------- Pitch board (toolbox-based tactics editor) ---------------- */
 var BASE_W = 600, BASE_H = 380;
-var boardState = {elements:[], orientation:'h', view:'top'};
+var boardState = {elements:[], orientation:'h', view:'top', bgStyle:'classic'};
+var boardHistory = [];
 var addMode = null;
 var pendingPlayerColor = '#1c2230';
 var lineStart = null;
@@ -351,13 +352,14 @@ var playState = {playing:false, timer:null, interval:null};
 var PLAYER_COLORS = ['#1c2230','#e63946','#2a9d8f','#f4a300','#3b82f6','#ffffff'];
 var TOOLBOX_ITEMS = [
   {type:'player', ic:'🧍', label:'שחקן'},
+  {type:'gk', ic:'🧤', label:'שוער'},
   {type:'goal', ic:'🥅', label:'שער'},
   {type:'cone', ic:'🔺', label:'קונוס'},
   {type:'ball', ic:'⚽', label:'כדור'},
   {type:'arrow', ic:'➡️', label:'חץ'},
   {type:'line', ic:'➖', label:'קו'}
 ];
-var POINT_TYPES = ['player','goal','cone','ball'];
+var POINT_TYPES = ['player','gk','goal','cone','ball'];
 var LINE_TYPES = ['arrow','line'];
 
 function pitchDims(orientation){
@@ -371,15 +373,16 @@ function canonXY(x, y, orientation){
 }
 function shapeMarkup(el, small){
   var sc = small ? 1 : (el.scale||1);
-  if(el.type==='player'){
+  if(el.type==='player' || el.type==='gk'){
+    var color = el.type==='gk' ? '#f4c400' : el.color;
     if(small){
-      return '<circle r="4" fill="'+el.color+'" stroke="#fff" stroke-width="0.5"/>';
+      return '<circle r="4" fill="'+color+'" stroke="#fff" stroke-width="0.5"/>';
     }
-    var txtFill = el.color==='#ffffff' ? '#1c2230' : '#fff';
+    var txtFill = color==='#ffffff' || color==='#f4c400' ? '#1c2230' : '#fff';
     var bw = 12*sc, bh = 14*sc, sw = 5.5*sc, sh = 6.5*sc;
-    var sleeveL = '<rect x="'+(-bw/2-sw*0.7)+'" y="'+(-bh/2+1*sc)+'" width="'+(sw*0.8)+'" height="'+sh+'" rx="'+(1.2*sc)+'" fill="'+el.color+'" stroke="#fff" stroke-width="0.8"/>';
-    var sleeveR = '<rect x="'+(bw/2-sw*0.1)+'" y="'+(-bh/2+1*sc)+'" width="'+(sw*0.8)+'" height="'+sh+'" rx="'+(1.2*sc)+'" fill="'+el.color+'" stroke="#fff" stroke-width="0.8"/>';
-    var body = '<rect x="'+(-bw/2)+'" y="'+(-bh/2+1.5*sc)+'" width="'+bw+'" height="'+bh+'" rx="'+(2.5*sc)+'" fill="'+el.color+'" stroke="#fff" stroke-width="1"/>';
+    var sleeveL = '<rect x="'+(-bw/2-sw*0.7)+'" y="'+(-bh/2+1*sc)+'" width="'+(sw*0.8)+'" height="'+sh+'" rx="'+(1.2*sc)+'" fill="'+color+'" stroke="#fff" stroke-width="0.8"/>';
+    var sleeveR = '<rect x="'+(bw/2-sw*0.1)+'" y="'+(-bh/2+1*sc)+'" width="'+(sw*0.8)+'" height="'+sh+'" rx="'+(1.2*sc)+'" fill="'+color+'" stroke="#fff" stroke-width="0.8"/>';
+    var body = '<rect x="'+(-bw/2)+'" y="'+(-bh/2+1.5*sc)+'" width="'+bw+'" height="'+bh+'" rx="'+(2.5*sc)+'" fill="'+color+'" stroke="#fff" stroke-width="1"/>';
     var collar = '<path d="M'+(-2.4*sc)+','+(-bh/2+2*sc)+' L0,'+(-bh/2+4.6*sc)+' L'+(2.4*sc)+','+(-bh/2+2*sc)+'" fill="none" stroke="#fff" stroke-width="0.9"/>';
     var num = '<text x="0" y="'+(3.5*sc)+'" text-anchor="middle" font-size="'+(9*sc)+'" font-weight="bold" fill="'+txtFill+'">'+(el.num||'')+'</text>';
     var legs = '<path d="M'+(-3*sc)+','+(bh/2+1.5*sc)+' L'+(-3.5*sc)+','+(bh/2+5*sc)+' M'+(3*sc)+','+(bh/2+1.5*sc)+' L'+(3.5*sc)+','+(bh/2+5*sc)+'" fill="none" stroke="#3b2a1a" stroke-width="'+(2.2*sc)+'" stroke-linecap="round"/>';
@@ -424,17 +427,28 @@ function shapeMarkup(el, small){
   }
   return '';
 }
-function pitchSvgMarkup(elements, small, orientation, svgId, view){
+function selHighlight(el){
+  var s = (el.type==='player'?15:12)*(el.scale||1);
+  return '<rect x="-'+s+'" y="-'+s+'" width="'+(s*2)+'" height="'+(s*2)+'" fill="none" stroke="#fff200" stroke-width="2"/>';
+}
+var BG_STYLES = {
+  classic: {a:'#3eac46', b:'#369b3d'},
+  dark: {a:'#1f5c2a', b:'#1a4f24'},
+  light: {a:'#6fc977', b:'#62b86a'},
+  blue: {a:'#2e6fb0', b:'#27619c'}
+};
+function pitchSvgMarkup(elements, small, orientation, svgId, view, bgStyle){
   var dims = small ? {w:60,h:40} : pitchDims(orientation);
   var w = dims.w, h = dims.h;
   var sx = small ? 60/BASE_W : 1, sy = small ? 40/BASE_H : 1;
   var sw = small ? 1 : 2;
   var boxDepth = w*0.16, boxH = h*0.6, gaDepth = w*0.06, gaH = h*0.3;
+  var bg = BG_STYLES[bgStyle] || BG_STYLES.classic;
   var stripes = '';
   var stripeCount = small ? 6 : 12;
   var stripeW = w/stripeCount;
   for(var si=0; si<stripeCount; si++){
-    stripes += '<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?'#3eac46':'#369b3d')+'"/>';
+    stripes += '<rect x="'+(si*stripeW)+'" y="0" width="'+stripeW+'" height="'+h+'" fill="'+(si%2===0?bg.a:bg.b)+'"/>';
   }
   var lines = stripes+'<rect x="2" y="2" width="'+(w-4)+'" height="'+(h-4)+'" fill="none" stroke="#fff" stroke-width="'+sw+'"/>'+
     '<line x1="'+(w/2)+'" y1="2" x2="'+(w/2)+'" y2="'+(h-2)+'" stroke="#fff" stroke-width="'+sw+'"/>'+
@@ -453,7 +467,7 @@ function pitchSvgMarkup(elements, small, orientation, svgId, view){
   var pointsHtml = elements.filter(function(el){ return POINT_TYPES.indexOf(el.type)>=0; }).map(function(el){
     var p = small ? {x:el.x, y:el.y} : dispXY(el.x, el.y, orientation);
     var dx = p.x*sx, dy = p.y*sy;
-    var sel = (!small && el.id===selectedElId) ? '<circle r="'+(el.type==='player'?17:13)+'" fill="none" stroke="#fff200" stroke-width="2"/>' : '';
+    var sel = (!small && el.id===selectedElId) ? selHighlight(el) : '';
     return '<g class="elem-token" data-id="'+el.id+'" data-type="'+el.type+'" transform="translate('+dx+','+dy+')" style="cursor:'+(small?'default':'grab')+'">'+sel+shapeMarkup(el, small)+'</g>';
   }).join('');
   var tiltStyle = '';
@@ -483,8 +497,39 @@ function showViewChooser(){
   document.getElementById('vcAngle').onclick = function(){ startPlanBuilderWithView('angle'); };
 }
 function startPlanBuilderWithView(view){
-  boardState = {elements:[], orientation:'h', view:view};
+  boardState = {elements:[], orientation:'h', view:view, bgStyle:'classic'};
+  boardHistory = [];
   closeModal();
+  renderPlanBuilderModal();
+}
+function showBgStylePicker(){
+  var html = '<h3 style="margin-bottom:14px">בחר/י סוג מגרש</h3>'+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+      Object.keys(BG_STYLES).map(function(key){
+        var bg = BG_STYLES[key];
+        var nameMap = {classic:'ירוק קלאסי', dark:'ירוק כהה', light:'ירוק בהיר', blue:'כחול'};
+        return '<button class="btn ghost bgPickBtn" data-bg="'+key+'" style="display:flex;align-items:center;gap:10px;justify-content:flex-start">'+
+          '<span style="width:36px;height:24px;border-radius:4px;background:repeating-linear-gradient(90deg,'+bg.a+' 0 6px,'+bg.b+' 6px 12px);display:inline-block"></span>'+
+          nameMap[key]+'</button>';
+      }).join('')+
+    '</div>';
+  openModal(html);
+  document.querySelectorAll('.bgPickBtn').forEach(function(btn){
+    btn.onclick = function(){
+      boardState.bgStyle = btn.dataset.bg;
+      closeModal();
+      renderPlanBuilderModal();
+    };
+  });
+}
+function pushHistory(){
+  boardHistory.push(boardState.elements.map(function(e){ var c={}; for(var k in e) c[k]=e[k]; return c; }));
+  if(boardHistory.length>30) boardHistory.shift();
+}
+function undoBoard(){
+  if(boardHistory.length===0) return;
+  boardState.elements = boardHistory.pop();
+  selectedElId = null;
   renderPlanBuilderModal();
 }
 function loadDrillToBoard(i){
@@ -505,7 +550,7 @@ function saveCurrentFrame(){
   var frame = {
     elements: boardState.elements.map(function(e){
       var c = {id:e.id, type:e.type};
-      if(POINT_TYPES.indexOf(e.type)>=0){ c.x=e.x; c.y=e.y; c.scale=e.scale||1; if(e.type==='player'){ c.color=e.color; c.num=e.num; } }
+      if(POINT_TYPES.indexOf(e.type)>=0){ c.x=e.x; c.y=e.y; c.scale=e.scale||1; if(e.type==='player'){ c.color=e.color; c.num=e.num; } else if(e.type==='gk'){ c.num=e.num; } }
       else { c.x1=e.x1; c.y1=e.y1; c.x2=e.x2; c.y2=e.y2; }
       return c;
     }),
@@ -529,7 +574,7 @@ function renderPlanBuilderModal(){
   var body = ''+
   '<div class="frame-status">'+frameLabel+(addMode?' · לחץ/י על המגרש למיקום ה'+(TOOLBOX_ITEMS.filter(function(t){return t.type===addMode;})[0]||{}).label:'')+'</div>'+
   '<div class="pitch-stage">'+
-    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.view)+'</div>'+
+    '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.view, boardState.bgStyle)+'</div>'+
   '</div>'+
   '<div class="tool-strip">'+
     TOOLBOX_ITEMS.map(function(item){
@@ -551,6 +596,10 @@ function renderPlanBuilderModal(){
   '<div class="action-row">'+
     '<button id="btnRotateBoard">🔄 סובב מגרש</button>'+
     '<button id="btnToggleView">'+(boardState.view==='top'?'📐 מהצד':(boardState.view==='side'?'🎥 אלכסון':'🗺️ מלמעלה'))+'</button>'+
+    '<button id="btnBgStyle">🎨 רקע מגרש</button>'+
+  '</div>'+
+  '<div class="action-row">'+
+    '<button id="btnUndoBoard" '+(boardHistory.length===0?'disabled':'')+'>↩️ בטל</button>'+
     '<button id="btnClearBoard">🧹 נקה הכל</button>'+
   '</div>'+
   '<div class="field"><label>הערה לפריים</label><textarea id="drillNoteInput" rows="2" placeholder="מה קורה בפריים הזה...">'+(editingDrillIndex!==null && editingDrills[editingDrillIndex] ? (editingDrills[editingDrillIndex].note||'') : '')+'</textarea></div>'+
@@ -621,6 +670,7 @@ function wirePlanBuilderModal(){
   var delSelBtn = document.getElementById('btnDelSelected');
   if(delSelBtn) delSelBtn.onclick = function(){
     if(!selectedElId) return;
+    pushHistory();
     boardState.elements = boardState.elements.filter(function(e){return e.id!==selectedElId;});
     selectedElId = null;
     renderPlanBuilderModal();
@@ -630,10 +680,15 @@ function wirePlanBuilderModal(){
   var shrinkBtn = document.getElementById('btnShrinkSelected');
   if(shrinkBtn) shrinkBtn.onclick = function(){ resizeSelected(-0.2); };
   document.getElementById('btnClearBoard').onclick = function(){
+    if(boardState.elements.length>0) pushHistory();
     boardState.elements = [];
     selectedElId = null;
     renderPlanBuilderModal();
   };
+  var bgBtn = document.getElementById('btnBgStyle');
+  if(bgBtn) bgBtn.onclick = function(){ showBgStylePicker(); };
+  var undoBtn = document.getElementById('btnUndoBoard');
+  if(undoBtn) undoBtn.onclick = function(){ undoBoard(); };
   document.getElementById('btnAddDrill').onclick = function(){
     saveCurrentFrame();
     editingDrillIndex = null;
@@ -674,7 +729,7 @@ function stopPlayback(){
   if(playState.interval){ clearInterval(playState.interval); playState.interval = null; }
 }
 function animateFrameTransition(area, fromEls, toEls, onDone, speed){
-  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg', boardState.view);
+  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg', boardState.view, boardState.bgStyle);
   var fromById = {};
   fromEls.forEach(function(e){ if(POINT_TYPES.indexOf(e.type)>=0) fromById[e.id] = e; });
   var moves = [];
@@ -690,6 +745,19 @@ function animateFrameTransition(area, fromEls, toEls, onDone, speed){
     moves.push({token:token, x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y});
   });
   if(moves.length===0){ playState.timer = setTimeout(onDone, 700/speed); return; }
+  var svgEl = area.querySelector('svg');
+  if(svgEl){
+    moves.forEach(function(m){
+      var trail = document.createElementNS('http://www.w3.org/2000/svg','line');
+      trail.setAttribute('x1', m.x1); trail.setAttribute('y1', m.y1);
+      trail.setAttribute('x2', m.x2); trail.setAttribute('y2', m.y2);
+      trail.setAttribute('stroke', '#fff200'); trail.setAttribute('stroke-width', '2');
+      trail.setAttribute('stroke-dasharray', '4,4');
+      trail.setAttribute('marker-end', 'url(#arrowhead)');
+      trail.setAttribute('opacity', '0.85');
+      svgEl.insertBefore(trail, m.token.parentNode===svgEl ? m.token : null);
+    });
+  }
   var steps = 24, dur = 900/speed, step = 0;
   moves.forEach(function(m){ m.token.setAttribute('transform','translate('+m.x1+','+m.y1+')'); });
   var iv = setInterval(function(){
@@ -716,7 +784,7 @@ function playDrills(){
   var area = document.getElementById('drillPlayArea');
   if(!area || editingDrills.length===0) return;
   playState.playing = true;
-  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg', boardState.view);
+  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg', boardState.view, boardState.bgStyle);
   var i = 0;
   function nextFrame(){
     if(!playState.playing) return;
@@ -746,14 +814,17 @@ function handlePitchTap(svg, evt){
   var pt = svgPoint(svg, evt);
   var canon = canonXY(pt.x, pt.y, boardState.orientation);
   if(POINT_TYPES.indexOf(addMode)>=0){
+    pushHistory();
     var el = {id:genCode(6), type:addMode, x:canon.x, y:canon.y, scale:1};
     if(addMode==='player'){ el.color = pendingPlayerColor; el.num = nextPlayerNum(); }
+    if(addMode==='gk'){ el.num = 'GK'; }
     boardState.elements.push(el);
     renderPlanBuilderModal();
   } else {
     if(!lineStart){
       lineStart = canon;
     } else {
+      pushHistory();
       boardState.elements.push({id:genCode(6), type:addMode, x1:lineStart.x, y1:lineStart.y, x2:canon.x, y2:canon.y});
       lineStart = null;
       renderPlanBuilderModal();
@@ -801,11 +872,13 @@ function startDrag(token){
   var id = token.dataset.id;
   selectedElId = id;
   pitchDragging = boardState.elements.filter(function(e){return e.id===id;})[0];
+  if(pitchDragging) pushHistory();
 }
 function resizeSelected(delta){
   if(!selectedElId) return;
   var el = boardState.elements.filter(function(e){return e.id===selectedElId;})[0];
   if(!el || POINT_TYPES.indexOf(el.type)<0) return;
+  pushHistory();
   el.scale = Math.max(0.5, Math.min(2.5, (el.scale||1)+delta));
   renderPlanBuilderModal();
 }
@@ -844,7 +917,7 @@ function onPitchPinchMove(e){
   var svg = document.getElementById('pitchSvg');
   var g = svg && svg.querySelector('.elem-token[data-id="'+el.id+'"]');
   if(g){
-    var sel = el.id===selectedElId ? '<circle r="'+(el.type==='player'?17:13)+'" fill="none" stroke="#fff200" stroke-width="2"/>' : '';
+    var sel = el.id===selectedElId ? selHighlight(el) : '';
     g.innerHTML = sel + shapeMarkup(el, false);
   }
 }
