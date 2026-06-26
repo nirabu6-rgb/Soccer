@@ -216,7 +216,7 @@ var selSport = 'soccer', selMode = 'player';
 /* ---------------- Nav ---------------- */
 var NAV_TABS = {
   0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
-  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'🏟️',t:'מועדון'},
+  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'📚',t:'ספריית אימונים'},
   6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'},
   9:{ic:'🗂️',t:'לוז קבוצות'}
 };
@@ -270,6 +270,9 @@ var TRAINING_PLAN = {
 };
 var TEAM_PLAN = TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};});
 var CLUB_EXERCISES = [];
+var COACH_TRAININGS = [];
+var COACH_TRAININGS_LOADED = false;
+var COACH_UPDATES_OPT = false;
 var CLUB_COACHES = [];
 var CLUB_COACHES_LOADED = false;
 var CLUB_ROLES = ['מאמן ראשי','עוזר מאמן','אנליסט','פיזיותרפיסט','אחר'];
@@ -401,6 +404,7 @@ document.getElementById('btnDemo').onclick = function(){
   doLogin('שחקן דמו', true);
 };
 
+COACH_UPDATES_OPT = localStorage.getItem('ath_updatesopt') === '1';
 function enterApp(){
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -427,6 +431,7 @@ function doLogout(){
   localStorage.removeItem('ath_mode');
   ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
   PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
+  COACH_TRAININGS = []; COACH_TRAININGS_LOADED = false;
   closeModal();
   document.getElementById('app').style.display = 'none';
   document.getElementById('login').style.display = 'flex';
@@ -456,6 +461,7 @@ function renderTab(i){
   else if(i===2) c.innerHTML = tplTraining();
   else if(i===3) c.innerHTML = tplCoach();
   else if(i===4) c.innerHTML = tplSub();
+  else if(i===5) c.innerHTML = tplCoachLibrary();
   else if(i===6) c.innerHTML = tplClubDashboard();
   else if(i===7) c.innerHTML = tplClubTraining();
   else if(i===8) c.innerHTML = tplClubPermissions();
@@ -592,6 +598,84 @@ function tplTraining(){
   }
   html += '<button class="btn ghost" id="ppRestart" style="margin-top:8px">בנה תוכנית חדשה</button>';
   return html;
+}
+
+/* ---------------- TAB 5: Coach training library ---------------- */
+function tplCoachLibrary(){
+  if(ME.mode !== 'coach'){
+    return '<div class="section-title">📚 ספריית אימונים</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
+      '<b>זמין למאמנים בלבד</b>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לבנות ולשמור אימונים בספרייה האישית שלך</div>'+
+      '<button class="btn ghost" id="switchCoachLib">החלף למצב מאמן</button>'+
+    '</div>';
+  }
+  if(!COACH_TRAININGS_LOADED){
+    return '<div class="section-title">📚 ספריית אימונים</div><div class="muted" style="text-align:center">טוען...</div>';
+  }
+  return ''+
+  '<div class="section-title">📚 ספריית אימונים</div>'+
+  '<div class="muted" style="margin-bottom:10px">בנה אימונים ושמור אותם בספרייה האישית שלך לשימוש חוזר</div>'+
+  '<button class="btn" id="btnAddCoachTraining" style="margin-bottom:14px">+ הוסף אימון לספרייה</button>'+
+  '<div class="card" style="margin-bottom:14px">'+
+    '<label class="row" style="cursor:pointer"><input type="checkbox" id="updatesOptIn" '+(COACH_UPDATES_OPT?'checked':'')+'><span style="margin-right:8px">📣 קבלת עדכונים כשנוסף אימון חדש לספרייה</span></label>'+
+  '</div>'+
+  (COACH_TRAININGS.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו אימונים לספרייה</div>'
+    : COACH_TRAININGS.map(function(tr,i){
+        return '<div class="card"><div class="row"><b>'+tr.name+'</b><button class="logout-btn" data-deltrain="'+i+'" title="מחק אימון">🗑</button></div>'+
+          (tr.description ? '<div class="muted" style="margin-top:6px">'+tr.description+'</div>' : '')+
+          (tr.imageData ? '<img src="'+tr.imageData+'" style="width:100%;border-radius:10px;margin-top:8px">' : '')+
+          (tr.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+tr.sketchNote+'</div>' : '')+
+        '</div>';
+      }).join('')
+  );
+}
+function loadCoachTrainings(){
+  if(!ME.uid) return;
+  db.collection(P+'coachtrainings').where('coachUid','==',ME.uid).get().then(function(snap){
+    COACH_TRAININGS = snap.docs.map(function(d){ return d.data(); });
+    COACH_TRAININGS_LOADED = true;
+    if(TAB===5) renderTab(5);
+  });
+}
+function openAddCoachTrainingModal(){
+  openModal('<h3>+ הוספת אימון לספרייה</h3>'+
+    '<div class="field"><label>שם האימון</label><input id="ctName" placeholder="לדוגמה: אימון מסירות ושליטה"></div>'+
+    '<div class="field"><label>תיאור האימון</label><textarea id="ctDesc" rows="3" placeholder="תיאור מהלך האימון..."></textarea></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="ctImg" type="file" accept="image/*"></div>'+
+    '<div id="ctImgPreview"></div>'+
+    '<div class="field"><label>תיאור סרטוט/תנועה</label><textarea id="ctSketch" rows="2" placeholder="תיאור טקסטואלי של הסרטוט/התנועה על המגרש"></textarea></div>'+
+    '<button class="btn" id="ctSave">שמור אימון</button>');
+  var imgData = '';
+  document.getElementById('ctImg').onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      imgData = ev.target.result;
+      document.getElementById('ctImgPreview').innerHTML = '<img src="'+imgData+'" style="width:100%;border-radius:10px;margin-top:8px">';
+    };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('ctSave').onclick = function(){
+    var n = document.getElementById('ctName').value.trim();
+    if(!n) return;
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var tr = {
+      id:id, coachUid:ME.uid,
+      name:n,
+      description:document.getElementById('ctDesc').value.trim(),
+      imageData:imgData,
+      sketchNote:document.getElementById('ctSketch').value.trim()
+    };
+    db.collection(P+'coachtrainings').doc(id).set(tr).then(function(){
+      COACH_TRAININGS.push(tr);
+      closeModal();
+      renderTab(5);
+    });
+  };
 }
 
 /* ---------------- TAB 3: Coach mode ---------------- */
@@ -1326,6 +1410,33 @@ function wireTab(i){
         openModal('<h3>🎉 שדרוג ל'+plan+'</h3><p class="muted">תהליך התשלום יושק בקרוב. לעת עתה זהו תצוגה מקדימה של חוויית השדרוג.</p><button class="btn" onclick="closeModal()">סגור</button>');
       };
     });
+  }
+  if(i===5){
+    if(ME.mode==='coach' && !COACH_TRAININGS_LOADED){ loadCoachTrainings(); }
+    var swLib = document.getElementById('switchCoachLib');
+    if(swLib) swLib.onclick = function(){
+      ME.mode = 'coach';
+      localStorage.setItem('ath_mode','coach');
+      refreshPlanBadge();
+      buildNav();
+      renderTab(5);
+    };
+    var addTrain = document.getElementById('btnAddCoachTraining');
+    if(addTrain) addTrain.onclick = openAddCoachTrainingModal;
+    document.querySelectorAll('[data-deltrain]').forEach(function(btn){
+      btn.onclick = function(){
+        var idx = parseInt(btn.dataset.deltrain,10);
+        var tr = COACH_TRAININGS[idx];
+        if(tr && tr.id) db.collection(P+'coachtrainings').doc(tr.id).delete();
+        COACH_TRAININGS.splice(idx,1);
+        renderTab(5);
+      };
+    });
+    var updOpt = document.getElementById('updatesOptIn');
+    if(updOpt) updOpt.onchange = function(){
+      COACH_UPDATES_OPT = updOpt.checked;
+      localStorage.setItem('ath_updatesopt', COACH_UPDATES_OPT ? '1' : '0');
+    };
   }
   if(i===0){
     var cmp = document.getElementById('goCompare');
