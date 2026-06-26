@@ -39,14 +39,19 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .toolbar button{flex:1;min-width:90px;padding:9px 6px;border-radius:8px;border:1px solid #dde1e7;background:#fff;font-size:12px;cursor:pointer}
 .toolbar button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
-.toolbox{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px}
-.tbx-btn{flex:none;min-width:62px;padding:8px 4px;border-radius:8px;border:1px solid #dde1e7;background:#fff;font-size:18px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
-.tbx-btn span{font-size:10px;color:var(--sub)}
+.toolbox-label{font-size:12px;color:var(--sub);margin-bottom:6px}
+.toolbox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.tbx-btn{padding:12px 4px;border-radius:10px;border:1px solid #dde1e7;background:#fff;font-size:22px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tbx-btn span{font-size:12px;color:var(--sub)}
 .tbx-btn.sel{background:var(--accent);border-color:var(--accent)}
 .tbx-btn.sel span{color:#fff}
-.color-row{display:flex;gap:8px;margin-bottom:8px}
-.color-sw{width:26px;height:26px;border-radius:50%;border:2px solid #dde1e7;cursor:pointer;padding:0}
-.color-sw.sel{border-color:var(--accent2);box-shadow:0 0 0 2px var(--accent2)}
+.color-row{display:flex;gap:10px;margin-bottom:10px;justify-content:center}
+.color-sw{width:32px;height:32px;border-radius:50%;border:2px solid #dde1e7;cursor:pointer;padding:0}
+.color-sw.sel{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(14,165,184,.35)}
+.howto{background:var(--card2);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--sub);margin-bottom:10px;line-height:1.5}
+.frame-status{background:var(--accent);color:#fff;font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:10px;text-align:center}
+.drill-card{cursor:pointer}
+.drill-card.active{outline:2px solid var(--accent);background:#e3f6fa}
 .drill-card{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:10px;padding:8px;margin-bottom:8px}
 .drill-card svg{width:60px;height:40px;background:#2e9e4f;border-radius:6px;flex:none}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
@@ -309,6 +314,7 @@ var lineStart = null;
 var selectedElId = null;
 var editingPlan = null;
 var editingDrills = [];
+var editingDrillIndex = null;
 
 var PLAYER_COLORS = ['#1c2230','#e63946','#2a9d8f','#f4a300','#3b82f6','#ffffff'];
 var TOOLBOX_ITEMS = [
@@ -384,7 +390,23 @@ function openPlanBuilder(idx){
   editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[]};
   editingDrills = editingPlan.drills ? editingPlan.drills.slice() : [];
   boardState = {elements:[], orientation:'h'};
-  addMode = null; lineStart = null; selectedElId = null;
+  addMode = null; lineStart = null; selectedElId = null; editingDrillIndex = null;
+  renderPlanBuilderModal();
+}
+function loadDrillToBoard(i){
+  var d = editingDrills[i];
+  if(!d) return;
+  boardState.elements = d.elements.map(function(e){ var c={}; for(var k in e) c[k]=e[k]; return c; });
+  editingDrillIndex = i;
+  selectedElId = null; addMode = null; lineStart = null;
+  renderPlanBuilderModal();
+  var note = document.getElementById('drillNoteInput');
+  if(note) note.value = d.note || '';
+}
+function newDrillFrame(){
+  boardState.elements = [];
+  editingDrillIndex = null;
+  selectedElId = null; addMode = null; lineStart = null;
   renderPlanBuilderModal();
 }
 function nextPlayerNum(){
@@ -394,7 +416,8 @@ function nextPlayerNum(){
   return n;
 }
 function toolboxHtml(){
-  return '<div class="toolbox">'+
+  return '<div class="toolbox-label">בחר/י כלי ולחץ/י על המגרש למיקום:</div>'+
+  '<div class="toolbox">'+
     TOOLBOX_ITEMS.map(function(item){
       return '<button class="tbx-btn '+(addMode===item.type?'sel':'')+'" data-tool="'+item.type+'">'+item.ic+'<span>'+item.label+'</span></button>';
     }).join('')+
@@ -411,22 +434,31 @@ function toolboxHtml(){
   '</div>';
 }
 function renderPlanBuilderModal(){
+  var frameLabel = editingDrillIndex!==null ? ('עריכת פריים '+(editingDrillIndex+1)+' מתוך '+editingDrills.length) : ('פריים חדש (יתווסף כפריים '+(editingDrills.length+1)+')');
   var html = ''+
   '<h3>'+(editingPlan.name?editingPlan.name:'תוכנית אימון חדשה')+'</h3>'+
   '<div class="field"><label>שם התוכנית</label><input id="planNameInput" value="'+(editingPlan.name||'').replace(/"/g,'&quot;')+'"></div>'+
+  '<div class="howto">'+
+    '<b>איך זה עובד:</b> בנה/י עמדה אחת על המגרש (זה "פריים") ← לחצ/י "הוסף פריים" ← שנה/י קצת מיקומים לפריים הבא ← הוסף/י שוב. כל הפריימים ברצף = הסרטון של התרגיל.'+
+  '</div>'+
+  '<div class="frame-status">'+frameLabel+'</div>'+
   toolboxHtml()+
   '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg')+'</div>'+
-  '<div class="muted" style="margin-bottom:10px">'+(addMode?'בחר/י מיקום על המגרש להוספת האלמנט':'גרור אלמנט קיים כדי להזיז אותו, או בחר כלי מהחלונית')+'</div>'+
-  '<div class="field"><label>הערה לתרגיל הנוכחי</label><textarea id="drillNoteInput" rows="2" placeholder="תיאור התרגיל המצולם בלוח..."></textarea></div>'+
-  '<button class="btn ghost" id="btnAddDrill" style="margin-bottom:14px">+ הוסף תרגיל זה לתוכנית</button>'+
-  '<div class="section-title" style="font-size:14px">תרגילים בתוכנית ('+editingDrills.length+')</div>'+
+  '<div class="muted" style="margin-bottom:10px">'+(addMode?'לחץ/י על המגרש כדי להוסיף את האלמנט שבחרת':'גרור/י אלמנט קיים כדי להזיז אותו, או בחר/י כלי מהחלונית מעל')+'</div>'+
+  '<div class="field"><label>הערה לפריים הנוכחי</label><textarea id="drillNoteInput" rows="2" placeholder="תיאור קצר של מה קורה בפריים הזה..."></textarea></div>'+
+  '<div class="toolbar">'+
+    '<button class="btn" id="btnAddDrill" style="flex:2">'+(editingDrillIndex!==null?'💾 עדכן פריים '+(editingDrillIndex+1):'+ הוסף פריים זה')+'</button>'+
+    '<button class="btn ghost" id="btnNewFrame">🆕 פריים חדש</button>'+
+  '</div>'+
+  '<div class="section-title" style="font-size:14px;margin-top:14px">פריימים בתוכנית ('+editingDrills.length+')</div>'+
   (editingDrills.length===0
-    ? '<div class="muted" style="margin-bottom:10px">עדיין לא נוספו תרגילים</div>'
+    ? '<div class="muted" style="margin-bottom:10px">עדיין לא נוספו פריימים — בנה/י עמדה ולחצ/י "הוסף פריים זה"</div>'
     : ('<button class="btn ghost" id="btnPlayDrills" style="margin-bottom:10px">▶ הפעל כסרטון</button>'+
        '<div id="drillPlayArea" style="margin-bottom:10px"></div>'+
+       '<div class="muted" style="margin-bottom:6px">לחיצה על פריים טוענת אותו לעריכה</div>'+
        editingDrills.map(function(d,i){
-        return '<div class="drill-card">'+pitchSvgMarkup(d.elements, true, 'h', 'drillThumb'+i)+
-          '<div style="flex:1"><div class="muted" style="font-size:12px">'+(d.note||'תרגיל '+(i+1))+'</div></div>'+
+        return '<div class="drill-card '+(editingDrillIndex===i?'active':'')+'" data-loaddrill="'+i+'">'+pitchSvgMarkup(d.elements, true, 'h', 'drillThumb'+i)+
+          '<div style="flex:1"><div class="muted" style="font-size:12px">פריים '+(i+1)+(d.note?' — '+d.note:'')+'</div></div>'+
           '<button class="logout-btn" data-deldrill="'+i+'" title="מחק">🗑</button>'+
         '</div>';
       }).join('')))+
@@ -463,7 +495,7 @@ function wirePlanBuilderModal(){
     renderPlanBuilderModal();
   };
   document.getElementById('btnAddDrill').onclick = function(){
-    editingDrills.push({
+    var frame = {
       elements: boardState.elements.map(function(e){
         var c = {id:e.id, type:e.type};
         if(POINT_TYPES.indexOf(e.type)>=0){ c.x=e.x; c.y=e.y; if(e.type==='player'){ c.color=e.color; c.num=e.num; } }
@@ -471,11 +503,31 @@ function wirePlanBuilderModal(){
         return c;
       }),
       note: document.getElementById('drillNoteInput').value.trim()
-    });
+    };
+    if(editingDrillIndex!==null){
+      editingDrills[editingDrillIndex] = frame;
+    } else {
+      editingDrills.push(frame);
+      editingDrillIndex = editingDrills.length-1;
+    }
     renderPlanBuilderModal();
   };
+  document.getElementById('btnNewFrame').onclick = function(){ newDrillFrame(); };
+  document.querySelectorAll('[data-loaddrill]').forEach(function(card){
+    card.addEventListener('click', function(e){
+      if(e.target && e.target.closest && e.target.closest('[data-deldrill]')) return;
+      loadDrillToBoard(parseInt(card.dataset.loaddrill,10));
+    });
+  });
   document.querySelectorAll('[data-deldrill]').forEach(function(btn){
-    btn.onclick = function(){ editingDrills.splice(parseInt(btn.dataset.deldrill,10),1); renderPlanBuilderModal(); };
+    btn.onclick = function(e){
+      if(e.stopPropagation) e.stopPropagation();
+      var i = parseInt(btn.dataset.deldrill,10);
+      editingDrills.splice(i,1);
+      if(editingDrillIndex===i) editingDrillIndex = null;
+      else if(editingDrillIndex>i) editingDrillIndex--;
+      renderPlanBuilderModal();
+    };
   });
   var playBtn = document.getElementById('btnPlayDrills');
   if(playBtn) playBtn.onclick = function(){ playDrills(); };
