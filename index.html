@@ -373,11 +373,36 @@ function shapeMarkup(el, small){
       (small?'':'<text x="0" y="4" text-anchor="middle" font-size="'+(11*sc)+'" fill="'+(el.color==='#ffffff'?'#1c2230':'#fff')+'">'+(el.num||'')+'</text>');
   }
   if(el.type==='ball'){
-    return '<circle r="'+((small?3:10)*sc)+'" fill="#fff" stroke="#1c2230" stroke-width="'+(small?0.5:1.5)+'"/>';
+    var r = (small?3:10)*sc;
+    if(small){ return '<circle r="'+r+'" fill="#fff" stroke="#1c2230" stroke-width="0.5"/>'; }
+    var pent = '';
+    for(var i=0;i<5;i++){
+      var ang = -Math.PI/2 + i*2*Math.PI/5;
+      pent += (i===0?'M':'L')+(r*0.42*Math.cos(ang))+','+(r*0.42*Math.sin(ang))+' ';
+    }
+    pent += 'Z';
+    var spokes = '';
+    for(var k=0;k<5;k++){
+      var a2 = -Math.PI/2 + k*2*Math.PI/5;
+      spokes += '<line x1="'+(r*0.42*Math.cos(a2))+'" y1="'+(r*0.42*Math.sin(a2))+'" x2="'+(r*0.92*Math.cos(a2))+'" y2="'+(r*0.92*Math.sin(a2))+'" stroke="#1c2230" stroke-width="0.8"/>';
+    }
+    return '<circle r="'+r+'" fill="#fff" stroke="#1c2230" stroke-width="1"/>'+
+      '<path d="'+pent+'" fill="#1c2230"/>'+spokes;
   }
   if(el.type==='goal'){
     var gw = (small?8:22)*sc, gh = (small?5:14)*sc;
-    return '<rect x="'+(-gw/2)+'" y="'+(-gh/2)+'" width="'+gw+'" height="'+gh+'" fill="none" stroke="#fff" stroke-width="'+(small?1:2)+'"/>';
+    if(small){ return '<rect x="'+(-gw/2)+'" y="'+(-gh/2)+'" width="'+gw+'" height="'+gh+'" fill="none" stroke="#fff" stroke-width="1"/>'; }
+    var net = '';
+    var cols = 4, rows = 3;
+    for(var c=1;c<cols;c++){
+      var nx = -gw/2 + (gw/cols)*c;
+      net += '<line x1="'+nx+'" y1="'+(-gh/2)+'" x2="'+nx+'" y2="'+(gh/2)+'" stroke="#fff" stroke-width="0.6" opacity="0.65"/>';
+    }
+    for(var rI=1;rI<rows;rI++){
+      var ny = -gh/2 + (gh/rows)*rI;
+      net += '<line x1="'+(-gw/2)+'" y1="'+ny+'" x2="'+(gw/2)+'" y2="'+ny+'" stroke="#fff" stroke-width="0.6" opacity="0.65"/>';
+    }
+    return '<rect x="'+(-gw/2)+'" y="'+(-gh/2)+'" width="'+gw+'" height="'+gh+'" fill="#1c2230" opacity="0.18" stroke="#fff" stroke-width="2.2"/>'+net;
   }
   if(el.type==='cone'){
     var s = (small?5:10)*sc;
@@ -583,17 +608,53 @@ function wirePlanBuilderModal(){
   if(playBtn) playBtn.onclick = function(){ playDrills(); };
   wirePitchSvg();
 }
+function animateFrameTransition(area, fromEls, toEls, onDone){
+  area.innerHTML = pitchSvgMarkup(toEls, false, 'h', 'playSvg');
+  var fromById = {};
+  fromEls.forEach(function(e){ if(POINT_TYPES.indexOf(e.type)>=0) fromById[e.id] = e; });
+  var moves = [];
+  toEls.forEach(function(e){
+    if(POINT_TYPES.indexOf(e.type)<0) return;
+    var prev = fromById[e.id];
+    if(!prev) return;
+    if(prev.x===e.x && prev.y===e.y) return;
+    var token = area.querySelector('[data-id="'+e.id+'"]');
+    if(!token) return;
+    var p1 = dispXY(prev.x, prev.y, 'h');
+    var p2 = dispXY(e.x, e.y, 'h');
+    moves.push({token:token, x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y});
+  });
+  if(moves.length===0){ setTimeout(onDone, 700); return; }
+  var steps = 24, dur = 900, step = 0;
+  moves.forEach(function(m){ m.token.setAttribute('transform','translate('+m.x1+','+m.y1+')'); });
+  var iv = setInterval(function(){
+    step++;
+    var t = step/steps;
+    if(t>1) t = 1;
+    var ease = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    moves.forEach(function(m){
+      var x = m.x1 + (m.x2-m.x1)*ease;
+      var y = m.y1 + (m.y2-m.y1)*ease;
+      m.token.setAttribute('transform','translate('+x+','+y+')');
+    });
+    if(step>=steps){
+      clearInterval(iv);
+      setTimeout(onDone, 400);
+    }
+  }, dur/steps);
+}
 function playDrills(){
   var area = document.getElementById('drillPlayArea');
   if(!area || editingDrills.length===0) return;
+  area.innerHTML = pitchSvgMarkup(editingDrills[0].elements, false, 'h', 'playSvg');
   var i = 0;
-  function showFrame(){
-    if(i>=editingDrills.length) return;
-    area.innerHTML = pitchSvgMarkup(editingDrills[i].elements, false, 'h', 'playSvg');
+  function nextFrame(){
+    if(i>=editingDrills.length-1) return;
+    var from = editingDrills[i].elements, to = editingDrills[i+1].elements;
     i++;
-    setTimeout(showFrame, 1300);
+    animateFrameTransition(area, from, to, nextFrame);
   }
-  showFrame();
+  setTimeout(nextFrame, 700);
 }
 function svgPoint(svg, evt){
   var rect = svg.getBoundingClientRect();
