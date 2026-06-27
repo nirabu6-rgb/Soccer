@@ -12,7 +12,10 @@
   body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto;background:#fff;color:#0f172a;}
   h1{text-align:center;margin-bottom:4px;}
   .sub{text-align:center;color:#64748b;margin-top:0;margin-bottom:18px;}
-  .card{background:#f1f5f9;padding:15px;border-radius:10px;}
+  .card{background:#f1f5f9;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:15px;}
+  .note{background:#f1f5f9;padding:10px 12px;border-radius:8px;font-size:.85rem;color:#475569;margin-top:12px;}
+  .btn-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-secondary{background:#e2e8f0;color:#0f172a;}
   .slot{margin-bottom:12px;}
   .slot label{display:block;font-size:.85rem;color:#475569;margin-bottom:5px;font-weight:bold;}
   .slot input[type=file]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;}
@@ -22,6 +25,9 @@
   h2{margin-top:22px;}
   .pair-title{font-weight:bold;margin-top:14px;margin-bottom:6px;font-size:.95rem;}
   .issue{background:#fff7ed;border-right:4px solid #f59e0b;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
+  .issue.high{border-right-color:#ef4444;}
+  .issue.medium{border-right-color:#f59e0b;}
+  .issue.low{border-right-color:#10b981;}
   .ok{background:#ecfdf5;border-right:4px solid #10b981;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
   .empty{color:#94a3b8;}
   .overlay-wrap{text-align:center;margin-top:10px;margin-bottom:10px;}
@@ -133,7 +139,10 @@ function analyzeCanvases(cA, cB){
       }
       var avgA=sumA/n, avgB=sumB/n;
       if(avgA<235 && avgB<235){
-        issues.push({label: ZONE_LABELS[r][c]});
+        var darkA=255-avgA, darkB=255-avgB;
+        var combined=Math.min(darkA,darkB);
+        var severity = combined>90 ? 'high' : (combined>45 ? 'medium' : 'low');
+        issues.push({label: ZONE_LABELS[r][c], severity: severity});
       }
     }
   }
@@ -195,6 +204,36 @@ function analyze(){
   });
 }
 
+var SEVERITY_LABEL={high:'גבוהה', medium:'בינונית', low:'נמוכה'};
+
+function resetAll(){
+  state.files={}; state.results=null; state.error=null; state.loading=false; state.loadingStep=0;
+  render();
+}
+
+function downloadReport(){
+  if(!state.results) return;
+  var lines=['דו"ח בדיקת התנגשות - Clash Lite', ''];
+  state.results.forEach(function(pairResult){
+    lines.push(pairResult.a.label+' <-> '+pairResult.b.label+':');
+    if(pairResult.issues.length===0){
+      lines.push('  לא נמצאו אזורי חפיפה בולטים');
+    } else {
+      pairResult.issues.forEach(function(issue){
+        lines.push('  - ['+SEVERITY_LABEL[issue.severity]+'] אזור חפיפה אפשרי: '+issue.label);
+      });
+    }
+    lines.push('');
+  });
+  lines.push('הערה: מומלץ לבדוק נקודות אלו לפני ביצוע בשטח');
+  var blob=new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='clash-report.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
@@ -244,11 +283,13 @@ function render(){
         html += '<div class="ok">✅ לא נמצאו אזורי חפיפה בולטים</div>';
       } else {
         pairResult.issues.forEach(function(issue){
-          html += '<div class="issue">⚠️ אזור חפיפה אפשרי: <b>'+escapeHtml(issue.label)+'</b></div>';
+          html += '<div class="issue '+issue.severity+'">⚠️ אזור חפיפה אפשרי ('+SEVERITY_LABEL[issue.severity]+'): <b>'+escapeHtml(issue.label)+'</b></div>';
         });
       }
       html += '<div class="overlay-wrap"><img src="'+pairResult.overlayUrl+'" alt="overlay"><div class="overlay-cap">כחול = '+pairResult.a.label+', אדום = '+pairResult.b.label+'. כהה/סגול = חפיפה.</div></div>';
     });
+    html += '<div class="note">💡 מומלץ לבדוק נקודות אלו לפני ביצוע בשטח</div>';
+    html += '<div class="btn-row"><button id="btn-download">📄 הורד דו"ח</button><button id="btn-reset" class="btn-secondary">🔁 בדיקה חדשה</button></div>';
   } else if(!state.loading && !state.error){
     html += '<p class="empty">העלה לפחות 2 תוכניות ולחץ "נתח תוכניות" כדי לבדוק חפיפות אמיתיות בין השכבות</p>';
   }
@@ -260,6 +301,10 @@ function render(){
   });
   var btn=document.getElementById("btn-analyze");
   if(btn) btn.onclick=analyze;
+  var dlBtn=document.getElementById("btn-download");
+  if(dlBtn) dlBtn.onclick=downloadReport;
+  var resetBtn=document.getElementById("btn-reset");
+  if(resetBtn) resetBtn.onclick=resetAll;
 }
 
 render();
