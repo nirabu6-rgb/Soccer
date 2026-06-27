@@ -49,6 +49,19 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .alert-card{border-right:4px solid var(--warn)}
 .alert-card.danger{border-right:4px solid var(--bad)}
 .section-title{font-size:18px;font-weight:700;margin:6px 0 12px}
+.dash-header{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 18%,white),color-mix(in srgb,var(--accent) 6%,white));border:1px solid color-mix(in srgb,var(--accent) 25%,white);border-radius:16px;padding:18px 16px;margin-bottom:14px}
+.dash-header .dash-greet{font-size:20px;font-weight:800;margin:0 0 4px}
+.dash-header .dash-date{font-size:13px;color:var(--sub)}
+.dash-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.dash-stat-card{background:var(--card);border:1px solid #e3e6ec;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px}
+.dash-stat-ic{width:38px;height:38px;flex:none;border-radius:10px;background:color-mix(in srgb,var(--accent) 16%,white);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:18px}
+.dash-stat-num{font-size:20px;font-weight:800;line-height:1.1}
+.dash-stat-label{font-size:11px;color:var(--sub)}
+.dash-alert-row{background:var(--card);border:1px solid #e3e6ec;border-right:4px solid var(--warn);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px}
+.dash-alert-row.danger{border-right-color:var(--bad)}
+.dash-alert-ic{flex:none;font-size:16px;line-height:1.4}
+.dash-alert-text{font-size:13px;line-height:1.4}
+.dash-empty-ok{text-align:center;color:var(--good);background:color-mix(in srgb,var(--good) 12%,white);border:1px solid color-mix(in srgb,var(--good) 30%,white);border-radius:12px;padding:16px;font-weight:700}
 .card{background:var(--card);border:1px solid #e3e6ec;border-radius:14px;padding:14px;margin-bottom:12px}
 .muted{color:var(--sub);font-size:13px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -630,16 +643,59 @@ function refreshAlertsUI(){
     if(box) box.innerHTML = alertsSectionHtml(alerts);
   }
 }
+var HEB_DAYS_FULL = ['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','יום שבת'];
+function dashHeaderHtml(){
+  var now = new Date();
+  var dateLabel = HEB_DAYS_FULL[now.getDay()]+', '+fmtDateShort(now);
+  var firstName = (ME.name||'').split(' ')[0] || ME.name || '';
+  return '<div class="dash-header">'+
+    '<div class="dash-greet">שלום'+(firstName?', '+firstName:'')+' 👋</div>'+
+    '<div class="dash-date">'+dateLabel+'</div>'+
+  '</div>';
+}
+function dashStatsHtml(){
+  var teamsCount = 0, playersCount = 0;
+  AGE_GROUPS.forEach(function(cat){
+    var t = CLUB_TEAMS[cat];
+    if(t && t.players && t.players.length){
+      teamsCount++;
+      playersCount += t.players.length;
+    }
+  });
+  var pitchesCount = (typeof PITCHES!=='undefined' && PITCHES) ? PITCHES.length : 0;
+  var alertsCount = computeAlerts().length;
+  var stats = [
+    {ic:'👥', num:teamsCount, label:'קבוצות פעילות'},
+    {ic:'🧑‍🤝‍🧑', num:playersCount, label:'שחקנים'},
+    {ic:'🏟', num:pitchesCount, label:'מגרשים'},
+    {ic:'🔔', num:alertsCount, label:'התראות פתוחות'}
+  ];
+  return '<div class="dash-stats">'+stats.map(function(s){
+    return '<div class="dash-stat-card"><div class="dash-stat-ic">'+s.ic+'</div>'+
+      '<div><div class="dash-stat-num">'+s.num+'</div><div class="dash-stat-label">'+s.label+'</div></div></div>';
+  }).join('')+'</div>';
+}
+function alertSeverityIcon(a){
+  if(a.severity==='danger') return '🔴';
+  return '🟡';
+}
 function alertsSectionHtml(alerts){
   if(!alerts) alerts = computeAlerts();
   var head = '<div class="row" style="margin-bottom:8px"><div class="section-title" style="margin:0">🔔 התראות</div>'+
     (alerts.length>0 ? '<span class="badge">'+alerts.length+'</span>' : '')+'</div>';
   if(alerts.length===0){
-    return head+'<div class="card muted" style="text-align:center">אין התראות כרגע</div>';
+    return head+'<div class="dash-empty-ok">הכל תקין ✅</div>';
   }
-  return head + alerts.map(function(a){
-    return '<div class="card alert-card'+(a.severity==='danger'?' danger':'')+'">'+a.text+
-      (a.category ? '<div class="muted" style="margin-top:4px;font-size:11px">'+a.category+'</div>' : '')+
+  var sorted = alerts.slice().sort(function(a,b){
+    if(a.severity===b.severity) return 0;
+    return a.severity==='danger' ? -1 : 1;
+  });
+  return head + sorted.map(function(a){
+    return '<div class="dash-alert-row'+(a.severity==='danger'?' danger':'')+'">'+
+      '<div class="dash-alert-ic">'+alertSeverityIcon(a)+'</div>'+
+      '<div class="dash-alert-text">'+a.text+
+        (a.category ? '<div class="muted" style="margin-top:2px;font-size:11px">'+a.category+'</div>' : '')+
+      '</div>'+
     '</div>';
   }).join('');
 }
@@ -807,6 +863,8 @@ function tplPlans(){
     return '<div class="section-title">📋 תוכניות אימון</div><div class="muted" style="text-align:center">טוען...</div>';
   }
   return ''+
+  dashHeaderHtml()+
+  dashStatsHtml()+
   '<div id="alertsBox">'+alertsSectionHtml()+'</div>'+
   '<div class="section-title">📋 תוכניות אימון</div>'+
   '<div class="muted" style="margin-bottom:10px">בנה תוכנית אימון עם סרטוטים אינטראקטיביים על המגרש ושמור אותה לשימוש חוזר</div>'+
