@@ -88,6 +88,9 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .modal-bg.show{display:flex}
 .modal{background:#fff;border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
 .logout-btn{background:transparent;border:none;font-size:16px;cursor:pointer;padding:2px 6px}
+.badge{display:inline-block;background:var(--card2);color:var(--sub);font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px}
+.phase-block{background:var(--card2);border-radius:12px;padding:10px;margin-bottom:10px}
+.phase-drill-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e3e6ec;border-radius:8px;padding:8px 10px;margin-top:6px}
 
 @media (min-width:880px){
   body{display:flex;justify-content:center}
@@ -173,6 +176,14 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
   <div class="builder-body" id="pitchScreenBody"></div>
 </div>
 
+<div class="builder-screen" id="drillLibScreen" style="display:none">
+  <div class="builder-header">
+    <button class="icon-btn" id="btnCloseDrillLib" title="סגור">→</button>
+    <b style="flex:1">🗂 בנק תרגילים</b>
+  </div>
+  <div class="builder-body" id="drillLibBody"></div>
+</div>
+
 <script>
 var firebaseConfig = {apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
 firebase.initializeApp(firebaseConfig);
@@ -192,6 +203,11 @@ var NAV_TABS = [
 var TRAINING_PLANS = [];
 var TRAINING_PLANS_LOADED = false;
 var confirmationResult = null;
+var DRILL_LIB = [];
+var DRILL_LIB_LOADED = false;
+var DRILL_CATEGORIES = ['חימום','טכניקה','כוח','משחק','סיום'];
+var editingDrillLibItem = null;
+var drillPickerCallback = null;
 
 var AGE_GROUPS = ['נוער','נערים א\'','נערים ב\'','נערים ג\'','ילדים א\'','ילדים ב\'','ילדים ג\'','טרום א\'','טרום ב\'','טרום ג\'','בית הספר לכדורגל'];
 var CLUB_TEAMS = {};
@@ -357,7 +373,10 @@ function tplPlans(){
   return ''+
   '<div class="section-title">📋 תוכניות אימון</div>'+
   '<div class="muted" style="margin-bottom:10px">בנה תוכנית אימון עם סרטוטים אינטראקטיביים על המגרש ושמור אותה לשימוש חוזר</div>'+
-  '<button class="btn" id="btnNewPlan" style="margin-bottom:14px">+ תוכנית אימון חדשה</button>'+
+  '<div class="action-row" style="margin-bottom:14px">'+
+    '<button class="btn" id="btnNewPlan">+ תוכנית אימון חדשה</button>'+
+    '<button class="btn ghost" id="btnOpenDrillLib">🗂 בנק תרגילים</button>'+
+  '</div>'+
   (TRAINING_PLANS.length===0
     ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוצרו תוכניות אימון</div>'
     : TRAINING_PLANS.map(function(p,i){
@@ -374,6 +393,129 @@ function loadPlans(){
     TRAINING_PLANS = snap.docs.map(function(d){ return d.data(); });
     TRAINING_PLANS_LOADED = true;
     if(TAB===0) renderTab(0);
+  });
+}
+
+/* ---------------- Drill Library (בנק תרגילים) ---------------- */
+function loadDrillLib(cb){
+  if(!ME.uid) return;
+  db.collection(P+'drills').where('coachUid','==',ME.uid).get().then(function(snap){
+    DRILL_LIB = snap.docs.map(function(d){ return d.data(); });
+    DRILL_LIB_LOADED = true;
+    if(cb) cb();
+    var lib = document.getElementById('drillLibScreen');
+    if(lib && lib.style.display!=='none') renderDrillLibScreen();
+  });
+}
+function saveDrillLibItem(d){
+  db.collection(P+'drills').doc(d.id).set(d);
+}
+function deleteDrillLibItem(id){
+  db.collection(P+'drills').doc(id).delete();
+}
+function openDrillLib(){
+  document.getElementById('drillLibScreen').style.display = 'flex';
+  if(!DRILL_LIB_LOADED){
+    document.getElementById('drillLibBody').innerHTML = '<div class="muted" style="text-align:center">טוען...</div>';
+    loadDrillLib(function(){ renderDrillLibScreen(); });
+  } else {
+    renderDrillLibScreen();
+  }
+}
+function closeDrillLib(){
+  document.getElementById('drillLibScreen').style.display = 'none';
+}
+function drillCardHtml(d, idx, pickMode){
+  var media = d.media_url ? '<div class="muted" style="margin-top:4px;font-size:11px;word-break:break-all">🔗 '+d.media_url+'</div>' : '';
+  var actions = pickMode
+    ? '<button class="btn ghost sm" data-pickdrill="'+idx+'">בחר</button>'
+    : '<button class="logout-btn" data-editdrill="'+idx+'" title="עריכה">✏️</button><button class="logout-btn" data-deldrill="'+idx+'" title="מחק">🗑</button>';
+  return '<div class="card">'+
+    '<div class="row"><b>'+d.title+'</b><div>'+actions+'</div></div>'+
+    '<div class="row" style="margin-top:6px"><span class="badge">'+d.category+'</span><span class="muted">'+(d.duration_min||0)+' דק׳</span></div>'+
+    (d.description ? '<div class="muted" style="margin-top:6px">'+d.description+'</div>' : '')+
+    media+
+  '</div>';
+}
+function renderDrillLibScreen(){
+  var body = document.getElementById('drillLibBody');
+  body.innerHTML =
+    '<div class="muted" style="margin-bottom:10px">בנה/י בנק תרגילים לשימוש חוזר בתוכניות אימון</div>'+
+    '<button class="btn" id="btnAddDrillLib" style="margin-bottom:14px">+ הוסף תרגיל</button>'+
+    (DRILL_LIB.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו תרגילים לבנק</div>'
+      : DRILL_LIB.map(function(d,i){ return drillCardHtml(d, i, false); }).join('')
+    );
+  document.getElementById('btnAddDrillLib').onclick = function(){ openDrillFormModal(null); };
+  document.querySelectorAll('[data-editdrill]').forEach(function(btn){
+    btn.onclick = function(){ openDrillFormModal(parseInt(btn.dataset.editdrill,10)); };
+  });
+  document.querySelectorAll('[data-deldrill]').forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.dataset.deldrill,10);
+      var d = DRILL_LIB[idx];
+      if(!confirm('למחוק את התרגיל "'+d.title+'"?')) return;
+      deleteDrillLibItem(d.id);
+      DRILL_LIB.splice(idx,1);
+      renderDrillLibScreen();
+    };
+  });
+}
+function openDrillFormModal(idx){
+  var isEdit = (idx!==undefined && idx!==null);
+  var d = isEdit ? DRILL_LIB[idx] : null;
+  var html = '<h3 style="margin-bottom:14px">'+(isEdit?'עריכת תרגיל':'הוספת תרגיל')+'</h3>'+
+    '<div class="field"><label>כותרת</label><input id="drillTitleInput" placeholder="שם התרגיל" value="'+(d?d.title:'')+'"></div>'+
+    '<div class="field"><label>תיאור</label><textarea id="drillDescInput" rows="3" placeholder="תיאור התרגיל">'+(d?(d.description||''):'')+'</textarea></div>'+
+    '<div class="field"><label>קטגוריה</label><select id="drillCatInput">'+
+      DRILL_CATEGORIES.map(function(c){ return '<option value="'+c+'"'+(d&&d.category===c?' selected':'')+'>'+c+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>משך (דקות)</label><input type="number" min="0" id="drillDurationInput" value="'+(d?(d.duration_min||''):'')+'"></div>'+
+    '<div class="field"><label>קישור למדיה (אופציונלי)</label><input id="drillMediaInput" placeholder="https://..." value="'+(d?(d.media_url||''):'')+'"></div>'+
+    '<button class="btn" id="btnSaveDrillLib">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
+  openModal(html);
+  document.getElementById('btnSaveDrillLib').onclick = function(){
+    var title = document.getElementById('drillTitleInput').value.trim();
+    if(!title) return;
+    var desc = document.getElementById('drillDescInput').value.trim();
+    var cat = document.getElementById('drillCatInput').value;
+    var dur = parseInt(document.getElementById('drillDurationInput').value,10) || 0;
+    var media = document.getElementById('drillMediaInput').value.trim();
+    if(isEdit){
+      d.title = title; d.description = desc; d.category = cat; d.duration_min = dur; d.media_url = media;
+      saveDrillLibItem(d);
+    } else {
+      var nd = {id:genCode(8), coachUid:ME.uid, title:title, description:desc, category:cat, duration_min:dur, media_url:media};
+      DRILL_LIB.push(nd);
+      saveDrillLibItem(nd);
+    }
+    closeModal();
+    renderDrillLibScreen();
+  };
+}
+function openDrillPickerModal(onPick){
+  drillPickerCallback = onPick;
+  if(!DRILL_LIB_LOADED){
+    openModal('<div class="muted" style="text-align:center">טוען...</div>');
+    loadDrillLib(function(){ renderDrillPickerModal(); });
+    return;
+  }
+  renderDrillPickerModal();
+}
+function renderDrillPickerModal(){
+  var html = '<h3 style="margin-bottom:14px">בחר/י מבנק התרגילים</h3>'+
+    (DRILL_LIB.length===0
+      ? '<div class="muted" style="margin-bottom:10px">הבנק ריק — ניתן להוסיף תרגילים מתוך "בנק תרגילים"</div>'
+      : DRILL_LIB.map(function(d,i){ return drillCardHtml(d, i, true); }).join('')
+    );
+  openModal(html);
+  document.querySelectorAll('[data-pickdrill]').forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.dataset.pickdrill,10);
+      var d = DRILL_LIB[idx];
+      closeModal();
+      if(drillPickerCallback) drillPickerCallback(d);
+    };
   });
 }
 
@@ -1036,6 +1178,8 @@ function wireTab(i){
   if(i===0){
     var nb = document.getElementById('btnNewPlan');
     if(nb) nb.onclick = function(){ openPlanBuilder(null); };
+    var ndl = document.getElementById('btnOpenDrillLib');
+    if(ndl) ndl.onclick = function(){ openDrillLib(); };
     document.querySelectorAll('[data-viewplan]').forEach(function(btn){
       btn.onclick = function(){ openPlanBuilder(parseInt(btn.dataset.viewplan,10)); };
     });
@@ -1254,11 +1398,13 @@ function pitchSvgMarkup(elements, small, orientation, svgId, bgStyle){
   '</svg>';
 }
 function openPlanBuilder(idx){
-  editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[]};
+  editingPlan = idx!==null ? TRAINING_PLANS[idx] : {coachUid:ME.uid, name:'', drills:[], phases:[]};
   editingDrills = editingPlan.drills ? editingPlan.drills.slice() : [];
+  if(!editingPlan.phases) editingPlan.phases = [];
   addMode = null; lineStart = null; selectedElId = null; editingDrillIndex = null;
   boardState = {elements:[], orientation:'h', bgStyle:'classic'};
   boardHistory = [];
+  if(!DRILL_LIB_LOADED) loadDrillLib();
   renderPlanBuilderModal();
 }
 function showBgStylePicker(){
@@ -1379,11 +1525,13 @@ function renderPlanBuilderModal(){
          '<button class="frame-add-chip" id="btnNewFrame" title="התחל פריים ריק">🧹</button>'+
        '</div>'+
        (editingDrillIndex!==null ? '<button class="btn ghost" id="btnDelCurrentFrame" style="margin-bottom:10px">🗑 מחק פריים '+(editingDrillIndex+1)+'</button>' : '')))+
+  '<div style="margin-top:18px;border-top:1px solid #e3e6ec;padding-top:14px">'+phasesSectionHtml()+'</div>'+
   '';
   document.getElementById('builderBody').innerHTML = body;
   document.getElementById('planNameInput').value = editingPlan.name || '';
   document.getElementById('builderScreen').style.display = 'flex';
   wirePlanBuilderModal();
+  wirePhasesSection();
 }
 function closeBuilder(){
   document.getElementById('builderScreen').style.display = 'none';
@@ -1393,6 +1541,7 @@ function savePlan(){
   if(!n){ alert('יש להזין שם לתוכנית'); return; }
   editingPlan.name = n;
   editingPlan.drills = editingDrills;
+  editingPlan.phases = editingPlan.phases || [];
   editingPlan.coachUid = ME.uid;
   if(!editingPlan.id) editingPlan.id = genCode(8);
   db.collection(P+'trainingplans').doc(editingPlan.id).set(editingPlan).then(function(){
@@ -1400,6 +1549,100 @@ function savePlan(){
     if(existingIdx>=0) TRAINING_PLANS[existingIdx] = editingPlan; else TRAINING_PLANS.push(editingPlan);
     closeBuilder();
     renderTab(0);
+  });
+}
+/* ---------------- Session builder phases (בונה אימונים) ---------------- */
+function addPhase(){
+  if(!editingPlan.phases) editingPlan.phases = [];
+  editingPlan.phases.push({name:'שלב חדש', items:[]});
+  renderPlanBuilderModal();
+}
+function removePhase(pIdx){
+  if(!confirm('להסיר את השלב?')) return;
+  editingPlan.phases.splice(pIdx,1);
+  renderPlanBuilderModal();
+}
+function renamePhase(pIdx, name){
+  editingPlan.phases[pIdx].name = name;
+}
+function addFreeTextDrillToPhase(pIdx){
+  var html = '<h3 style="margin-bottom:14px">הוספת תרגיל חופשי</h3>'+
+    '<div class="field"><label>כותרת</label><input id="freeDrillTitleInput" placeholder="שם התרגיל"></div>'+
+    '<div class="field"><label>משך (דקות)</label><input type="number" min="0" id="freeDrillDurationInput"></div>'+
+    '<div class="field"><label>הערות</label><textarea id="freeDrillNotesInput" rows="2"></textarea></div>'+
+    '<button class="btn" id="btnSaveFreeDrill">הוסף</button>';
+  openModal(html);
+  document.getElementById('btnSaveFreeDrill').onclick = function(){
+    var title = document.getElementById('freeDrillTitleInput').value.trim();
+    if(!title) return;
+    var dur = parseInt(document.getElementById('freeDrillDurationInput').value,10) || 0;
+    var notes = document.getElementById('freeDrillNotesInput').value.trim();
+    editingPlan.phases[pIdx].items.push({drillId:null, title:title, category:'', duration_min:dur, notes:notes});
+    closeModal();
+    renderPlanBuilderModal();
+  };
+}
+function addLibraryDrillToPhase(pIdx){
+  openDrillPickerModal(function(d){
+    editingPlan.phases[pIdx].items.push({drillId:d.id, title:d.title, category:d.category, duration_min:d.duration_min||0, notes:''});
+    renderPlanBuilderModal();
+  });
+}
+function removePhaseItem(pIdx, iIdx){
+  editingPlan.phases[pIdx].items.splice(iIdx,1);
+  renderPlanBuilderModal();
+}
+function phasesSectionHtml(){
+  var phases = editingPlan.phases || [];
+  var html = '<div class="section-title" style="font-size:14px">🧩 בונה אימונים — שלבים ותרגילים</div>'+
+    '<div class="muted" style="margin-bottom:10px">חלק/י את האימון לשלבים (חימום, טכניקה, משחק וכו׳) והוסיפ/י תרגילים מהבנק או חופשיים</div>';
+  if(phases.length===0){
+    html += '<div class="muted" style="margin-bottom:10px">עדיין לא הוגדרו שלבים</div>';
+  } else {
+    html += phases.map(function(ph, pIdx){
+      var itemsHtml = (ph.items||[]).map(function(it,iIdx){
+        return '<div class="phase-drill-row">'+
+          '<div><b>'+it.title+'</b>'+(it.category?' <span class="badge">'+it.category+'</span>':'')+' <span class="muted">'+(it.duration_min||0)+' דק׳</span>'+
+          (it.notes?('<div class="muted" style="font-size:11px">'+it.notes+'</div>'):'')+'</div>'+
+          '<button class="logout-btn" data-rmphaseitem="'+pIdx+'_'+iIdx+'" title="הסר">🗑</button>'+
+        '</div>';
+      }).join('');
+      return '<div class="phase-block">'+
+        '<div class="row" style="margin-bottom:6px">'+
+          '<input class="builder-name-input" style="font-size:13px;padding:7px 10px" data-phasename="'+pIdx+'" value="'+ph.name+'">'+
+          '<button class="logout-btn" data-rmphase="'+pIdx+'" title="הסר שלב">🗑</button>'+
+        '</div>'+
+        (itemsHtml || '<div class="muted" style="font-size:12px">אין תרגילים בשלב זה</div>')+
+        '<div class="action-row" style="margin-top:8px">'+
+          '<button data-pickfromlib="'+pIdx+'">📚 בחר מבנק התרגילים</button>'+
+          '<button data-addfreedrill="'+pIdx+'">✏️ תרגיל חופשי</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+  html += '<button class="btn ghost sm" id="btnAddPhase" style="margin-bottom:14px">+ הוסף שלב</button>';
+  return html;
+}
+function wirePhasesSection(){
+  var addBtn = document.getElementById('btnAddPhase');
+  if(addBtn) addBtn.onclick = function(){ addPhase(); };
+  document.querySelectorAll('[data-phasename]').forEach(function(inp){
+    inp.onchange = function(){ renamePhase(parseInt(inp.dataset.phasename,10), inp.value); };
+  });
+  document.querySelectorAll('[data-rmphase]').forEach(function(btn){
+    btn.onclick = function(){ removePhase(parseInt(btn.dataset.rmphase,10)); };
+  });
+  document.querySelectorAll('[data-pickfromlib]').forEach(function(btn){
+    btn.onclick = function(){ addLibraryDrillToPhase(parseInt(btn.dataset.pickfromlib,10)); };
+  });
+  document.querySelectorAll('[data-addfreedrill]').forEach(function(btn){
+    btn.onclick = function(){ addFreeTextDrillToPhase(parseInt(btn.dataset.addfreedrill,10)); };
+  });
+  document.querySelectorAll('[data-rmphaseitem]').forEach(function(btn){
+    btn.onclick = function(){
+      var parts = btn.dataset.rmphaseitem.split('_');
+      removePhaseItem(parseInt(parts[0],10), parseInt(parts[1],10));
+    };
   });
 }
 function wirePlanBuilderModal(){
@@ -1713,6 +1956,7 @@ function goHome(){
 }
 document.getElementById('btnCloseTeamScreen').onclick = function(){ closeTeamDetail(); goHome(); };
 document.getElementById('btnClosePitchScreen').onclick = function(){ closePitchDetail(); goHome(); };
+document.getElementById('btnCloseDrillLib').onclick = function(){ closeDrillLib(); };
 </script>
 </body>
 </html>
