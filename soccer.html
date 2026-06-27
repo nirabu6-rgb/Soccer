@@ -403,6 +403,124 @@ function deletePlayerClip(id){
   });
 }
 
+/* ---------------- Player metrics (periodic test results) ---------------- */
+var PLAYER_METRICS = [];
+var PLAYER_METRICS_LOADED = false;
+var METRIC_TYPES = ['מהירות (זמן ריצה)','שליטה בכדור','כוח','קואורדינציה','אחר'];
+var metricsModalPlayerName = null, metricsModalPlayerCategory = null;
+function loadPlayerMetrics(){
+  if(!ME.uid) return;
+  db.collection(P+'playermetrics').where('coachUid','==',ME.uid).get().then(function(snap){
+    PLAYER_METRICS = snap.docs.map(function(d){ return d.data(); });
+    PLAYER_METRICS_LOADED = true;
+    if(currentTeamCategory) renderTeamDetail();
+    if(metricsModalPlayerName) renderPlayerMetricsModal();
+  });
+}
+function metricsForPlayer(name, category){
+  return PLAYER_METRICS.filter(function(m){ return m.playerName===name && m.category===category; });
+}
+function openPlayerMetricsModal(playerName, category){
+  metricsModalPlayerName = playerName;
+  metricsModalPlayerCategory = category;
+  renderPlayerMetricsModal();
+}
+function metricTypeSelectHtml(id){
+  return '<select id="'+id+'">'+METRIC_TYPES.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+'</select>';
+}
+function metricProgressHtml(entries){
+  if(entries.length<2) return '';
+  var sorted = entries.slice().sort(function(a,b){ return (a.test_date||'').localeCompare(b.test_date||''); });
+  var latest = sorted[sorted.length-1], prev = sorted[sorted.length-2];
+  var vLatest = parseFloat(latest.score_value), vPrev = parseFloat(prev.score_value);
+  var bothNumeric = !isNaN(vLatest) && !isNaN(vPrev) && (''+latest.score_value).trim()!=='' && (''+prev.score_value).trim()!=='';
+  if(!bothNumeric){
+    return '<div class="muted" style="font-size:11px">'+prev.score_value+' ('+(prev.test_date||'-')+') ← '+latest.score_value+' ('+(latest.test_date||'-')+')</div>';
+  }
+  var arrow = vLatest>vPrev ? '▲' : (vLatest<vPrev ? '▼' : '–');
+  var maxAbs = Math.max(Math.abs(vLatest), Math.abs(vPrev)) || 1;
+  return '<div style="font-size:12px;margin-bottom:2px">'+prev.score_value+' ← '+latest.score_value+' '+arrow+'</div>'+
+    '<div class="pbar-outer"><div class="pbar-fill" style="width:'+Math.min(100, Math.abs(vLatest)/maxAbs*100)+'%"></div></div>'+
+    '<div class="muted" style="font-size:10px;margin-top:2px">ערך נמוך יותר יכול להיות שיפור או החמרה בהתאם לסוג המבדק</div>';
+}
+function renderPlayerMetricsModal(){
+  var name = metricsModalPlayerName, category = metricsModalPlayerCategory;
+  var entries = metricsForPlayer(name, category);
+  var byType = {};
+  entries.forEach(function(m){
+    if(!byType[m.metric_type]) byType[m.metric_type] = [];
+    byType[m.metric_type].push(m);
+  });
+  var types = Object.keys(byType);
+  var html = '<h3 style="margin-bottom:14px">📈 מבדקים ומדדים — '+name+'</h3>';
+  if(!PLAYER_METRICS_LOADED){
+    html += '<div class="muted" style="font-size:12px">טוען מבדקים...</div>';
+  } else if(types.length===0){
+    html += '<div class="muted" style="margin-bottom:10px">אין עדיין מבדקים</div>';
+  } else {
+    html += types.map(function(t){
+      var list = byType[t].slice().sort(function(a,b){ return (b.test_date||'').localeCompare(a.test_date||''); });
+      return '<div class="card"><div class="section-title" style="font-size:13px">'+t+'</div>'+
+        metricProgressHtml(byType[t])+
+        list.map(function(m){
+          return '<div class="row" style="padding:4px 0;border-bottom:1px solid #e3e6ec;font-size:12px">'+
+            '<div><b>'+m.score_value+'</b><span class="muted" style="margin-right:6px">'+(m.test_date||'')+'</span>'+
+            (m.coach_notes ? '<div class="muted" style="font-size:11px">'+m.coach_notes+'</div>' : '')+'</div>'+
+            '<button class="logout-btn" data-delmetric="'+m.id+'" title="מחק">🗑</button>'+
+          '</div>';
+        }).join('')+
+      '</div>';
+    }).join('');
+  }
+  html += '<div class="section-title" style="font-size:14px;margin-top:14px">+ הוסף מבדק</div>'+
+    '<div class="field"><label>סוג מבדק</label>'+metricTypeSelectHtml('metricTypeInput')+'</div>'+
+    '<div class="field"><label>תוצאה</label><input id="metricScoreInput" placeholder="לדוגמה: 12.3 שניות / 8/10"></div>'+
+    '<div class="field"><label>תאריך</label><input type="date" id="metricDateInput" value="'+todayIso()+'"></div>'+
+    '<div class="field"><label>הערות</label><textarea id="metricNotesInput" rows="2" placeholder="הערות (אופציונלי)"></textarea></div>'+
+    '<button class="btn" id="btnSaveMetric">שמור מבדק</button>'+
+    '<button class="btn ghost sm" id="btnCloseMetrics" style="margin-top:8px">סגור</button>';
+  openModal(html);
+  document.getElementById('btnSaveMetric').onclick = function(){
+    var scoreVal = document.getElementById('metricScoreInput').value.trim();
+    if(!scoreVal) return;
+    var m = {
+      id: genCode(8),
+      coachUid: ME.uid,
+      playerName: name,
+      category: category,
+      metric_type: document.getElementById('metricTypeInput').value,
+      test_date: document.getElementById('metricDateInput').value || todayIso(),
+      score_value: scoreVal,
+      coach_notes: document.getElementById('metricNotesInput').value.trim()
+    };
+    db.collection(P+'playermetrics').doc(m.id).set(m).then(function(){
+      PLAYER_METRICS.push(m);
+      renderPlayerMetricsModal();
+    });
+  };
+  document.querySelectorAll('[data-delmetric]').forEach(function(btn){
+    btn.onclick = function(){
+      if(!confirm('למחוק את המבדק?')) return;
+      var id = btn.dataset.delmetric;
+      db.collection(P+'playermetrics').doc(id).delete().then(function(){
+        PLAYER_METRICS = PLAYER_METRICS.filter(function(x){ return x.id!==id; });
+        renderPlayerMetricsModal();
+      });
+    };
+  });
+  document.getElementById('btnCloseMetrics').onclick = function(){
+    metricsModalPlayerName = null;
+    metricsModalPlayerCategory = null;
+    closeModal();
+  };
+}
+function todayIso(){
+  var d = new Date();
+  var mm = (''+(d.getMonth()+1)).padStart ? (''+(d.getMonth()+1)).padStart(2,'0') : ((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);
+  var dd = (''+d.getDate()).padStart ? (''+d.getDate()).padStart(2,'0') : (d.getDate()<10?'0':'')+d.getDate();
+  return d.getFullYear()+'-'+mm+'-'+dd;
+}
+
 var DAYS = [{k:'sun',l:'יום א\''},{k:'mon',l:'יום ב\''},{k:'tue',l:'יום ג\''},{k:'wed',l:'יום ד\''},{k:'thu',l:'יום ה\''},{k:'fri',l:'יום ו\''},{k:'sat',l:'שבת'}];
 var HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 function startOfWeek(d){
@@ -814,6 +932,7 @@ function enterApp(){
   renderTab(0);
   loadClubTeams();
   loadPlayerClips();
+  loadPlayerMetrics();
 }
 function buildNav(){
   var list = document.getElementById('navBtnsList');
@@ -1299,6 +1418,7 @@ function renderTeamDetail(){
         '<div class="section-title" style="font-size:12px;margin:10px 0 4px">🎬 קליפים</div>'+
         playerClipsListHtml(p.name, currentTeamCategory)+
         '<button class="btn ghost sm" data-addclip="'+i+'" style="margin-top:6px">+ הוסף קליפ</button>'+
+        '<button class="btn ghost sm" data-metrics="'+i+'" style="margin-top:6px">📈 מבדקים ומדדים</button>'+
         '<button class="btn ghost sm" data-shareplayer="'+i+'" style="margin-top:6px">📤 שיתוף עם ההורה</button>'+
         '<button class="btn ghost sm" data-monthlyreport="'+i+'" style="margin-top:6px">📄 דוח חודשי</button>'+
         '</div>';
@@ -1322,6 +1442,13 @@ function renderTeamDetail(){
     btn.onclick = function(e){
       e.stopPropagation();
       deletePlayerClip(btn.dataset.delclip);
+    };
+  });
+  document.querySelectorAll('[data-metrics]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var idx = parseInt(btn.dataset.metrics,10);
+      openPlayerMetricsModal(t.players[idx].name, currentTeamCategory);
     };
   });
   document.querySelectorAll('[data-shareplayer]').forEach(function(btn){
