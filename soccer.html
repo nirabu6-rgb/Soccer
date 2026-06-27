@@ -2322,6 +2322,7 @@ function tplClubSection(){
       '<button class="btn ghost sm" id="btnSaveClubColor" style="margin-top:8px">שמור צבע</button>'+
       '<div class="muted" style="margin-top:14px">מאמנים במועדון</div>'+
       (coachesList || '<div class="muted" style="margin-top:6px">אין מאמנים נוספים במועדון</div>')+
+      '<button class="btn ghost sm" id="btnOpenClubAdminDash" style="margin-top:14px">🏛 לוח ניהול מועדון</button>'+
     '</div>';
   } else {
     if(!ME.clubId){
@@ -2339,6 +2340,103 @@ function tplClubSection(){
       '<button class="btn ghost sm" id="btnLeaveClub" style="margin-top:8px">עזוב מועדון</button>'+
     '</div>';
   }
+}
+/* ---------------- Club admin dashboard (manager-only, club-wide oversight) ---------------- */
+function clubAdminTeamRows(){
+  var alertsByCat = {};
+  computeAlerts().forEach(function(a){
+    if(!a.category) return;
+    if(!alertsByCat[a.category]) alertsByCat[a.category] = {punch:0, medical:0};
+    if(a.type==='punch') alertsByCat[a.category].punch++;
+    else if(a.type==='medical') alertsByCat[a.category].medical++;
+  });
+  var rows = [];
+  AGE_GROUPS.forEach(function(cat){
+    var t = CLUB_TEAMS[cat];
+    if(!t || !t.players || !t.players.length) return;
+    var a = alertsByCat[cat] || {punch:0, medical:0};
+    rows.push({
+      category: cat,
+      playersCount: t.players.length,
+      coachName: getTeamCoachName(cat) || '—',
+      lowPunchCount: a.punch,
+      medicalCount: a.medical
+    });
+  });
+  return rows;
+}
+function clubAdminCoachRows(rows){
+  // best-effort association of teams/players per coach name, via getTeamCoachName matching
+  var byCoach = {};
+  rows.forEach(function(r){
+    var name = r.coachName==='—' ? 'ללא מאמן משובץ' : r.coachName;
+    if(!byCoach[name]) byCoach[name] = {name:name, teams:0, players:0};
+    byCoach[name].teams++;
+    byCoach[name].players += r.playersCount;
+  });
+  var list = [];
+  for(var k in byCoach) list.push(byCoach[k]);
+  return list;
+}
+function clubAdminDashHtml(){
+  var rows = clubAdminTeamRows();
+  var teamsCount = rows.length;
+  var playersCount = rows.reduce(function(s,r){ return s+r.playersCount; }, 0);
+  var pitchesCount = (typeof PITCHES!=='undefined' && PITCHES) ? PITCHES.length : 0;
+  var coachRows = clubAdminCoachRows(rows);
+  var stats = [
+    {ic:'👥', num:teamsCount, label:'קבוצות פעילות'},
+    {ic:'🧑‍🤝‍🧑', num:playersCount, label:'שחקנים'},
+    {ic:'🏟', num:pitchesCount, label:'מגרשים'},
+    {ic:'👨‍🏫', num:coachRows.length, label:'מאמנים'}
+  ];
+  var statsHtml = '<div class="dash-stats">'+stats.map(function(s){
+    return '<div class="dash-stat-card"><div class="dash-stat-ic">'+s.ic+'</div>'+
+      '<div><div class="dash-stat-num">'+s.num+'</div><div class="dash-stat-label">'+s.label+'</div></div></div>';
+  }).join('')+'</div>';
+  var teamRowsHtml = rows.length===0
+    ? '<div class="muted" style="text-align:center;margin-top:6px">אין עדיין קבוצות עם שחקנים</div>'
+    : rows.map(function(r){
+        var alertBits = [];
+        if(r.lowPunchCount>0) alertBits.push('🟡 '+r.lowPunchCount+' כרטיסיות נמוכות');
+        if(r.medicalCount>0) alertBits.push('🔴 '+r.medicalCount+' אישורים רפואיים');
+        return '<div class="row" style="margin-top:8px;align-items:flex-start">'+
+          '<div>'+
+            '<div><b>'+r.category+'</b></div>'+
+            '<div class="muted" style="margin-top:2px">מאמן: '+r.coachName+' · '+r.playersCount+' שחקנים</div>'+
+            (alertBits.length ? '<div class="muted" style="margin-top:2px">'+alertBits.join(' · ')+'</div>' : '')+
+          '</div>'+
+          '<button class="btn ghost sm" data-clubadmin-openteam="'+r.category+'">פתח</button>'+
+        '</div>';
+      }).join('');
+  var coachRowsHtml = coachRows.length===0
+    ? '<div class="muted" style="text-align:center;margin-top:6px">אין מאמנים משובצים</div>'
+    : coachRows.map(function(c){
+        return '<div class="row" style="margin-top:6px"><span>'+c.name+'</span>'+
+          '<span class="muted">'+c.teams+' קבוצות · '+c.players+' שחקנים</span></div>';
+      }).join('');
+  return '<h3 style="margin-bottom:14px">🏛 לוח ניהול מועדון</h3>'+
+    statsHtml+
+    '<div class="card">'+
+      '<div class="row"><b>קבוצות</b></div>'+
+      teamRowsHtml+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="row"><b>מאמנים במועדון</b></div>'+
+      coachRowsHtml+
+    '</div>'+
+    '<div class="muted" style="text-align:center;margin-top:4px">פתיחת קבוצה חדשה: רשימת הקבוצות קבועה מראש (AGE_GROUPS); הוספת שחקנים לקבוצה קיימת מתבצעת ממסך הקבוצה.</div>';
+}
+function openClubAdminDash(){
+  if(ME.role!=='manager' || !MY_CLUB) return;
+  openModal(clubAdminDashHtml());
+  document.querySelectorAll('[data-clubadmin-openteam]').forEach(function(el){
+    el.onclick = function(){
+      var cat = el.dataset.clubadminOpenteam;
+      closeModal();
+      openTeamDetail(cat);
+    };
+  });
 }
 function tplSettings(){
   return ''+
@@ -2432,6 +2530,8 @@ function wireTab(i){
         removeCoachFromClub(btn.dataset.removecoach);
       };
     });
+    var btnOpenClubAdminDash = document.getElementById('btnOpenClubAdminDash');
+    if(btnOpenClubAdminDash) btnOpenClubAdminDash.onclick = function(){ openClubAdminDash(); };
   }
 }
 
