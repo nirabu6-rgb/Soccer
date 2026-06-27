@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Memory App</title>
+<link rel="manifest" href="memory-manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0ea5e9">
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto;background:#fff;color:#0f172a;}
+  h1{text-align:center;}
+  .card{background:#f1f5f9;padding:15px;border-radius:10px;}
+  input,select{width:100%;padding:10px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:6px;font-size:1rem;}
+  button{width:100%;padding:10px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;border-radius:6px;font-size:1rem;}
+  h2{margin-top:20px;}
+  .empty{color:#94a3b8;}
+  .task{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #ddd;}
+  .task span.done{text-decoration:line-through;color:#94a3b8;}
+  .small-btn{background:#22c55e;border:none;color:#fff;padding:6px 12px;cursor:pointer;border-radius:6px;width:auto;}
+  .del-btn{background:#ef4444;border:none;color:#fff;padding:6px 10px;cursor:pointer;border-radius:6px;width:auto;margin-right:6px;}
+  .small-task{font-size:.8rem;color:#64748b;padding:4px 0;display:flex;justify-content:space-between;align-items:center;}
+  .actions{display:flex;gap:6px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+var STORAGE_KEY="memory_items";
+
+function loadItems(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); }catch(e){ return []; }
+}
+function saveItems(items){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+var state={ items: loadItems(), text:"", time:"today" };
+
+var TIME_LABELS={today:"היום", tomorrow:"מחר", week:"השבוע"};
+
+function addItem(){
+  var input=document.getElementById("inp-text");
+  var text=input.value.trim();
+  if(!text) return;
+  var time=document.getElementById("sel-time").value;
+  var newItem={id:Date.now(), text:text, time:time, done:false};
+  state.items=[newItem].concat(state.items);
+  saveItems(state.items);
+  state.text="";
+  render();
+}
+
+function toggleDone(id){
+  state.items=state.items.map(function(item){
+    return item.id===id ? Object.assign({}, item, {done:!item.done}) : item;
+  });
+  saveItems(state.items);
+  render();
+}
+
+function deleteItem(id){
+  state.items=state.items.filter(function(item){ return item.id!==id; });
+  saveItems(state.items);
+  render();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function render(){
+  var todayItems=state.items.filter(function(i){ return i.time==="today"; });
+
+  var html = '<h1>🧠 Memory App</h1>';
+  html += '<div class="card">';
+  html += '<input id="inp-text" placeholder="מה אתה לא רוצה לשכוח?" value="'+escapeHtml(state.text)+'">';
+  html += '<select id="sel-time">';
+  ["today","tomorrow","week"].forEach(function(t){
+    html += '<option value="'+t+'"'+(state.time===t?' selected':'')+'>'+TIME_LABELS[t]+'</option>';
+  });
+  html += '</select>';
+  html += '<button id="btn-add">שמור</button>';
+  html += '</div>';
+
+  html += '<h2>📌 הדברים שלך היום</h2>';
+  if(todayItems.length===0){
+    html += '<p class="empty">אין משימות להיום 🎉</p>';
+  } else {
+    todayItems.forEach(function(item){
+      html += '<div class="task">';
+      html += '<span class="'+(item.done?'done':'')+'">'+escapeHtml(item.text)+'</span>';
+      html += '<div class="actions">';
+      html += '<button class="small-btn" data-toggle="'+item.id+'">'+(item.done?'בוטל':'בוצע')+'</button>';
+      html += '<button class="del-btn" data-del="'+item.id+'">מחק</button>';
+      html += '</div></div>';
+    });
+  }
+
+  html += '<h2>📂 הכל</h2>';
+  if(state.items.length===0){
+    html += '<p class="empty">אין פריטים</p>';
+  } else {
+    state.items.forEach(function(item){
+      html += '<div class="small-task">';
+      html += '<span class="'+(item.done?'done':'')+'">'+escapeHtml(item.text)+' ('+TIME_LABELS[item.time]+')</span>';
+      html += '<button class="del-btn" data-del="'+item.id+'">מחק</button>';
+      html += '</div>';
+    });
+  }
+
+  document.getElementById("root").innerHTML=html;
+
+  document.getElementById("btn-add").onclick=addItem;
+  document.getElementById("inp-text").addEventListener("keypress", function(e){
+    if(e.key==="Enter") addItem();
+  });
+  document.getElementById("inp-text").addEventListener("input", function(e){ state.text=e.target.value; });
+  document.getElementById("sel-time").addEventListener("change", function(e){ state.time=e.target.value; });
+
+  document.querySelectorAll("[data-toggle]").forEach(function(btn){
+    btn.onclick=function(){ toggleDone(Number(btn.getAttribute("data-toggle"))); };
+  });
+  document.querySelectorAll("[data-del]").forEach(function(btn){
+    btn.onclick=function(){ deleteItem(Number(btn.getAttribute("data-del"))); };
+  });
+}
+
+render();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
