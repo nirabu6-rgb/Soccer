@@ -101,6 +101,15 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .badge{display:inline-block;background:var(--card2);color:var(--sub);font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px}
 .phase-block{background:var(--card2);border-radius:12px;padding:10px;margin-bottom:10px}
 .phase-drill-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e3e6ec;border-radius:8px;padding:8px 10px;margin-top:6px}
+.pbadge-row{display:flex;gap:8px;overflow-x:auto;padding:4px 0}
+.pbadge-item{flex-shrink:0;width:58px;text-align:center}
+.pbadge-item .ic{font-size:22px;background:var(--card2);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;margin:0 auto 3px}
+.pbadge-item.locked .ic{opacity:.3;filter:grayscale(1)}
+.pbadge-item .t{font-size:9px;color:var(--sub);line-height:1.2}
+.pbar-outer{height:7px;border-radius:4px;background:#e5e8ed;overflow:hidden;margin-top:5px}
+.pbar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.injury-tag{font-size:10px;padding:2px 8px;border-radius:10px;margin-top:3px;display:inline-block;background:var(--bad);color:#fff;font-weight:700}
+.injury-tag.rehab{background:var(--warn);color:#241a00}
 
 @media (min-width:880px){
   body{display:flex;justify-content:center}
@@ -274,6 +283,12 @@ function computeAlerts(){
           alerts.push({type:'medical', severity:'warning', category:cat, playerName:pl.name,
             text:'אישור רפואי של '+pl.name+' עומד לפוג ב-'+pl.medical_expiry});
         }
+      }
+      // 3. Injury status
+      if(pl.injury_status==='injured' || pl.injury_status==='rehab'){
+        alerts.push({type:'injury', severity:(pl.injury_status==='injured'?'danger':'warning'), category:cat, playerName:pl.name,
+          text:(pl.injury_status==='injured'?'השחקן '+pl.name+' מוגדר כפצוע':'השחקן '+pl.name+' נמצא בתהליך שיקום')+
+            (pl.injury_expected_return?(' · חזרה משוערת: '+pl.injury_expected_return):'')});
       }
     });
   });
@@ -715,10 +730,13 @@ function renderTeamDetail(){
     '<div class="section-title" style="font-size:16px">סגל שחקנים</div>'+
     (t.players.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין שחקנים</div>' :
       t.players.map(function(p,i){
+        var injStatus = p.injury_status || 'healthy';
         return '<div class="card"><div class="row">'+
           '<div class="row" style="gap:10px;justify-content:flex-start;cursor:pointer" data-editplayer="'+i+'">'+
             (p.photo ? '<img src="'+p.photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">' : '<span style="font-size:22px">👤</span>')+
-            '<div><b>'+p.name+'</b><div class="muted">דירוג: '+'⭐'.repeat(p.rating||0)+'</div></div>'+
+            '<div><b>'+p.name+'</b><div class="muted">דירוג: '+'⭐'.repeat(p.rating||0)+'</div>'+
+              (injStatus!=='healthy' ? '<span class="injury-tag'+(injStatus==='rehab'?' rehab':'')+'">'+INJURY_STATUS_INFO[injStatus].ic+' '+INJURY_STATUS_INFO[injStatus].t+(p.injury_expected_return?' · חזרה '+p.injury_expected_return:'')+'</span>' : '')+
+            '</div>'+
           '</div>'+
           '<button class="logout-btn" data-delplayer="'+i+'" title="מחק">🗑</button>'+
         '</div>'+
@@ -729,7 +747,21 @@ function renderTeamDetail(){
           (p.medical_approval ? '<span style="color:var(--good)">✅ אישור רפואי בתוקף</span>' : '<span style="color:var(--bad)">⚠️ אין אישור רפואי</span>')+
           (p.sub_type==='punch' ? '<span class="muted">· ניקובים שנותרו: '+(typeof p.remaining_punches==='number'?p.remaining_punches:'-')+(typeof p.remaining_punches==='number' && p.remaining_punches<=2 ? ' ⚠️' : '')+'</span>' : '')+
           (p.sub_type==='monthly' ? '<span class="muted">· מנוי חודשי: '+(p.sub_status==='active'?'פעיל':(p.sub_status==='frozen'?'מוקפא':'פג תוקף'))+'</span>' : '')+
-        '</div></div>';
+        '</div>'+
+        '<div style="margin-top:8px">'+playerBadgeRowHtml(p)+'</div>'+
+        '<div class="section-title" style="font-size:12px;margin:10px 0 4px">מדדים פיזיים</div>'+
+        playerPhysicalBarsHtml(p)+
+        (p.improvement_goal ? '<div class="muted" style="margin-top:2px;font-size:11px">🎯 יעד לשיפור: '+p.improvement_goal+'</div>' : '')+
+        (p.injury_history && p.injury_history.length
+          ? '<div class="section-title" style="font-size:12px;margin:10px 0 4px">היסטוריית פציעות</div>'+
+            p.injury_history.slice().reverse().map(function(h){
+              return '<div class="muted" style="font-size:11px;border-bottom:1px solid #e3e6ec;padding:4px 0">'+
+                (h.description||'-')+' · '+(h.start_date||'-')+' — '+(h.end_date||'-')+
+                (h.notes ? '<div>'+h.notes+'</div>' : '')+
+              '</div>';
+            }).join('')
+          : '')+
+        '</div>';
       }).join('')
     )+
     '<button class="btn" id="btnAddPlayer">+ הוסף שחקן</button>';
@@ -790,6 +822,74 @@ var SKILL_ATTRS = [
   {k:'defense', l:'הגנה'},
   {k:'vision', l:'חזון משחק'}
 ];
+
+/* ---------------- Player badges / achievements ---------------- */
+var INJURY_STATUS_INFO = {
+  healthy:{ic:'✅',t:'בריא'},
+  injured:{ic:'🩹',t:'פצוע'},
+  rehab:{ic:'🦵',t:'בשיקום'}
+};
+var PHYSICAL_ATTRS = [
+  {k:'rating_speed', l:'מהירות'},
+  {k:'rating_strength', l:'כוח'},
+  {k:'rating_technique', l:'טכניקה'},
+  {k:'rating_endurance', l:'סבולת'}
+];
+var BADGES = [
+  {id:'attend10', ic:'🏅', t:'10 אימונים', d:'נוכחות ב-10 אימונים לפחות'},
+  {id:'attend25', ic:'🎖️', t:'25 אימונים', d:'נוכחות ב-25 אימונים לפחות'},
+  {id:'streak5', ic:'🔥', t:'רצף נוכחות', d:'5 אימונים רצופים ברצף ללא היעדרות'},
+  {id:'fullskills', ic:'⭐', t:'שחקן מושלם', d:'כל היכולות (1-5) בציון 4 ומעלה'},
+  {id:'pom', ic:'👑', t:'שחקן החודש', d:'הוענק ע"י המאמן'}
+];
+function countPlayerAttendance(playerName){
+  var present = 0, maxStreak = 0, curStreak = 0;
+  PITCHES.forEach(function(p){
+    DAYS.forEach(function(d){
+      var sessions = (p.schedule && p.schedule[d.k]) || [];
+      sessions.forEach(function(s){
+        var att = s.attendance || {};
+        var val = att[playerName];
+        if(val===undefined) return;
+        if(val==='present'){
+          present++;
+          curStreak++;
+          if(curStreak>maxStreak) maxStreak = curStreak;
+        } else {
+          curStreak = 0;
+        }
+      });
+    });
+  });
+  return {present:present, maxStreak:maxStreak};
+}
+function computePlayerBadges(player){
+  var earned = {};
+  var stats = countPlayerAttendance(player.name);
+  if(stats.present>=10) earned.attend10 = true;
+  if(stats.present>=25) earned.attend25 = true;
+  if(stats.maxStreak>=5) earned.streak5 = true;
+  if(player.skills){
+    var allHigh = SKILL_ATTRS.every(function(sk){ return (player.skills[sk.k]||0)>=4; });
+    if(allHigh) earned.fullskills = true;
+  }
+  if(player.badges && player.badges.indexOf('pom')!==-1) earned.pom = true;
+  return earned;
+}
+function playerBadgeRowHtml(player){
+  var earned = computePlayerBadges(player);
+  return '<div class="pbadge-row">'+BADGES.map(function(b){
+    var got = !!earned[b.id];
+    return '<div class="pbadge-item '+(got?'':'locked')+'" title="'+b.t+' — '+b.d+'"><div class="ic">'+b.ic+'</div><div class="t">'+b.t+'</div></div>';
+  }).join('')+'</div>';
+}
+function playerPhysicalBarsHtml(player){
+  return PHYSICAL_ATTRS.map(function(a){
+    var v = (player && typeof player[a.k]==='number') ? player[a.k] : 0;
+    return '<div style="margin-bottom:8px"><div class="row"><span style="font-size:12px">'+a.l+'</span><span class="muted">'+v+'/100</span></div>'+
+      '<div class="pbar-outer"><div class="pbar-fill" style="width:'+v+'%"></div></div></div>';
+  }).join('');
+}
 function ratingSelect(id, selected){
   var opts = '';
   for(var i=1;i<=5;i++) opts += '<option value="'+i+'"'+(i===selected?' selected':'')+'>'+i+'</option>';
@@ -836,14 +936,61 @@ function openAddPlayerModal(editIdx){
       '<option value="frozen"'+(p&&p.sub_status==='frozen'?' selected':'')+'>מוקפא</option>'+
       '<option value="expired"'+(p&&p.sub_status==='expired'?' selected':'')+'>פג תוקף</option>'+
     '</select></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">מדדים פיזיים (0-100)</div>'+
+    PHYSICAL_ATTRS.map(function(a){
+      return '<div class="field"><label>'+a.l+'</label><input type="number" min="0" max="100" id="phys_'+a.k+'" value="'+(p&&typeof p[a.k]==='number'?p[a.k]:0)+'"></div>';
+    }).join('')+
+    '<div class="field"><label>יעד לשיפור</label><input id="playerGoalInput" placeholder="לדוגמה: לשפר זריזות ברגל החלשה" value="'+(p?(p.improvement_goal||'').replace(/"/g,'&quot;'):'')+'"></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">פציעות</div>'+
+    '<div class="field"><label>סטטוס</label><select id="playerInjuryStatusInput">'+
+      '<option value="healthy"'+(!p||!p.injury_status||p.injury_status==='healthy'?' selected':'')+'>בריא</option>'+
+      '<option value="injured"'+(p&&p.injury_status==='injured'?' selected':'')+'>פצוע</option>'+
+      '<option value="rehab"'+(p&&p.injury_status==='rehab'?' selected':'')+'>בשיקום</option>'+
+    '</select></div>'+
+    '<div id="injuryExtraFields" style="display:'+(p&&p.injury_status&&p.injury_status!=='healthy'?'block':'none')+'">'+
+      '<div class="field"><label>תאריך חזרה משוער</label><input type="date" id="playerInjuryReturnInput" value="'+(p?(p.injury_expected_return||''):'')+'"></div>'+
+      '<div class="field"><label>תוכנית שיקום</label><textarea id="playerInjuryRehabInput" rows="2" placeholder="פירוט תוכנית השיקום">'+(p?(p.injury_rehab_plan||''):'')+'</textarea></div>'+
+    '</div>'+
+    '<div class="field"><label>תיעוד פציעה קודמת</label>'+
+      '<div class="row" style="gap:6px"><input id="newInjuryDesc" placeholder="תיאור" style="flex:2"><input type="date" id="newInjuryStart" style="flex:1"><input type="date" id="newInjuryEnd" style="flex:1"></div>'+
+      '<button type="button" class="btn ghost sm" id="btnAddInjuryHistory" style="margin-top:6px">+ הוסף לתיעוד פציעות קודמות</button>'+
+    '</div>'+
+    (p && p.injury_history && p.injury_history.length
+      ? '<div class="muted" style="margin-bottom:8px">תיעוד קיים: '+p.injury_history.length+' רשומות (יישמרו בעריכה)</div>'
+      : '')+
+    '<div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="playerPomInput" '+(p&&p.badges&&p.badges.indexOf('pom')!==-1?'checked':'')+' style="width:auto">👑 שחקן החודש</label></div>'+
     '<button class="btn" id="btnSavePlayer">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
   openModal(html);
+  var pendingInjuryHistory = (p && p.injury_history) ? p.injury_history.slice() : [];
+  var injStatusSel = document.getElementById('playerInjuryStatusInput');
+  injStatusSel.onchange = function(){
+    document.getElementById('injuryExtraFields').style.display = injStatusSel.value==='healthy' ? 'none' : 'block';
+  };
+  document.getElementById('btnAddInjuryHistory').onclick = function(){
+    var desc = document.getElementById('newInjuryDesc').value.trim();
+    if(!desc) return;
+    pendingInjuryHistory.push({
+      description: desc,
+      start_date: document.getElementById('newInjuryStart').value,
+      end_date: document.getElementById('newInjuryEnd').value,
+      notes: ''
+    });
+    document.getElementById('newInjuryDesc').value = '';
+    document.getElementById('newInjuryStart').value = '';
+    document.getElementById('newInjuryEnd').value = '';
+    alert('נוסף לתיעוד ('+pendingInjuryHistory.length+' רשומות) — יישמר בלחיצה על שמירת שחקן');
+  };
   document.getElementById('btnSavePlayer').onclick = function(){
     var name = document.getElementById('playerNameInput').value.trim();
     if(!name) return;
     var rating = parseInt(document.getElementById('playerRatingInput').value,10);
     var skills = {};
     SKILL_ATTRS.forEach(function(sk){ skills[sk.k] = parseInt(document.getElementById('skill_'+sk.k).value,10); });
+    var badges = (p && p.badges) ? p.badges.slice() : [];
+    var pomChecked = document.getElementById('playerPomInput').checked;
+    var pomIdx = badges.indexOf('pom');
+    if(pomChecked && pomIdx===-1) badges.push('pom');
+    if(!pomChecked && pomIdx!==-1) badges.splice(pomIdx,1);
     var extra = {
       birth_date: document.getElementById('playerBirthInput').value,
       clothing_size: document.getElementById('playerSizeInput').value.trim(),
@@ -857,8 +1004,18 @@ function openAddPlayerModal(editIdx){
       remaining_punches: document.getElementById('playerRemainingPunchesInput').value ? parseInt(document.getElementById('playerRemainingPunchesInput').value,10) : null,
       sub_start: document.getElementById('playerSubStartInput').value,
       sub_end: document.getElementById('playerSubEndInput').value,
-      sub_status: document.getElementById('playerSubStatusInput').value
+      sub_status: document.getElementById('playerSubStatusInput').value,
+      improvement_goal: document.getElementById('playerGoalInput').value.trim(),
+      injury_status: document.getElementById('playerInjuryStatusInput').value,
+      injury_expected_return: document.getElementById('playerInjuryReturnInput').value,
+      injury_rehab_plan: document.getElementById('playerInjuryRehabInput').value.trim(),
+      injury_history: pendingInjuryHistory,
+      badges: badges
     };
+    PHYSICAL_ATTRS.forEach(function(a){
+      var v = parseInt(document.getElementById('phys_'+a.k).value,10);
+      extra[a.k] = (isNaN(v)) ? 0 : Math.max(0, Math.min(100, v));
+    });
     readPhotoFile(document.getElementById('playerPhotoInput'), function(photo){
       if(isEdit){
         p.name = name; p.rating = rating; p.skills = skills;
