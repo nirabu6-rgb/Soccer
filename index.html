@@ -180,7 +180,8 @@ var db = firebase.firestore();
 var auth = firebase.auth();
 var P = 'fc_';
 
-var ME = {uid:'', phone:'', name:'', role:'coach'};
+var ME = {uid:'', phone:'', name:'', role:'coach', clubId:''};
+function clubScopeId(){ return ME.clubId || ME.uid; }
 var TAB = 0;
 var NAV_TABS = [
   {id:0, ic:'📋', t:'תוכניות אימון'},
@@ -249,6 +250,7 @@ document.getElementById('btnVerifyCode').onclick = function(){
         var data = doc.data();
         ME.name = data.name;
         ME.role = data.role;
+        ME.clubId = data.clubId || '';
         enterApp();
       } else {
         document.getElementById('stepCode').style.display = 'none';
@@ -265,13 +267,13 @@ document.getElementById('btnSaveProfile').onclick = function(){
   if(!n) return;
   ME.name = n;
   ME.role = document.getElementById('profRoleInput').value;
-  db.collection(P+'coaches').doc(ME.uid).set({uid:ME.uid, phone:ME.phone, name:ME.name, role:ME.role}).then(function(){
+  db.collection(P+'coaches').doc(ME.uid).set({uid:ME.uid, phone:ME.phone, name:ME.name, role:ME.role, clubId:ME.clubId||''}).then(function(){
     enterApp();
   });
 };
 document.getElementById('btnLogout').onclick = function(){
   auth.signOut().then(function(){
-    ME = {uid:'', phone:'', name:'', role:'coach'};
+    ME = {uid:'', phone:'', name:'', role:'coach', clubId:''};
     TRAINING_PLANS = []; TRAINING_PLANS_LOADED = false;
     document.getElementById('appScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
@@ -291,6 +293,7 @@ auth.onAuthStateChanged(function(user){
         var data = doc.data();
         ME.name = data.name;
         ME.role = data.role;
+        ME.clubId = data.clubId || '';
         enterApp();
       }
     });
@@ -305,6 +308,7 @@ if(LOGIN_DISABLED){
   ME.uid = localStorage.getItem('fc_uid') || ('local_' + Math.random().toString(36).slice(2,10));
   ME.name = localStorage.getItem('fc_name') || 'מאמן';
   ME.role = localStorage.getItem('fc_role') || 'coach';
+  ME.clubId = localStorage.getItem('fc_clubid') || '';
   localStorage.setItem('fc_uid', ME.uid);
   localStorage.setItem('fc_name', ME.name);
   localStorage.setItem('fc_role', ME.role);
@@ -391,7 +395,7 @@ function tplTeams(){
 }
 function loadClubTeams(){
   if(!ME.uid) return;
-  db.collection(P+'clubteams').doc(ME.uid).get().then(function(doc){
+  db.collection(P+'clubteams').doc(clubScopeId()).get().then(function(doc){
     CLUB_TEAMS = (doc.exists && doc.data().categories) ? doc.data().categories : {};
     AGE_GROUPS.forEach(function(cat){ if(!CLUB_TEAMS[cat]) CLUB_TEAMS[cat] = {staff:[], players:[]}; });
     CLUB_TEAMS_LOADED = true;
@@ -400,7 +404,7 @@ function loadClubTeams(){
   });
 }
 function saveClubTeams(){
-  db.collection(P+'clubteams').doc(ME.uid).set({categories:CLUB_TEAMS});
+  db.collection(P+'clubteams').doc(clubScopeId()).set({categories:CLUB_TEAMS});
 }
 function openTeamDetail(cat){
   currentTeamCategory = cat;
@@ -611,7 +615,7 @@ function tplPitches(){
 }
 function loadPitches(){
   if(!ME.uid) return;
-  db.collection(P+'pitches').where('coachUid','==',ME.uid).get().then(function(snap){
+  db.collection(P+'pitches').where('coachUid','==',clubScopeId()).get().then(function(snap){
     PITCHES = snap.docs.map(function(d){ return d.data(); });
     PITCHES_LOADED = true;
     if(TAB===2) renderTab(2);
@@ -633,7 +637,7 @@ function openAddPitchModal(){
   document.getElementById('btnSaveNewPitch').onclick = function(){
     var name = document.getElementById('pitchNameInput').value.trim();
     if(!name) return;
-    var p = {id:genCode(8), coachUid:ME.uid, name:name, schedule:emptySchedule()};
+    var p = {id:genCode(8), coachUid:clubScopeId(), name:name, schedule:emptySchedule()};
     PITCHES.push(p);
     savePitch(p);
     closeModal();
@@ -860,6 +864,164 @@ function openAttendanceModal(day, idx){
 }
 
 /* ---------------- Tab 3: Settings ---------------- */
+var MY_CLUB = null;
+var MY_CLUB_LOADED = false;
+var CLUB_COACH_NAMES = {};
+function setMyClubId(clubId){
+  ME.clubId = clubId || '';
+  if(ME.clubId) localStorage.setItem('fc_clubid', ME.clubId);
+  else localStorage.removeItem('fc_clubid');
+}
+function loadMyClub(){
+  if(!ME.uid){ return; }
+  var lookupId = ME.role==='manager' ? ME.uid : (ME.clubId || '');
+  if(!lookupId){
+    Promise.resolve().then(function(){
+      MY_CLUB = null;
+      MY_CLUB_LOADED = true;
+      if(TAB===3) renderTab(3);
+    });
+    return;
+  }
+  db.collection(P+'clubs').doc(lookupId).get().then(function(doc){
+    MY_CLUB = doc.exists ? doc.data() : null;
+    MY_CLUB_LOADED = true;
+    if(MY_CLUB && MY_CLUB.coaches && MY_CLUB.coaches.length){
+      loadClubCoachNames(MY_CLUB.coaches);
+    } else if(TAB===3){
+      renderTab(3);
+    }
+  });
+}
+function loadClubCoachNames(uids){
+  CLUB_COACH_NAMES = {};
+  var remaining = uids.length;
+  if(remaining===0){ if(TAB===3) renderTab(3); return; }
+  uids.forEach(function(uid){
+    db.collection(P+'coaches').doc(uid).get().then(function(doc){
+      CLUB_COACH_NAMES[uid] = doc.exists ? (doc.data().name || uid) : uid;
+      remaining--;
+      if(remaining<=0 && TAB===3) renderTab(3);
+    });
+  });
+}
+function createClub(name){
+  if(ME.role!=='manager' || !name) return;
+  var club = {adminUid:ME.uid, name:name, inviteCode:genCode(6), coaches:[]};
+  db.collection(P+'clubs').doc(ME.uid).set(club).then(function(){
+    MY_CLUB = club;
+    MY_CLUB_LOADED = true;
+    renderTab(3);
+  });
+}
+function joinClubByCode(code){
+  if(!code) return;
+  db.collection(P+'clubs').where('inviteCode','==',code).get().then(function(snap){
+    if(snap.empty){
+      alert('קוד הזמנה לא נמצא');
+      return;
+    }
+    var doc = snap.docs[0];
+    var clubId = doc.id;
+    setMyClubId(clubId);
+    db.collection(P+'coaches').doc(ME.uid).set({clubId:ME.clubId}, {merge:true});
+    var fv = (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+    if(fv && fv.arrayUnion){
+      doc.ref.update({coaches: fv.arrayUnion(ME.uid)});
+    } else {
+      var data = doc.data();
+      var coaches = data.coaches || [];
+      if(coaches.indexOf(ME.uid)===-1) coaches.push(ME.uid);
+      doc.ref.set({coaches:coaches}, {merge:true});
+    }
+    MY_CLUB_LOADED = false;
+    CLUB_TEAMS_LOADED = false;
+    PITCHES_LOADED = false;
+    loadMyClub();
+    renderTab(3);
+  });
+}
+function leaveClub(){
+  if(!ME.clubId) return;
+  var clubId = ME.clubId;
+  setMyClubId('');
+  db.collection(P+'coaches').doc(ME.uid).set({clubId:''}, {merge:true});
+  db.collection(P+'clubs').doc(clubId).get().then(function(doc){
+    if(!doc.exists) return;
+    var fv = (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+    if(fv && fv.arrayRemove){
+      doc.ref.update({coaches: fv.arrayRemove(ME.uid)});
+    } else {
+      var data = doc.data();
+      var coaches = (data.coaches || []).filter(function(u){ return u!==ME.uid; });
+      doc.ref.set({coaches:coaches}, {merge:true});
+    }
+  });
+  MY_CLUB = null;
+  MY_CLUB_LOADED = true;
+  CLUB_TEAMS_LOADED = false;
+  PITCHES_LOADED = false;
+  renderTab(3);
+}
+function removeCoachFromClub(uid){
+  if(ME.role!=='manager' || !MY_CLUB) return;
+  var ref = db.collection(P+'clubs').doc(ME.uid);
+  var fv = (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+  if(fv && fv.arrayRemove){
+    ref.update({coaches: fv.arrayRemove(uid)});
+  } else {
+    var coaches = (MY_CLUB.coaches || []).filter(function(u){ return u!==uid; });
+    ref.set({coaches:coaches}, {merge:true});
+  }
+  if(MY_CLUB.coaches){
+    MY_CLUB.coaches = MY_CLUB.coaches.filter(function(u){ return u!==uid; });
+  }
+  delete CLUB_COACH_NAMES[uid];
+  renderTab(3);
+}
+function tplClubSection(){
+  if(!MY_CLUB_LOADED){
+    loadMyClub();
+    return '<div class="card"><div class="muted" style="text-align:center">טוען מועדון...</div></div>';
+  }
+  if(ME.role==='manager'){
+    if(!MY_CLUB){
+      return '<div class="card">'+
+        '<div class="row"><b>ניהול מועדון</b></div>'+
+        '<div class="muted" style="margin:8px 0">עדיין לא הקמת מועדון. הקמת מועדון מאפשרת למאמנים נוספים להצטרף בעזרת קוד הזמנה ולשתף קבוצות ומגרשים.</div>'+
+        '<div class="field"><label>שם המועדון</label><input id="clubNameInput" placeholder="לדוגמה: הפועל העיר"></div>'+
+        '<button class="btn" id="btnCreateClub">צור מועדון</button>'+
+      '</div>';
+    }
+    var coachesList = (MY_CLUB.coaches || []).map(function(uid){
+      var nm = CLUB_COACH_NAMES[uid] || uid;
+      return '<div class="row" style="margin-top:6px"><span>'+nm+'</span><button class="logout-btn" data-removecoach="'+uid+'" title="הסר">🗑</button></div>';
+    }).join('');
+    return '<div class="card">'+
+      '<div class="row"><b>ניהול מועדון</b></div>'+
+      '<div class="row" style="margin-top:8px"><span>שם המועדון</span><span class="muted">'+MY_CLUB.name+'</span></div>'+
+      '<div class="row" style="margin-top:8px"><span>קוד הזמנה</span><span class="muted" id="clubInviteCode" style="font-weight:bold;font-size:18px;letter-spacing:2px">'+MY_CLUB.inviteCode+'</span></div>'+
+      '<button class="btn ghost sm" id="btnCopyInvite" style="margin-top:8px">העתק קוד</button>'+
+      '<div class="muted" style="margin-top:14px">מאמנים במועדון</div>'+
+      (coachesList || '<div class="muted" style="margin-top:6px">אין מאמנים נוספים במועדון</div>')+
+    '</div>';
+  } else {
+    if(!ME.clubId){
+      return '<div class="card">'+
+        '<div class="row"><b>הצטרפות למועדון</b></div>'+
+        '<div class="muted" style="margin:8px 0">הזן/י קוד הזמנה שקיבלת מהמנהל המקצועי של המועדון</div>'+
+        '<div class="field"><label>קוד הזמנה</label><input id="joinClubInput" placeholder="לדוגמה: ab12cd"></div>'+
+        '<button class="btn" id="btnJoinClub">הצטרף למועדון</button>'+
+      '</div>';
+    }
+    return '<div class="card">'+
+      '<div class="row"><b>מועדון</b></div>'+
+      '<div class="row" style="margin-top:8px"><span>שם המועדון</span><span class="muted">'+(MY_CLUB ? MY_CLUB.name : '')+'</span></div>'+
+      (MY_CLUB ? '<div class="row" style="margin-top:8px"><span>קוד הזמנה</span><span class="muted">'+MY_CLUB.inviteCode+'</span></div>' : '')+
+      '<button class="btn ghost sm" id="btnLeaveClub" style="margin-top:8px">עזוב מועדון</button>'+
+    '</div>';
+  }
+}
 function tplSettings(){
   return ''+
   '<div class="section-title">⚙️ הגדרות</div>'+
@@ -867,7 +1029,8 @@ function tplSettings(){
     '<div class="row"><span>שם</span><span class="muted">'+ME.name+'</span></div>'+
     '<div class="row" style="margin-top:8px"><span>תפקיד</span><span class="muted">'+roleLabel(ME.role)+'</span></div>'+
     '<div class="row" style="margin-top:8px"><span>טלפון</span><span class="muted">'+ME.phone+'</span></div>'+
-  '</div>';
+  '</div>'+
+  tplClubSection();
 }
 function wireTab(i){
   if(i===0){
@@ -902,6 +1065,36 @@ function wireTab(i){
         if(p && p.id) db.collection(P+'pitches').doc(p.id).delete();
         PITCHES.splice(idx,1);
         renderTab(2);
+      };
+    });
+  } else if(i===3){
+    var btnCreateClub = document.getElementById('btnCreateClub');
+    if(btnCreateClub) btnCreateClub.onclick = function(){
+      var name = document.getElementById('clubNameInput').value.trim();
+      if(!name) return;
+      createClub(name);
+    };
+    var btnJoinClub = document.getElementById('btnJoinClub');
+    if(btnJoinClub) btnJoinClub.onclick = function(){
+      var code = document.getElementById('joinClubInput').value.trim();
+      if(!code) return;
+      joinClubByCode(code);
+    };
+    var btnLeaveClub = document.getElementById('btnLeaveClub');
+    if(btnLeaveClub) btnLeaveClub.onclick = function(){
+      if(confirm('לעזוב את המועדון?')) leaveClub();
+    };
+    var btnCopyInvite = document.getElementById('btnCopyInvite');
+    if(btnCopyInvite) btnCopyInvite.onclick = function(){
+      var codeEl = document.getElementById('clubInviteCode');
+      var code = codeEl ? codeEl.textContent : '';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(code);
+      }
+    };
+    document.querySelectorAll('[data-removecoach]').forEach(function(btn){
+      btn.onclick = function(){
+        removeCoachFromClub(btn.dataset.removecoach);
       };
     });
   }
