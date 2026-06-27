@@ -275,6 +275,30 @@ var P = 'fc_';
 
 var ME = {uid:'', phone:'', name:'', role:'coach', clubId:''};
 function clubScopeId(){ return ME.clubId || ME.uid; }
+function clubOwnerUid(){
+  if(ME.role==='manager') return ME.uid;
+  return MY_CLUB ? MY_CLUB.adminUid : '';
+}
+function memberInfoFor(uid){
+  if(!MY_CLUB || !uid) return null;
+  if(uid===MY_CLUB.adminUid) return null; // owner is structurally unrestricted, never stored/consulted
+  var mi = MY_CLUB.memberInfo || {};
+  return mi[uid] || null;
+}
+// effectiveCategories(uid?): null = unrestricted (owner, or legacy member with no stored record), else array of allowed category keys
+function effectiveCategories(uid){
+  uid = uid || ME.uid;
+  if(!MY_CLUB) return null;
+  if(uid===MY_CLUB.adminUid) return null;
+  var info = memberInfoFor(uid);
+  if(!info) return null; // legacy member, never configured -> unrestricted
+  if(!info.assignedCategories || !info.assignedCategories.length) return null; // empty/all = unrestricted
+  return info.assignedCategories;
+}
+function categoryAllowed(cat, uid){
+  var eff = effectiveCategories(uid);
+  return eff===null || eff.indexOf(cat)!==-1;
+}
 var TAB = 0;
 var NAV_TABS = [
   {id:0, ic:'📋', t:'תוכניות אימון'},
@@ -574,6 +598,7 @@ function daysBetween(dateStr){
 function computeAlerts(){
   var alerts = [];
   AGE_GROUPS.forEach(function(cat){
+    if(!categoryAllowed(cat)) return;
     var t = CLUB_TEAMS[cat];
     if(!t || !t.players) return;
     t.players.forEach(function(pl){
@@ -621,8 +646,11 @@ function computeAlerts(){
             streaks[name] = (streaks[name]||0)+1;
             if(streaks[name]>=3 && !flagged[name]){
               flagged[name] = true;
-              alerts.push({type:'absence', severity:'danger', category:findPlayerCategory(name), playerName:name,
-                text:'לשחקן '+name+' 3 היעדרויות רצופות'});
+              var absCat = findPlayerCategory(name);
+              if(categoryAllowed(absCat)){
+                alerts.push({type:'absence', severity:'danger', category:absCat, playerName:name,
+                  text:'לשחקן '+name+' 3 היעדרויות רצופות'});
+              }
             }
           } else {
             streaks[name] = 0;
@@ -646,6 +674,7 @@ function globalSearch(query){
   var res = {players:[], coaches:[], teams:[]};
   if(!q) return res;
   AGE_GROUPS.forEach(function(cat){
+    if(!categoryAllowed(cat)) return;
     if(cat.toLowerCase().indexOf(q)!==-1){
       res.teams.push({name:cat, category:cat});
     }
@@ -1287,9 +1316,10 @@ function tplTeams(){
     loadClubTeams();
     return '<div class="section-title">👥 קבוצות גילאים</div><div class="muted" style="text-align:center">טוען...</div>';
   }
+  var visibleGroups = AGE_GROUPS.filter(function(cat){ return categoryAllowed(cat); });
   return '<div class="section-title">👥 קבוצות גילאים</div>'+
     '<div class="muted" style="margin-bottom:10px">לחץ/י על קבוצת גילאים כדי לנהל סגל שחקנים וצוות מקצועי</div>'+
-    AGE_GROUPS.map(function(cat){
+    visibleGroups.map(function(cat){
       var t = CLUB_TEAMS[cat] || {staff:[],players:[]};
       return '<div class="card" data-openteam="'+cat+'" style="cursor:pointer">'+
         '<div class="row"><b>'+cat+'</b><span class="muted">'+t.players.length+' שחקנים</span></div>'+
@@ -1378,6 +1408,12 @@ function visitingPlayersForCategory(cat){
   return res;
 }
 function renderTeamDetail(){
+  var body0 = document.getElementById('teamScreenBody');
+  if(!categoryAllowed(currentTeamCategory)){
+    document.getElementById('teamScreenTitle').textContent = currentTeamCategory || '';
+    body0.innerHTML = '<div class="muted" style="text-align:center;margin-top:20px">⛔ אין לך הרשאה לקבוצה זו</div>';
+    return;
+  }
   var t = CLUB_TEAMS[currentTeamCategory] || {staff:[],players:[]};
   document.getElementById('teamScreenTitle').textContent = currentTeamCategory;
   var visiting = visitingPlayersForCategory(currentTeamCategory);
@@ -2291,8 +2327,51 @@ function removeCoachFromClub(uid){
   if(MY_CLUB.coaches){
     MY_CLUB.coaches = MY_CLUB.coaches.filter(function(u){ return u!==uid; });
   }
+  if(MY_CLUB.memberInfo && MY_CLUB.memberInfo[uid]){
+    delete MY_CLUB.memberInfo[uid];
+    ref.set({memberInfo:MY_CLUB.memberInfo}, {merge:true});
+  }
   delete CLUB_COACH_NAMES[uid];
   renderTab(3);
+}
+// Can the current user edit member uid's title/assignedCategories? (canManageStaff members may narrow
+// within their own effectiveCategories; the owner may always edit anyone to anything.)
+function canEditMember(uid){
+  if(!MY_CLUB) return false;
+  if(ME.uid===MY_CLUB.adminUid) return true;
+  if(uid===MY_CLUB.adminUid) return false;
+  var myInfo = memberInfoFor(ME.uid);
+  return !!(myInfo && myInfo.canManageStaff);
+}
+function defaultMemberInfo(){
+  return {title:'מאמן', assignedCategories:[], canManageStaff:false};
+}
+function updateClubMemberInfo(uid, patch){
+  if(!MY_CLUB || !canEditMember(uid)) return;
+  var clubRef = db.collection(P+'clubs').doc(clubOwnerUid()===ME.uid ? ME.uid : MY_CLUB.adminUid);
+  var mi = MY_CLUB.memberInfo || {};
+  var current = mi[uid] || defaultMemberInfo();
+  var updated = {title:current.title, assignedCategories:(current.assignedCategories||[]).slice(), canManageStaff:current.canManageStaff||false};
+  if(patch.title!==undefined) updated.title = patch.title;
+  if(patch.assignedCategories!==undefined){
+    var newCats = patch.assignedCategories;
+    // A canManageStaff non-owner can only narrow within their OWN effectiveCategories.
+    if(ME.uid!==MY_CLUB.adminUid){
+      var myEff = effectiveCategories(ME.uid);
+      if(myEff!==null){
+        newCats = newCats.filter(function(c){ return myEff.indexOf(c)!==-1; });
+      }
+    }
+    updated.assignedCategories = newCats;
+  }
+  if(patch.canManageStaff!==undefined && ME.uid===MY_CLUB.adminUid){
+    updated.canManageStaff = !!patch.canManageStaff;
+  }
+  mi[uid] = updated;
+  MY_CLUB.memberInfo = mi;
+  clubRef.set({memberInfo:mi}, {merge:true}).then(function(){
+    renderTab(3);
+  });
 }
 function tplClubSection(){
   if(!MY_CLUB_LOADED){
@@ -2310,8 +2389,7 @@ function tplClubSection(){
       '</div>';
     }
     var coachesList = (MY_CLUB.coaches || []).map(function(uid){
-      var nm = CLUB_COACH_NAMES[uid] || uid;
-      return '<div class="row" style="margin-top:6px"><span>'+nm+'</span><button class="logout-btn" data-removecoach="'+uid+'" title="הסר">🗑</button></div>';
+      return tplClubMemberRow(uid);
     }).join('');
     return '<div class="card">'+
       '<div class="row"><b>ניהול מועדון</b></div>'+
@@ -2320,8 +2398,8 @@ function tplClubSection(){
       '<button class="btn ghost sm" id="btnCopyInvite" style="margin-top:8px">העתק קוד</button>'+
       '<div class="field" style="margin-top:14px"><label>צבע המועדון</label><input type="color" id="clubColorEditInput" value="'+(MY_CLUB.color || DEFAULT_ACCENT)+'"></div>'+
       '<button class="btn ghost sm" id="btnSaveClubColor" style="margin-top:8px">שמור צבע</button>'+
-      '<div class="muted" style="margin-top:14px">מאמנים במועדון</div>'+
-      (coachesList || '<div class="muted" style="margin-top:6px">אין מאמנים נוספים במועדון</div>')+
+      '<div class="muted" style="margin-top:14px">צוות המועדון</div>'+
+      (coachesList || '<div class="muted" style="margin-top:6px">אין אנשי צוות נוספים במועדון</div>')+
       '<button class="btn ghost sm" id="btnOpenClubAdminDash" style="margin-top:14px">🏛 לוח ניהול מועדון</button>'+
     '</div>';
   } else {
@@ -2333,13 +2411,52 @@ function tplClubSection(){
         '<button class="btn" id="btnJoinClub">הצטרף למועדון</button>'+
       '</div>';
     }
+    var myInfo = memberInfoFor(ME.uid);
+    var myTitle = myInfo ? myInfo.title : 'מאמן';
+    var canManage = !!(myInfo && myInfo.canManageStaff);
+    var manageSection = '';
+    if(canManage && MY_CLUB){
+      var teamMembersList = (MY_CLUB.coaches || []).filter(function(uid){ return uid!==ME.uid; }).map(function(uid){
+        return tplClubMemberRow(uid);
+      }).join('');
+      manageSection =
+        '<div class="muted" style="margin-top:14px">חברי צוות בתחום שלי</div>'+
+        (teamMembersList || '<div class="muted" style="margin-top:6px">אין עדיין חברי צוות בתחום שלך</div>');
+    }
     return '<div class="card">'+
       '<div class="row"><b>מועדון</b></div>'+
       '<div class="row" style="margin-top:8px"><span>שם המועדון</span><span class="muted">'+(MY_CLUB ? MY_CLUB.name : '')+'</span></div>'+
+      '<div class="row" style="margin-top:8px"><span>תפקיד</span><span class="muted">'+myTitle+'</span></div>'+
       (MY_CLUB ? '<div class="row" style="margin-top:8px"><span>קוד הזמנה</span><span class="muted">'+MY_CLUB.inviteCode+'</span></div>' : '')+
       '<button class="btn ghost sm" id="btnLeaveClub" style="margin-top:8px">עזוב מועדון</button>'+
+      manageSection+
     '</div>';
   }
+}
+function tplClubMemberRow(uid){
+  var nm = CLUB_COACH_NAMES[uid] || uid;
+  var info = memberInfoFor(uid) || defaultMemberInfo();
+  var editable = canEditMember(uid);
+  var isOwnerEditor = (MY_CLUB && ME.uid===MY_CLUB.adminUid);
+  var catsHtml = AGE_GROUPS.map(function(g){
+    var checked = !info.assignedCategories || !info.assignedCategories.length || info.assignedCategories.indexOf(g)!==-1;
+    var disabled = !editable || (!isOwnerEditor && effectiveCategories(ME.uid)!==null && effectiveCategories(ME.uid).indexOf(g)===-1);
+    return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--card2);border-radius:8px;padding:4px 8px;font-size:12px'+(disabled?';opacity:.5':'')+'">'+
+      '<input type="checkbox" class="memberCatInput" data-member="'+uid+'" value="'+g+'" '+(checked?'checked':'')+(disabled?' disabled':'')+' style="width:auto">'+g+
+    '</label>';
+  }).join('');
+  return '<div class="row" style="margin-top:6px;align-items:flex-start">'+
+      '<span>'+nm+(editable?'':'')+'</span>'+
+      '<button class="logout-btn" data-removecoach="'+uid+'" title="הסר">🗑</button>'+
+    '</div>'+
+    (editable
+      ? '<div class="field" style="margin:4px 0 0 0"><input class="memberTitleInput" data-member="'+uid+'" value="'+info.title+'" placeholder="תפקיד (לדוגמה: מאמן כושר)" style="font-size:12px"></div>'+
+        '<div class="field" style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0 0">'+catsHtml+'</div>'+
+        (isOwnerEditor
+          ? '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:4px 0 6px 0;font-size:12px"><input type="checkbox" class="memberManageStaffInput" data-member="'+uid+'" '+(info.canManageStaff?'checked':'')+' style="width:auto">יכול לנהל ולגייס צוות</label>'
+          : '')+
+        '<button class="btn ghost sm" data-savemember="'+uid+'" style="margin-bottom:8px">שמור הגדרות תפקיד</button>'
+      : '<div class="muted" style="margin:2px 0 6px 0;font-size:12px">תפקיד: '+info.title+'</div>');
 }
 /* ---------------- Club admin dashboard (manager-only, club-wide oversight) ---------------- */
 function clubAdminTeamRows(){
@@ -2528,6 +2645,20 @@ function wireTab(i){
     document.querySelectorAll('[data-removecoach]').forEach(function(btn){
       btn.onclick = function(){
         removeCoachFromClub(btn.dataset.removecoach);
+      };
+    });
+    document.querySelectorAll('[data-savemember]').forEach(function(btn){
+      btn.onclick = function(){
+        var uid = btn.dataset.savemember;
+        var titleEl = document.querySelector('.memberTitleInput[data-member="'+uid+'"]');
+        var manageEl = document.querySelector('.memberManageStaffInput[data-member="'+uid+'"]');
+        var catEls = document.querySelectorAll('.memberCatInput[data-member="'+uid+'"]:checked');
+        var checkedCats = Array.prototype.slice.call(catEls).map(function(cb){ return cb.value; });
+        var totalCatEls = document.querySelectorAll('.memberCatInput[data-member="'+uid+'"]').length;
+        var assignedCategories = (checkedCats.length===totalCatEls) ? [] : checkedCats; // all checked = unrestricted
+        var patch = {title:(titleEl?titleEl.value.trim():'מאמן') || 'מאמן', assignedCategories:assignedCategories};
+        if(manageEl) patch.canManageStaff = manageEl.checked;
+        updateClubMemberInfo(uid, patch);
       };
     });
     var btnOpenClubAdminDash = document.getElementById('btnOpenClubAdminDash');
