@@ -37,16 +37,35 @@ function saveItems(items){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-var state={ items: loadItems(), text:"", time:"today" };
+var state={ items: loadItems(), text:"" };
 
 var TIME_LABELS={today:"היום", tomorrow:"מחר", week:"השבוע"};
 
+function parseMemory(text){
+  var time="today";
+  var cleanText=text;
+  var lower=text.toLowerCase();
+
+  if(lower.includes("מחר")) time="tomorrow";
+  if(lower.includes("השבוע")) time="week";
+
+  cleanText=cleanText
+    .replace("מחר","")
+    .replace("היום","")
+    .replace("השבוע","")
+    .replace(/\s+/g," ")
+    .trim();
+
+  return { text: cleanText, time: time };
+}
+
 function addItem(){
   var input=document.getElementById("inp-text");
-  var text=input.value.trim();
-  if(!text) return;
-  var time=document.getElementById("sel-time").value;
-  var newItem={id:Date.now(), text:text, time:time, done:false};
+  var raw=input.value.trim();
+  if(!raw) return;
+  var parsed=parseMemory(raw);
+  if(!parsed.text) return;
+  var newItem={id:Date.now(), text:parsed.text, time:parsed.time, done:false};
   state.items=[newItem].concat(state.items);
   saveItems(state.items);
   state.text="";
@@ -78,12 +97,7 @@ function render(){
 
   var html = '<h1>🧠 Memory App</h1>';
   html += '<div class="card">';
-  html += '<input id="inp-text" placeholder="מה אתה לא רוצה לשכוח?" value="'+escapeHtml(state.text)+'">';
-  html += '<select id="sel-time">';
-  ["today","tomorrow","week"].forEach(function(t){
-    html += '<option value="'+t+'"'+(state.time===t?' selected':'')+'>'+TIME_LABELS[t]+'</option>';
-  });
-  html += '</select>';
+  html += '<input id="inp-text" placeholder="לדוגמה: לקנות חלב מחר" value="'+escapeHtml(state.text)+'">';
   html += '<button id="btn-add">שמור</button>';
   html += '</div>';
 
@@ -120,7 +134,6 @@ function render(){
     if(e.key==="Enter") addItem();
   });
   document.getElementById("inp-text").addEventListener("input", function(e){ state.text=e.target.value; });
-  document.getElementById("sel-time").addEventListener("change", function(e){ state.time=e.target.value; });
 
   document.querySelectorAll("[data-toggle]").forEach(function(btn){
     btn.onclick=function(){ toggleDone(Number(btn.getAttribute("data-toggle"))); };
