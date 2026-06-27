@@ -6,6 +6,7 @@
 <title>Clash Lite MVP</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0ea5e9">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   *{box-sizing:border-box;}
   body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto;background:#fff;color:#0f172a;}
@@ -17,29 +18,145 @@
   button:disabled{background:#94a3b8;cursor:not-allowed;}
   h2{margin-top:20px;}
   .issue{background:#fff7ed;border-right:4px solid #f59e0b;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
+  .ok{background:#ecfdf5;border-right:4px solid #10b981;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
   .empty{color:#94a3b8;}
+  .overlay-wrap{text-align:center;margin-top:14px;}
+  .overlay-wrap img{max-width:100%;border:1px solid #cbd5e1;border-radius:8px;}
+  .overlay-cap{font-size:.8rem;color:#64748b;margin-top:6px;}
+  .loading{color:#0ea5e9;text-align:center;padding:10px;}
 </style>
 </head>
 <body>
 <div id="root"></div>
 
 <script>
-var state={ files: [], analysis: null };
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+var state={ files: [], analysis: null, overlayUrl: null, loading: false, error: null };
 
 function handleUpload(e){
   state.files=Array.prototype.slice.call(e.target.files);
   state.analysis=null;
+  state.overlayUrl=null;
+  state.error=null;
   render();
 }
 
+function fileToCanvas(file){
+  return new Promise(function(resolve, reject){
+    if(file.type==='application/pdf' || /\.pdf$/i.test(file.name)){
+      if(!window.pdfjsLib){ reject(new Error('PDF לא נתמך בדפדפן זה')); return; }
+      var reader=new FileReader();
+      reader.onload=function(){
+        pdfjsLib.getDocument({data:reader.result}).promise.then(function(pdf){
+          return pdf.getPage(1);
+        }).then(function(page){
+          var viewport=page.getViewport({scale:1.5});
+          var canvas=document.createElement('canvas');
+          canvas.width=viewport.width; canvas.height=viewport.height;
+          var ctx=canvas.getContext('2d');
+          page.render({canvasContext:ctx, viewport:viewport}).promise.then(function(){
+            resolve(canvas);
+          }).catch(reject);
+        }).catch(reject);
+      };
+      reader.onerror=reject;
+      reader.readAsArrayBuffer(file);
+    } else {
+      var img=new Image();
+      var url=URL.createObjectURL(file);
+      img.onload=function(){
+        var canvas=document.createElement('canvas');
+        canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+        canvas.getContext('2d').drawImage(img,0,0);
+        URL.revokeObjectURL(url);
+        resolve(canvas);
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); reject(new Error('לא ניתן לטעון את הקובץ: '+file.name)); };
+      img.src=url;
+    }
+  });
+}
+
+function resizeCanvas(src, w, h){
+  var c=document.createElement('canvas');
+  c.width=w; c.height=h;
+  var ctx=c.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
+  ctx.drawImage(src,0,0,w,h);
+  return c;
+}
+
+var ZONE_LABELS=[
+  ["פינה ימנית-עליונה","מרכז-עליון","פינה שמאלית-עליונה"],
+  ["מרכז-ימני","מרכז התוכנית","מרכז-שמאלי"],
+  ["פינה ימנית-תחתונה","מרכז-תחתון","פינה שמאלית-תחתונה"]
+];
+
+function analyzeCanvases(cA, cB){
+  var W=360, H=360;
+  var rA=resizeCanvas(cA,W,H), rB=resizeCanvas(cB,W,H);
+  var dA=rA.getContext('2d').getImageData(0,0,W,H).data;
+  var dB=rB.getContext('2d').getImageData(0,0,W,H).data;
+
+  var rows=3, cols=3;
+  var cellW=Math.floor(W/cols), cellH=Math.floor(H/rows);
+  var issues=[];
+
+  for(var r=0;r<rows;r++){
+    for(var c=0;c<cols;c++){
+      var sumA=0,sumB=0,n=0;
+      for(var y=r*cellH; y<(r+1)*cellH; y+=2){
+        for(var x=c*cellW; x<(c+1)*cellW; x+=2){
+          var i=(y*W+x)*4;
+          sumA += (dA[i]+dA[i+1]+dA[i+2])/3;
+          sumB += (dB[i]+dB[i+1]+dB[i+2])/3;
+          n++;
+        }
+      }
+      var avgA=sumA/n, avgB=sumB/n;
+      var hasContentA = avgA < 235;
+      var hasContentB = avgB < 235;
+      if(hasContentA && hasContentB){
+        issues.push({label: ZONE_LABELS[r][c], darknessA: Math.round(255-avgA), darknessB: Math.round(255-avgB)});
+      }
+    }
+  }
+
+  var overlay=document.createElement('canvas');
+  overlay.width=W; overlay.height=H;
+  var octx=overlay.getContext('2d');
+  var out=octx.createImageData(W,H);
+  for(var p=0;p<W*H;p++){
+    var idx=p*4;
+    var darkA=255-((dA[idx]+dA[idx+1]+dA[idx+2])/3);
+    var darkB=255-((dB[idx]+dB[idx+1]+dB[idx+2])/3);
+    out.data[idx]   = 255-darkB*0.85;
+    out.data[idx+1] = 255-Math.max(darkA,darkB)*0.6;
+    out.data[idx+2] = 255-darkA*0.85;
+    out.data[idx+3] = 255;
+  }
+  octx.putImageData(out,0,0);
+
+  return { issues: issues, overlayUrl: overlay.toDataURL('image/png') };
+}
+
 function analyze(){
-  // MVP לוגי בלבד (לא AI עדיין)
-  state.analysis=[
-    "⚠️ חשמל חוצה אזור אינסטלציה במטבח",
-    "⚠️ חפיפה אפשרית בקיר מרכזי",
-    "⚠️ אי התאמה בין שכבות תוכנית"
-  ];
-  render();
+  if(state.files.length<2) return;
+  state.loading=true; state.error=null; render();
+  Promise.all([fileToCanvas(state.files[0]), fileToCanvas(state.files[1])]).then(function(canvases){
+    var result=analyzeCanvases(canvases[0], canvases[1]);
+    state.analysis=result.issues;
+    state.overlayUrl=result.overlayUrl;
+    state.loading=false;
+    render();
+  }).catch(function(e){
+    state.loading=false;
+    state.error=e.message||'שגיאה בניתוח הקבצים';
+    render();
+  });
 }
 
 function escapeHtml(s){
@@ -51,27 +168,49 @@ function escapeHtml(s){
 function render(){
   var html = '<h1>Clash Lite MVP 🏗️</h1>';
   html += '<div class="card">';
-  html += '<input id="inp-files" type="file" multiple>';
+  html += '<input id="inp-files" type="file" multiple accept="image/*,.pdf">';
   if(state.files.length){
     html += '<div class="file-list">נבחרו '+state.files.length+' קבצים: '+
-      state.files.map(function(f){ return escapeHtml(f.name); }).join(', ')+'</div>';
+      state.files.map(function(f){ return escapeHtml(f.name); }).join(', ')+
+      '. הניתוח משווה בין שני הקבצים הראשונים.</div>';
   }
-  html += '<button id="btn-analyze"'+(state.files.length<2?' disabled':'')+'>Analyze Plans</button>';
+  html += '<button id="btn-analyze"'+(state.files.length<2||state.loading?' disabled':'')+'>'+
+    (state.loading?'מנתח...':'Analyze Plans')+'</button>';
   html += '</div>';
 
+  if(state.loading){
+    html += '<p class="loading">טוען וקורא את הקבצים...</p>';
+  }
+
+  if(state.error){
+    html += '<div class="issue">⚠️ '+escapeHtml(state.error)+'</div>';
+  }
+
   html += '<h2>Issues Found:</h2>';
-  if(!state.analysis){
-    html += '<p class="empty">העלה לפחות 2 קבצים ולחץ על Analyze כדי לבדוק התאמות</p>';
-  } else {
-    state.analysis.forEach(function(a){
-      html += '<div class="issue">'+escapeHtml(a)+'</div>';
-    });
+  if(!state.analysis && !state.loading && !state.error){
+    html += '<p class="empty">העלה לפחות 2 קבצים (תמונה או PDF של תוכנית) ולחץ על Analyze כדי לבדוק חפיפות אמיתיות בין השכבות</p>';
+  } else if(state.analysis){
+    if(state.analysis.length===0){
+      html += '<div class="ok">✅ לא נמצאו אזורי חפיפה בולטים בין שתי התוכניות</div>';
+    } else {
+      state.analysis.forEach(function(issue){
+        html += '<div class="issue">⚠️ אזור חפיפה אפשרי: <b>'+escapeHtml(issue.label)+'</b> — נמצא תוכן (קווים/צורות) משתי התוכניות באותו מיקום</div>';
+      });
+    }
+  }
+
+  if(state.overlayUrl){
+    html += '<div class="overlay-wrap">';
+    html += '<img src="'+state.overlayUrl+'" alt="שכבת חפיפה">';
+    html += '<div class="overlay-cap">תוכנית 1 מסומנת בכחול, תוכנית 2 באדום. אזורים כהים/סגולים = חפיפה בין שתי התוכניות.</div>';
+    html += '</div>';
   }
 
   document.getElementById("root").innerHTML=html;
 
   document.getElementById("inp-files").addEventListener("change", handleUpload);
-  document.getElementById("btn-analyze").onclick=analyze;
+  var btn=document.getElementById("btn-analyze");
+  if(btn) btn.onclick=analyze;
 }
 
 render();
