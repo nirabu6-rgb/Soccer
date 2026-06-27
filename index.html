@@ -378,6 +378,7 @@ function loadClubTeams(){
     AGE_GROUPS.forEach(function(cat){ if(!CLUB_TEAMS[cat]) CLUB_TEAMS[cat] = {staff:[], players:[]}; });
     CLUB_TEAMS_LOADED = true;
     if(TAB===1) renderTab(1);
+    if(currentTeamCategory) renderTeamDetail();
   });
 }
 function saveClubTeams(){
@@ -628,8 +629,9 @@ function openAddSessionModal(day, startTime){
 function openSessionDetailModal(day, idx){
   var p = PITCHES[currentPitchIdx];
   var s = p.schedule[day][idx];
-  var html = '<div class="row" style="margin-bottom:6px"><h3 style="margin:0">'+s.category+'</h3><button class="logout-btn" id="btnSessMenu" title="עוד">⋮</button></div>'+
+  var html = '<div class="row" style="margin-bottom:6px"><h3 id="sessCatLink" style="margin:0;cursor:pointer;text-decoration:underline">'+s.category+'</h3><button class="logout-btn" id="btnSessMenu" title="עוד">⋮</button></div>'+
     '<div class="muted" style="margin-bottom:14px">'+s.start+' - '+s.end+'</div>'+
+    '<button class="btn ghost sm" id="btnViewRoster" style="margin-bottom:14px">👥 צפה בסגל הקבוצה</button>'+
     '<div class="field"><label>מאמן</label><input id="sessDetailCoach" value="'+(s.coach||'')+'" placeholder="שם המאמן"></div>'+
     '<button class="btn" id="btnSaveSessDetail" style="margin-bottom:14px">שמור</button>'+
     '<div id="sessMenuBox" style="display:none">'+
@@ -640,6 +642,13 @@ function openSessionDetailModal(day, idx){
       '<button class="btn ghost sm" id="btnDelSession" style="color:#f87171;border-color:#f87171">🗑 מחק אימון</button>'+
     '</div>';
   openModal(html);
+  var openRoster = function(){
+    closeModal();
+    if(!CLUB_TEAMS_LOADED) loadClubTeams();
+    openTeamDetail(s.category);
+  };
+  document.getElementById('sessCatLink').onclick = openRoster;
+  document.getElementById('btnViewRoster').onclick = openRoster;
   document.getElementById('btnSessMenu').onclick = function(){
     var box = document.getElementById('sessMenuBox');
     box.style.display = box.style.display==='none' ? 'block' : 'none';
