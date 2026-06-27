@@ -302,6 +302,7 @@ function enterApp(){
   document.getElementById('hdrRole').textContent = roleLabel(ME.role);
   buildNav();
   renderTab(0);
+  loadClubTeams();
 }
 function buildNav(){
   var bar = document.getElementById('navBar');
@@ -645,6 +646,10 @@ function renderPitchDetail(){
     });
   });
 }
+function getTeamCoachName(cat){
+  var t = CLUB_TEAMS[cat];
+  return (t && t.staff && t.staff.length) ? t.staff[0].name : '';
+}
 function openAddSessionModal(day, startTime){
   var start = startTime || TIME_SLOTS[0];
   var startIdx = TIME_SLOTS.indexOf(start);
@@ -656,7 +661,6 @@ function openAddSessionModal(day, startTime){
     '<div class="field"><label>קבוצה</label><select id="sessionCatInput">'+
       AGE_GROUPS.map(function(cat){ return '<option value="'+cat+'">'+cat+'</option>'; }).join('')+
     '</select></div>'+
-    '<div class="field"><label>מאמן</label><input id="sessionCoachInput" placeholder="שם המאמן"></div>'+
     '<div class="field"><label>משעה</label><select id="sessionStartInput">'+
       TIME_SLOTS.map(function(t){ return '<option value="'+t+'"'+(t===start?' selected':'')+'>'+t+'</option>'; }).join('')+
     '</select></div>'+
@@ -669,12 +673,11 @@ function openAddSessionModal(day, startTime){
     var p = PITCHES[currentPitchIdx];
     var d = document.getElementById('sessionDayInput').value;
     var cat = document.getElementById('sessionCatInput').value;
-    var coach = document.getElementById('sessionCoachInput').value.trim();
     var st = document.getElementById('sessionStartInput').value;
     var en = document.getElementById('sessionEndInput').value;
     if(en<=st) return;
     currentPitchDay = d;
-    p.schedule[d].push({category:cat, coach:coach, start:st, end:en, color:SESSION_COLORS[0]});
+    p.schedule[d].push({category:cat, start:st, end:en, color:SESSION_COLORS[0]});
     p.schedule[d].sort(function(a,b){ return a.start<b.start?-1:1; });
     savePitch(p);
     closeModal();
@@ -687,8 +690,7 @@ function openSessionDetailModal(day, idx){
   var html = '<div class="row" style="margin-bottom:6px"><h3 id="sessCatLink" style="margin:0;cursor:pointer;text-decoration:underline">'+s.category+'</h3><button class="logout-btn" id="btnSessMenu" title="עוד">⋮</button></div>'+
     '<div class="muted" style="margin-bottom:14px">'+s.start+' - '+s.end+'</div>'+
     '<button class="btn ghost sm" id="btnViewRoster" style="margin-bottom:14px">👥 צפה בסגל הקבוצה</button>'+
-    '<div class="field"><label>מאמן</label><input id="sessDetailCoach" value="'+(s.coach||'')+'" placeholder="שם המאמן"></div>'+
-    '<button class="btn" id="btnSaveSessDetail" style="margin-bottom:14px">שמור</button>'+
+    '<div class="muted" style="margin-bottom:14px">מאמן: '+(getTeamCoachName(s.category)||'לא הוגדר')+'</div>'+
     '<div id="sessMenuBox" style="display:none">'+
       '<div class="muted" style="margin-bottom:8px">צבע ביומן</div>'+
       '<div style="display:flex;gap:8px;margin-bottom:14px">'+
@@ -708,12 +710,6 @@ function openSessionDetailModal(day, idx){
   document.getElementById('btnSessMenu').onclick = function(){
     var box = document.getElementById('sessMenuBox');
     box.style.display = box.style.display==='none' ? 'block' : 'none';
-  };
-  document.getElementById('btnSaveSessDetail').onclick = function(){
-    s.coach = document.getElementById('sessDetailCoach').value.trim();
-    savePitch(p);
-    closeModal();
-    renderPitchDetail();
   };
   document.querySelectorAll('.sessColorBtn').forEach(function(btn){
     btn.onclick = function(){
