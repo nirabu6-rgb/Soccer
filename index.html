@@ -228,6 +228,27 @@ var DRILL_CATEGORIES = ['חימום','טכניקה','כוח','משחק','סיו�
 var editingDrillLibItem = null;
 var drillPickerCallback = null;
 
+/* ---------------- Fixed warmup/cooldown reference libraries ---------------- */
+var WARMUP_LIBRARY = [
+  {title:'ריצה קלה', description:'ריצה קלה בקצב נוח להעלאת דופק', duration_min:5},
+  {title:'מתיחות דינמיות', description:'מתיחות דינמיות לרגליים ולמותניים', duration_min:5},
+  {title:'ספרינטים קצרים', description:'ספרינטים קצרים (10-15 מ׳) להפעלת מערכת השרירים', duration_min:5},
+  {title:'עבודת רגליים', description:'תרגילי קואורדינציה וזריזות רגליים עם סולם/קונוסים', duration_min:5},
+  {title:'חימום עם כדור', description:'מסירות קצרות בזוגות + ריצת סלאלום בין קונוסים', duration_min:8},
+  {title:'משחק תופסת/עוקץ', description:'משחק קצר לחימום כללי והרמת דופק', duration_min:5},
+  {title:'FIFA 11+', description:'תוכנית חימום מונעת פציעות — שיווי משקל, כוח ליבה וזריזות', duration_min:10},
+  {title:'דילוגי חבל', description:'דילוגי חבל ותרגילי קואורדינציה רגליים-ידיים', duration_min:5}
+];
+var COOLDOWN_LIBRARY = [
+  {title:'הליכה קלה', description:'הליכה קלה להורדת קצב לב בהדרגה', duration_min:5},
+  {title:'מתיחות סטטיות', description:'מתיחות סטטיות לשרירי הרגליים', duration_min:7},
+  {title:'ריצה איטית', description:'ריצה איטית/הליכה מהירה לשחרור הגוף', duration_min:5},
+  {title:'תרגילי נשימה', description:'תרגילי נשימה והרפיה', duration_min:5},
+  {title:'מתיחות לגב התחתון', description:'מתיחות לגב התחתון ולמותניים', duration_min:5},
+  {title:'מתיחות זוגיות', description:'מתיחות זוגיות מודרכות בעזרת שותף', duration_min:5},
+  {title:'סיכום קבוצתי', description:'סיכום קצר עם הקבוצה והתייחסות לאימון', duration_min:3}
+];
+
 /* ---------------- AI-style plan wizard (fixed-step, no real AI) ---------------- */
 var WIZ_QUESTIONS = [
   {key:'target', label:'בשביל מי בונים את התוכנית?'},
@@ -745,6 +766,33 @@ function renderDrillPickerModal(){
       var d = DRILL_LIB[idx];
       closeModal();
       if(drillPickerCallback) drillPickerCallback(d);
+    };
+  });
+}
+var fixedLibPickerCallback = null;
+function openFixedLibraryPickerModal(onPick){
+  fixedLibPickerCallback = onPick;
+  var groupHtml = function(label, arr, prefix){
+    return '<div class="muted" style="margin:10px 0 6px;font-weight:700">'+label+'</div>'+
+      arr.map(function(it,i){
+        return '<div class="card">'+
+          '<div class="row"><b>'+it.title+'</b><button class="btn ghost sm" data-pickfixedlib="'+prefix+'_'+i+'">בחר</button></div>'+
+          '<div class="row" style="margin-top:6px"><span class="muted">'+(it.duration_min||0)+' דק׳</span></div>'+
+          (it.description ? '<div class="muted" style="margin-top:6px">'+it.description+'</div>' : '')+
+        '</div>';
+      }).join('');
+  };
+  var html = '<h3 style="margin-bottom:14px">📚 הוסף מהספרייה הקבועה</h3>'+
+    groupHtml('חימום', WARMUP_LIBRARY, 'w')+
+    groupHtml('קרור', COOLDOWN_LIBRARY, 'c');
+  openModal(html);
+  document.querySelectorAll('[data-pickfixedlib]').forEach(function(btn){
+    btn.onclick = function(){
+      var parts = btn.dataset.pickfixedlib.split('_');
+      var lib = parts[0]==='w' ? WARMUP_LIBRARY : COOLDOWN_LIBRARY;
+      var it = lib[parseInt(parts[1],10)];
+      closeModal();
+      if(fixedLibPickerCallback) fixedLibPickerCallback(it);
     };
   });
 }
@@ -1952,12 +2000,14 @@ function renderPlanBuilderModal(){
        '</div>'+
        (editingDrillIndex!==null ? '<button class="btn ghost" id="btnDelCurrentFrame" style="margin-bottom:10px">🗑 מחק פריים '+(editingDrillIndex+1)+'</button>' : '')))+
   '<div style="margin-top:18px;border-top:1px solid #e3e6ec;padding-top:14px">'+phasesSectionHtml()+'</div>'+
+  '<div style="margin-top:18px;border-top:1px solid #e3e6ec;padding-top:14px">'+weeksSectionHtml()+'</div>'+
   '';
   document.getElementById('builderBody').innerHTML = body;
   document.getElementById('planNameInput').value = editingPlan.name || '';
   document.getElementById('builderScreen').style.display = 'flex';
   wirePlanBuilderModal();
   wirePhasesSection();
+  wireWeeksSection();
 }
 function closeBuilder(){
   document.getElementById('builderScreen').style.display = 'none';
@@ -2132,9 +2182,81 @@ function addLibraryDrillToPhase(pIdx){
     renderPlanBuilderModal();
   });
 }
+function addFixedLibraryItemToPhase(pIdx){
+  openFixedLibraryPickerModal(function(it){
+    editingPlan.phases[pIdx].items.push({drillId:null, title:it.title, category:'', duration_min:it.duration_min||0, notes:it.description||''});
+    renderPlanBuilderModal();
+  });
+}
 function removePhaseItem(pIdx, iIdx){
   editingPlan.phases[pIdx].items.splice(iIdx,1);
   renderPlanBuilderModal();
+}
+/* ---------------- Season weeks (progressive lock) ---------------- */
+function addPlanWeek(){
+  if(!editingPlan.weeks) editingPlan.weeks = [];
+  var status = editingPlan.weeks.length===0 ? 'open' : 'locked';
+  editingPlan.weeks.push({label:'שבוע '+(editingPlan.weeks.length+1), status:status, notes:''});
+  renderPlanBuilderModal();
+}
+function removePlanWeek(wIdx){
+  if(!confirm('להסיר את השבוע?')) return;
+  editingPlan.weeks.splice(wIdx,1);
+  renderPlanBuilderModal();
+}
+function advancePlanWeek(wIdx){
+  var weeks = editingPlan.weeks || [];
+  if(!weeks[wIdx] || weeks[wIdx].status !== 'open') return;
+  weeks[wIdx].status = 'done';
+  for(var i=wIdx+1;i<weeks.length;i++){
+    if(weeks[i].status === 'locked'){ weeks[i].status = 'open'; break; }
+  }
+  renderPlanBuilderModal();
+}
+function updatePlanWeekNotes(wIdx, notes){
+  if(!editingPlan.weeks || !editingPlan.weeks[wIdx]) return;
+  editingPlan.weeks[wIdx].notes = notes;
+}
+function weeksSectionHtml(){
+  var weeks = editingPlan.weeks || [];
+  var html = '<div class="section-title" style="font-size:14px">📅 שלבי עונה</div>'+
+    '<div class="muted" style="margin-bottom:10px">חלוקת התוכנית לשבועות עם נעילה מתקדמת — שבוע נפתח אוטומטית כשהשבוע הנוכחי מסתיים</div>';
+  if(weeks.length===0){
+    html += '<div class="muted" style="margin-bottom:10px">עדיין לא הוגדרו שבועות</div>';
+  } else {
+    html += weeks.map(function(w, wIdx){
+      var icon = w.status==='done' ? '✅' : (w.status==='open' ? '🔓' : '🔒');
+      var isLocked = w.status==='locked';
+      var body = isLocked
+        ? '<div class="muted" style="opacity:0.6">תוכן השבוע ייחשף כשהשבוע ייפתח</div>'
+        : '<div class="field"><label>הערות / תוכן השבוע</label><textarea data-weeknotes="'+wIdx+'" rows="2" placeholder="מה התוכנית לשבוע זה...">'+(w.notes||'')+'</textarea></div>';
+      return '<div class="phase-block" style="'+(isLocked?'opacity:0.6':'')+'">'+
+        '<div class="row" style="margin-bottom:6px">'+
+          '<b>'+icon+' '+w.label+'</b>'+
+          '<div>'+
+            (w.status==='open' ? '<button class="btn ghost sm" data-advanceweek="'+wIdx+'">סמן כהושלם</button>' : '')+
+            '<button class="logout-btn" data-rmweek="'+wIdx+'" title="הסר שבוע">🗑</button>'+
+          '</div>'+
+        '</div>'+
+        body+
+      '</div>';
+    }).join('');
+  }
+  html += '<button class="btn ghost sm" id="btnAddWeek" style="margin-bottom:14px">+ הוסף שבוע</button>';
+  return html;
+}
+function wireWeeksSection(){
+  var addBtn = document.getElementById('btnAddWeek');
+  if(addBtn) addBtn.onclick = function(){ addPlanWeek(); };
+  document.querySelectorAll('[data-rmweek]').forEach(function(btn){
+    btn.onclick = function(){ removePlanWeek(parseInt(btn.dataset.rmweek,10)); };
+  });
+  document.querySelectorAll('[data-advanceweek]').forEach(function(btn){
+    btn.onclick = function(){ advancePlanWeek(parseInt(btn.dataset.advanceweek,10)); };
+  });
+  document.querySelectorAll('[data-weeknotes]').forEach(function(inp){
+    inp.onchange = function(){ updatePlanWeekNotes(parseInt(inp.dataset.weeknotes,10), inp.value); };
+  });
 }
 function phasesSectionHtml(){
   var phases = editingPlan.phases || [];
@@ -2160,6 +2282,7 @@ function phasesSectionHtml(){
         '<div class="action-row" style="margin-top:8px">'+
           '<button data-pickfromlib="'+pIdx+'">📚 בחר מבנק התרגילים</button>'+
           '<button data-addfreedrill="'+pIdx+'">✏️ תרגיל חופשי</button>'+
+          '<button data-addfixedlib="'+pIdx+'">📚 הוסף מהספרייה הקבועה</button>'+
         '</div>'+
       '</div>';
     }).join('');
@@ -2181,6 +2304,9 @@ function wirePhasesSection(){
   });
   document.querySelectorAll('[data-addfreedrill]').forEach(function(btn){
     btn.onclick = function(){ addFreeTextDrillToPhase(parseInt(btn.dataset.addfreedrill,10)); };
+  });
+  document.querySelectorAll('[data-addfixedlib]').forEach(function(btn){
+    btn.onclick = function(){ addFixedLibraryItemToPhase(parseInt(btn.dataset.addfixedlib,10)); };
   });
   document.querySelectorAll('[data-rmphaseitem]').forEach(function(btn){
     btn.onclick = function(){
