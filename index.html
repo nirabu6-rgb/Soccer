@@ -391,6 +391,30 @@ function deletePlayerClip(id){
 }
 
 var DAYS = [{k:'sun',l:'יום א\''},{k:'mon',l:'יום ב\''},{k:'tue',l:'יום ג\''},{k:'wed',l:'יום ד\''},{k:'thu',l:'יום ה\''},{k:'fri',l:'יום ו\''},{k:'sat',l:'שבת'}];
+var HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function startOfWeek(d){
+  var dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  dt.setDate(dt.getDate() - dt.getDay());
+  return dt;
+}
+var CURRENT_WEEK_START = startOfWeek(new Date());
+function addDays(d, n){
+  var dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  dt.setDate(dt.getDate() + n);
+  return dt;
+}
+function weekOfMonth(d){
+  var firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  var firstWeekStart = startOfWeek(firstOfMonth);
+  return Math.floor((d.getTime() - firstWeekStart.getTime()) / (7*24*60*60*1000)) + 1;
+}
+function fmtDateShort(d){ return d.getDate()+' ב'+HEB_MONTHS[d.getMonth()]; }
+function weekHeaderLabel(weekStart){
+  var weekEnd = addDays(weekStart, 6);
+  var monthLabel = HEB_MONTHS[weekEnd.getMonth()]+' '+weekEnd.getFullYear();
+  var wom = weekOfMonth(weekStart);
+  return monthLabel+' · שבוע '+wom+' ('+fmtDateShort(weekStart)+' - '+fmtDateShort(weekEnd)+')';
+}
 function genTimeSlots(){
   var arr = [], h = 14, m = 0;
   while(h<23 || (h===23 && m===0)){
@@ -1596,7 +1620,12 @@ function renderPitchDetail(){
   }
   var body = document.getElementById('pitchScreenBody');
   body.innerHTML =
-    '<div class="muted" style="margin-bottom:8px">לחיצה ארוכה על שעה ריקה בלוז מוסיפה אימון חדש. לחיצה על אימון קיים פותחת פרטים.</div>'+
+    '<div class="row" style="margin-bottom:10px">'+
+      '<button class="btn ghost sm" id="btnWeekPrev" style="width:auto">◀ שבוע קודם</button>'+
+      '<b id="weekHeaderLabel" style="cursor:pointer;text-align:center;flex:1" title="לחץ לבחירת שבוע">'+weekHeaderLabel(CURRENT_WEEK_START)+'</b>'+
+      '<button class="btn ghost sm" id="btnWeekNext" style="width:auto">שבוע הבא ▶</button>'+
+    '</div>'+
+    '<div class="muted" style="margin-bottom:8px">לחיצה ארוכה על שעה ריקה בלוז מוסיפה אימון חדש. לחיצה על אימון קיים פותחת פרטים. הלוז חוזר על עצמו בכל שבוע (תבנית שבועית).</div>'+
     '<button class="btn ghost sm" id="btnAddSession" style="margin-bottom:10px">+ הוספת אימון</button>'+
     '<div class="week-grid-wrap">'+
       '<div class="week-dayhead"><div class="week-hourcol"></div>'+
@@ -1618,6 +1647,17 @@ function renderPitchDetail(){
       '</div>'+
     '</div>';
   document.getElementById('btnAddSession').onclick = function(){ openAddSessionModal(currentPitchDay||'sun', null); };
+  document.getElementById('btnWeekPrev').onclick = function(){
+    CURRENT_WEEK_START = addDays(CURRENT_WEEK_START, -7);
+    renderPitchDetail();
+  };
+  document.getElementById('btnWeekNext').onclick = function(){
+    CURRENT_WEEK_START = addDays(CURRENT_WEEK_START, 7);
+    renderPitchDetail();
+  };
+  document.getElementById('weekHeaderLabel').onclick = function(){
+    openWeekPickerModal();
+  };
   document.querySelectorAll('.session-block').forEach(function(el){
     el.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
     el.onclick = function(e){
@@ -1642,6 +1682,24 @@ function renderPitchDetail(){
       col.addEventListener(evt, function(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } });
     });
   });
+}
+function openWeekPickerModal(){
+  var iso = CURRENT_WEEK_START.getFullYear()+'-'+
+    (CURRENT_WEEK_START.getMonth()+1<10?'0':'')+(CURRENT_WEEK_START.getMonth()+1)+'-'+
+    (CURRENT_WEEK_START.getDate()<10?'0':'')+CURRENT_WEEK_START.getDate();
+  var html = '<h3 style="margin-bottom:14px">דילוג לשבוע מסוים</h3>'+
+    '<div class="field"><label>בחר תאריך בתוך השבוע המבוקש</label><input type="date" id="weekJumpDateInput" value="'+iso+'"></div>'+
+    '<button class="btn" id="btnJumpWeek">עבור לשבוע זה</button>';
+  openModal(html);
+  document.getElementById('btnJumpWeek').onclick = function(){
+    var v = document.getElementById('weekJumpDateInput').value;
+    if(!v) return;
+    var parts = v.split('-');
+    var picked = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+    CURRENT_WEEK_START = startOfWeek(picked);
+    closeModal();
+    renderPitchDetail();
+  };
 }
 function getTeamCoachName(cat){
   var t = CLUB_TEAMS[cat];
