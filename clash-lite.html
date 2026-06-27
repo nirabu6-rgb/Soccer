@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Clash Lite MVP</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0ea5e9">
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto;background:#fff;color:#0f172a;}
+  h1{text-align:center;}
+  .card{background:#f1f5f9;padding:15px;border-radius:10px;}
+  input[type=file]{width:100%;padding:10px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;}
+  .file-list{font-size:.85rem;color:#64748b;margin-bottom:10px;}
+  button{width:100%;padding:10px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;border-radius:6px;font-size:1rem;}
+  button:disabled{background:#94a3b8;cursor:not-allowed;}
+  h2{margin-top:20px;}
+  .issue{background:#fff7ed;border-right:4px solid #f59e0b;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
+  .empty{color:#94a3b8;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+var state={ files: [], analysis: null };
+
+function handleUpload(e){
+  state.files=Array.prototype.slice.call(e.target.files);
+  state.analysis=null;
+  render();
+}
+
+function analyze(){
+  // MVP לוגי בלבד (לא AI עדיין)
+  state.analysis=[
+    "⚠️ חשמל חוצה אזור אינסטלציה במטבח",
+    "⚠️ חפיפה אפשרית בקיר מרכזי",
+    "⚠️ אי התאמה בין שכבות תוכנית"
+  ];
+  render();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function render(){
+  var html = '<h1>Clash Lite MVP 🏗️</h1>';
+  html += '<div class="card">';
+  html += '<input id="inp-files" type="file" multiple>';
+  if(state.files.length){
+    html += '<div class="file-list">נבחרו '+state.files.length+' קבצים: '+
+      state.files.map(function(f){ return escapeHtml(f.name); }).join(', ')+'</div>';
+  }
+  html += '<button id="btn-analyze"'+(state.files.length<2?' disabled':'')+'>Analyze Plans</button>';
+  html += '</div>';
+
+  html += '<h2>Issues Found:</h2>';
+  if(!state.analysis){
+    html += '<p class="empty">העלה לפחות 2 קבצים ולחץ על Analyze כדי לבדוק התאמות</p>';
+  } else {
+    state.analysis.forEach(function(a){
+      html += '<div class="issue">'+escapeHtml(a)+'</div>';
+    });
+  }
+
+  document.getElementById("root").innerHTML=html;
+
+  document.getElementById("inp-files").addEventListener("change", handleUpload);
+  document.getElementById("btn-analyze").onclick=analyze;
+}
+
+render();
+</script>
+</body>
+</html>
