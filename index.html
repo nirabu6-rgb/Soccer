@@ -290,6 +290,9 @@ document.getElementById('btnSaveProfile').onclick = function(){
 document.getElementById('btnLogout').onclick = function(){
   auth.signOut().then(function(){
     ME = {uid:'', phone:'', name:'', role:'coach', clubId:''};
+    MY_CLUB = null;
+    MY_CLUB_LOADED = false;
+    applyClubTheme(null);
     TRAINING_PLANS = []; TRAINING_PLANS_LOADED = false;
     document.getElementById('appScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
@@ -1009,6 +1012,15 @@ function openAttendanceModal(day, idx){
 var MY_CLUB = null;
 var MY_CLUB_LOADED = false;
 var CLUB_COACH_NAMES = {};
+var DEFAULT_ACCENT = '#22b8d8';
+function applyClubTheme(club){
+  var color = club && club.color ? club.color : '';
+  if(color){
+    document.documentElement.style.setProperty('--accent', color);
+  } else {
+    document.documentElement.style.removeProperty('--accent');
+  }
+}
 function setMyClubId(clubId){
   ME.clubId = clubId || '';
   if(ME.clubId) localStorage.setItem('fc_clubid', ME.clubId);
@@ -1021,6 +1033,7 @@ function loadMyClub(){
     Promise.resolve().then(function(){
       MY_CLUB = null;
       MY_CLUB_LOADED = true;
+      applyClubTheme(null);
       if(TAB===3) renderTab(3);
     });
     return;
@@ -1028,6 +1041,7 @@ function loadMyClub(){
   db.collection(P+'clubs').doc(lookupId).get().then(function(doc){
     MY_CLUB = doc.exists ? doc.data() : null;
     MY_CLUB_LOADED = true;
+    applyClubTheme(MY_CLUB);
     if(MY_CLUB && MY_CLUB.coaches && MY_CLUB.coaches.length){
       loadClubCoachNames(MY_CLUB.coaches);
     } else if(TAB===3){
@@ -1047,12 +1061,21 @@ function loadClubCoachNames(uids){
     });
   });
 }
-function createClub(name){
+function createClub(name, color){
   if(ME.role!=='manager' || !name) return;
-  var club = {adminUid:ME.uid, name:name, inviteCode:genCode(6), coaches:[]};
+  var club = {adminUid:ME.uid, name:name, inviteCode:genCode(6), coaches:[], color: color || DEFAULT_ACCENT};
   db.collection(P+'clubs').doc(ME.uid).set(club).then(function(){
     MY_CLUB = club;
     MY_CLUB_LOADED = true;
+    applyClubTheme(MY_CLUB);
+    renderTab(3);
+  });
+}
+function updateClubColor(newColor){
+  if(ME.role!=='manager' || !MY_CLUB || !newColor) return;
+  db.collection(P+'clubs').doc(ME.uid).set({color:newColor}, {merge:true}).then(function(){
+    MY_CLUB.color = newColor;
+    applyClubTheme(MY_CLUB);
     renderTab(3);
   });
 }
@@ -1103,6 +1126,7 @@ function leaveClub(){
   MY_CLUB_LOADED = true;
   CLUB_TEAMS_LOADED = false;
   PITCHES_LOADED = false;
+  applyClubTheme(null);
   renderTab(3);
 }
 function removeCoachFromClub(uid){
@@ -1132,6 +1156,7 @@ function tplClubSection(){
         '<div class="row"><b>ניהול מועדון</b></div>'+
         '<div class="muted" style="margin:8px 0">עדיין לא הקמת מועדון. הקמת מועדון מאפשרת למאמנים נוספים להצטרף בעזרת קוד הזמנה ולשתף קבוצות ומגרשים.</div>'+
         '<div class="field"><label>שם המועדון</label><input id="clubNameInput" placeholder="לדוגמה: הפועל העיר"></div>'+
+        '<div class="field"><label>צבע המועדון</label><input type="color" id="clubColorInput" value="'+DEFAULT_ACCENT+'"></div>'+
         '<button class="btn" id="btnCreateClub">צור מועדון</button>'+
       '</div>';
     }
@@ -1144,6 +1169,8 @@ function tplClubSection(){
       '<div class="row" style="margin-top:8px"><span>שם המועדון</span><span class="muted">'+MY_CLUB.name+'</span></div>'+
       '<div class="row" style="margin-top:8px"><span>קוד הזמנה</span><span class="muted" id="clubInviteCode" style="font-weight:bold;font-size:18px;letter-spacing:2px">'+MY_CLUB.inviteCode+'</span></div>'+
       '<button class="btn ghost sm" id="btnCopyInvite" style="margin-top:8px">העתק קוד</button>'+
+      '<div class="field" style="margin-top:14px"><label>צבע המועדון</label><input type="color" id="clubColorEditInput" value="'+(MY_CLUB.color || DEFAULT_ACCENT)+'"></div>'+
+      '<button class="btn ghost sm" id="btnSaveClubColor" style="margin-top:8px">שמור צבע</button>'+
       '<div class="muted" style="margin-top:14px">מאמנים במועדון</div>'+
       (coachesList || '<div class="muted" style="margin-top:6px">אין מאמנים נוספים במועדון</div>')+
     '</div>';
@@ -1216,7 +1243,15 @@ function wireTab(i){
     if(btnCreateClub) btnCreateClub.onclick = function(){
       var name = document.getElementById('clubNameInput').value.trim();
       if(!name) return;
-      createClub(name);
+      var colorEl = document.getElementById('clubColorInput');
+      var color = colorEl ? colorEl.value : DEFAULT_ACCENT;
+      createClub(name, color);
+    };
+    var btnSaveClubColor = document.getElementById('btnSaveClubColor');
+    if(btnSaveClubColor) btnSaveClubColor.onclick = function(){
+      var colorEditEl = document.getElementById('clubColorEditInput');
+      var newColor = colorEditEl ? colorEditEl.value : '';
+      if(newColor) updateClubColor(newColor);
     };
     var btnJoinClub = document.getElementById('btnJoinClub');
     if(btnJoinClub) btnJoinClub.onclick = function(){
