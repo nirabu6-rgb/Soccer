@@ -1363,9 +1363,24 @@ function closeTeamDetail(){
   document.getElementById('teamScreen').style.display = 'none';
   currentTeamCategory = null;
 }
+function visitingPlayersForCategory(cat){
+  var res = [];
+  AGE_GROUPS.forEach(function(homeCat){
+    if(homeCat===cat) return;
+    var ht = CLUB_TEAMS[homeCat];
+    if(!ht || !ht.players) return;
+    ht.players.forEach(function(pl){
+      if(pl.extra_categories && pl.extra_categories.indexOf(cat)!==-1){
+        res.push({player:pl, homeCategory:homeCat});
+      }
+    });
+  });
+  return res;
+}
 function renderTeamDetail(){
   var t = CLUB_TEAMS[currentTeamCategory] || {staff:[],players:[]};
   document.getElementById('teamScreenTitle').textContent = currentTeamCategory;
+  var visiting = visitingPlayersForCategory(currentTeamCategory);
   var body = document.getElementById('teamScreenBody');
   body.innerHTML =
     '<button class="btn ghost" id="btnOpenGroupPlan" style="margin-bottom:14px">📋 תוכנית קבוצתית</button>'+
@@ -1422,6 +1437,18 @@ function renderTeamDetail(){
         '<button class="btn ghost sm" data-shareplayer="'+i+'" style="margin-top:6px">📤 שיתוף עם ההורה</button>'+
         '<button class="btn ghost sm" data-monthlyreport="'+i+'" style="margin-top:6px">📄 דוח חודשי</button>'+
         '</div>';
+      }).join('')
+    )+
+    (visiting.length===0 ? '' :
+      '<div class="section-title" style="font-size:14px;margin-top:10px">מצטרפים מקבוצות אחרות</div>'+
+      visiting.map(function(v){
+        var p = v.player;
+        return '<div class="card"><div class="row">'+
+          '<div class="row" style="gap:10px;justify-content:flex-start">'+
+            (p.photo ? '<img src="'+p.photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">' : '<span style="font-size:22px">👤</span>')+
+            '<div><b>'+p.name+'</b><div class="muted">מצטרף/ת מקבוצה אחרת <span class="badge">'+v.homeCategory+'</span></div></div>'+
+          '</div>'+
+        '</div></div>';
       }).join('')
     )+
     '<button class="btn" id="btnAddPlayer">+ הוסף שחקן</button>';
@@ -1654,6 +1681,16 @@ function openAddPlayerModal(editIdx){
       ? '<div class="muted" style="margin-bottom:8px">תיעוד קיים: '+p.injury_history.length+' רשומות (יישמרו בעריכה)</div>'
       : '')+
     '<div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="playerPomInput" '+(p&&p.badges&&p.badges.indexOf('pom')!==-1?'checked':'')+' style="width:auto">👑 שחקן החודש</label></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">שיוך לקבוצות נוספות</div>'+
+    '<div class="muted" style="margin-bottom:6px;font-size:11px">השחקן/ית ישתייך/תשתייך לקבוצת הבית ('+currentTeamCategory+'), וניתן לסמן השתתפות גם בקבוצות נוספות</div>'+
+    '<div class="field" style="display:flex;flex-wrap:wrap;gap:8px">'+
+      AGE_GROUPS.filter(function(g){ return g!==currentTeamCategory; }).map(function(g){
+        var checked = (p && p.extra_categories && p.extra_categories.indexOf(g)!==-1);
+        return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--card2);border-radius:8px;padding:4px 8px;font-size:12px">'+
+          '<input type="checkbox" class="extraCategoryInput" value="'+g+'" '+(checked?'checked':'')+' style="width:auto">'+g+
+        '</label>';
+      }).join('')+
+    '</div>'+
     '<button class="btn" id="btnSavePlayer">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
   openModal(html);
   var pendingInjuryHistory = (p && p.injury_history) ? p.injury_history.slice() : [];
@@ -1705,7 +1742,8 @@ function openAddPlayerModal(editIdx){
       injury_expected_return: document.getElementById('playerInjuryReturnInput').value,
       injury_rehab_plan: document.getElementById('playerInjuryRehabInput').value.trim(),
       injury_history: pendingInjuryHistory,
-      badges: badges
+      badges: badges,
+      extra_categories: Array.prototype.slice.call(document.querySelectorAll('.extraCategoryInput:checked')).map(function(cb){ return cb.value; })
     };
     PHYSICAL_ATTRS.forEach(function(a){
       var v = parseInt(document.getElementById('phys_'+a.k).value,10);
