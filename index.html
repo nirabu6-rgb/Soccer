@@ -884,7 +884,7 @@ document.getElementById('btnVerifyCode').onclick = function(){
         ME.name = data.name;
         ME.role = data.role;
         ME.clubId = data.clubId || '';
-        enterApp();
+        resolvePendingInvitesForMe(function(){ enterApp(); });
       } else {
         document.getElementById('stepCode').style.display = 'none';
         document.getElementById('stepProfile').style.display = 'block';
@@ -901,7 +901,7 @@ document.getElementById('btnSaveProfile').onclick = function(){
   ME.name = n;
   ME.role = document.getElementById('profRoleInput').value;
   db.collection(P+'coaches').doc(ME.uid).set({uid:ME.uid, phone:ME.phone, name:ME.name, role:ME.role, clubId:ME.clubId||''}).then(function(){
-    enterApp();
+    resolvePendingInvitesForMe(function(){ enterApp(); });
   });
 };
 document.getElementById('btnLogout').onclick = function(){
@@ -930,7 +930,7 @@ auth.onAuthStateChanged(function(user){
         ME.name = data.name;
         ME.role = data.role;
         ME.clubId = data.clubId || '';
-        enterApp();
+        resolvePendingInvitesForMe(function(){ enterApp(); });
       }
     });
   }
@@ -2291,6 +2291,109 @@ function joinClubByCode(code){
     renderTab(3);
   });
 }
+// Reuses the exact same phone formatting convention as the phone-OTP login (line ~858):
+// local numbers get a +972 prefix with the leading 0 stripped; already-international numbers pass through.
+function formatPhoneIL(phone){
+  phone = (phone||'').trim();
+  if(!phone) return '';
+  return phone.charAt(0)==='+' ? phone : ('+972'+phone.replace(/^0/,''));
+}
+function pendingInvitesHtml(){
+  var invites = (MY_CLUB && MY_CLUB.pendingInvites) || [];
+  if(!invites.length) return '';
+  return '<div class="muted" style="margin-top:10px">הזמנות בהמתנה (יתממשו כשהמאמן יתחבר עם הטלפון הזה)</div>'+
+    invites.map(function(inv){
+      return '<div class="row" style="margin-top:4px"><span>'+inv.phone+'</span>'+
+        '<button class="logout-btn" data-cancelinvite="'+inv.phone+'" title="בטל">🗑</button></div>';
+    }).join('');
+}
+// Invite a coach by phone number: reuses the SAME phone->uid resolution mechanism as login
+// (db.collection(P+'coaches') is keyed by the Firebase Auth uid, with a stored phone field set
+// at profile-save time / from result.user.phoneNumber). If a coach record with that phone already
+// exists, add them to coaches[]/memberInfo immediately (same as joinClubByCode). Otherwise store a
+// pendingInvites entry that gets resolved on that phone's next login (see resolvePendingInvitesForMe()).
+function inviteCoachByPhone(rawPhone){
+  if(!MY_CLUB || ME.role!=='manager') return;
+  var phone = formatPhoneIL(rawPhone);
+  if(!phone) return;
+  var clubRef = db.collection(P+'clubs').doc(ME.uid);
+  db.collection(P+'coaches').where('phone','==',phone).get().then(function(snap){
+    var fv = (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+    if(!snap.empty){
+      var coachDoc = snap.docs[0];
+      var uid = coachDoc.id;
+      if(fv && fv.arrayUnion){
+        clubRef.update({coaches: fv.arrayUnion(uid)});
+      } else {
+        var coaches = (MY_CLUB.coaches || []).slice();
+        if(coaches.indexOf(uid)===-1) coaches.push(uid);
+        clubRef.set({coaches:coaches}, {merge:true});
+      }
+      coachDoc.ref.set({clubId:ME.uid}, {merge:true});
+      if(MY_CLUB.coaches && MY_CLUB.coaches.indexOf(uid)===-1) MY_CLUB.coaches.push(uid);
+      alert('המאמן הוזמן והצטרף למועדון');
+      MY_CLUB_LOADED = false;
+      loadMyClub();
+      renderTab(3);
+    } else {
+      var invites = (MY_CLUB.pendingInvites || []).filter(function(inv){ return inv.phone!==phone; });
+      invites.push({phone:phone, addedAt: Date.now()});
+      clubRef.set({pendingInvites:invites}, {merge:true}).then(function(){
+        MY_CLUB.pendingInvites = invites;
+        alert('הוזמן בהצלחה — ההזמנה תתממש כאשר המאמן יתחבר לראשונה עם הטלפון הזה');
+        renderTab(3);
+      });
+    }
+  });
+}
+function cancelPendingInvite(phone){
+  if(!MY_CLUB || ME.role!=='manager') return;
+  var invites = (MY_CLUB.pendingInvites || []).filter(function(inv){ return inv.phone!==phone; });
+  MY_CLUB.pendingInvites = invites;
+  db.collection(P+'clubs').doc(ME.uid).set({pendingInvites:invites}, {merge:true}).then(function(){
+    renderTab(3);
+  });
+}
+// Called once ME.uid/ME.phone are known on login (real phone-OTP flow), BEFORE enterApp().
+// Scans every club's pendingInvites for a matching phone and auto-joins that club, mirroring
+// joinClubByCode's coaches[]/clubId wiring. Removes the resolved entry from pendingInvites.
+// No-op when ME.phone is empty (e.g. LOGIN_DISABLED local mode, which has no real phone number).
+function resolvePendingInvitesForMe(cb){
+  if(!ME.phone || !ME.uid){ if(cb) cb(); return; }
+  db.collection(P+'clubs').get().then(function(snap){
+    var matchDoc = null, matchClubId = null;
+    snap.forEach(function(doc){
+      var data = doc.data();
+      if(matchDoc) return;
+      var invites = data.pendingInvites || [];
+      if(invites.some(function(inv){ return inv.phone===ME.phone; })){
+        matchDoc = doc; matchClubId = doc.id;
+      }
+    });
+    if(!matchDoc){ if(cb) cb(); return; }
+    var data = matchDoc.data();
+    var remainingInvites = (data.pendingInvites||[]).filter(function(inv){ return inv.phone!==ME.phone; });
+    var fv = (firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue : null;
+    var clubRef = matchDoc.ref;
+    var updates = {pendingInvites: remainingInvites};
+    if(fv && fv.arrayUnion){
+      clubRef.update(updates);
+      clubRef.update({coaches: fv.arrayUnion(ME.uid)});
+    } else {
+      var coaches = (data.coaches || []).slice();
+      if(coaches.indexOf(ME.uid)===-1) coaches.push(ME.uid);
+      updates.coaches = coaches;
+      clubRef.set(updates, {merge:true});
+    }
+    ME.clubId = matchClubId;
+    db.collection(P+'coaches').doc(ME.uid).set({clubId:matchClubId}, {merge:true}).then(function(){
+      if(cb) cb();
+    });
+  }).catch(function(err){
+    console.error('resolvePendingInvitesForMe failed', err);
+    if(cb) cb();
+  });
+}
 function leaveClub(){
   if(!ME.clubId) return;
   var clubId = ME.clubId;
@@ -2396,11 +2499,17 @@ function tplClubSection(){
       '<div class="row" style="margin-top:8px"><span>שם המועדון</span><span class="muted">'+MY_CLUB.name+'</span></div>'+
       '<div class="row" style="margin-top:8px"><span>קוד הזמנה</span><span class="muted" id="clubInviteCode" style="font-weight:bold;font-size:18px;letter-spacing:2px">'+MY_CLUB.inviteCode+'</span></div>'+
       '<button class="btn ghost sm" id="btnCopyInvite" style="margin-top:8px">העתק קוד</button>'+
+      '<div class="field" style="margin-top:14px"><label>הזמן מאמן לפי טלפון</label>'+
+        '<div style="display:flex;gap:6px"><input id="invitePhoneInput" placeholder="לדוגמה: 0501234567" style="flex:1">'+
+        '<button class="btn ghost sm" id="btnInviteByPhone">הזמן</button></div>'+
+      '</div>'+
+      pendingInvitesHtml()+
       '<div class="field" style="margin-top:14px"><label>צבע המועדון</label><input type="color" id="clubColorEditInput" value="'+(MY_CLUB.color || DEFAULT_ACCENT)+'"></div>'+
       '<button class="btn ghost sm" id="btnSaveClubColor" style="margin-top:8px">שמור צבע</button>'+
       '<div class="muted" style="margin-top:14px">צוות המועדון</div>'+
       (coachesList || '<div class="muted" style="margin-top:6px">אין אנשי צוות נוספים במועדון</div>')+
       '<button class="btn ghost sm" id="btnOpenClubAdminDash" style="margin-top:14px">🏛 לוח ניהול מועדון</button>'+
+      '<button class="btn ghost sm" id="btnOpenTeamPlans" style="margin-top:8px">📋 תוכניות אימון של הצוות</button>'+
     '</div>';
   } else {
     if(!ME.clubId){
@@ -2433,30 +2542,88 @@ function tplClubSection(){
     '</div>';
   }
 }
+// Simplified summary row: name/phone, title, "כל הקבוצות"/"X קבוצות" badge, and an edit button
+// that opens a focused permissions modal (openMemberPermModal). Read-only members get a plain summary.
 function tplClubMemberRow(uid){
   var nm = CLUB_COACH_NAMES[uid] || uid;
   var info = memberInfoFor(uid) || defaultMemberInfo();
   var editable = canEditMember(uid);
+  var eff = effectiveCategories(uid);
+  var scopeLabel = (eff===null) ? 'כל הקבוצות (ללא הגבלה)' : (eff.length+' קבוצות נבחרות');
+  return '<div class="row" style="margin-top:6px;align-items:flex-start">'+
+      '<div>'+
+        '<div><b>'+nm+'</b></div>'+
+        '<div class="muted" style="margin-top:2px;font-size:12px">'+info.title+' · '+scopeLabel+(info.canManageStaff?' · 🛡 מנהל צוות':'')+'</div>'+
+      '</div>'+
+      '<div>'+
+        (editable ? '<button class="btn ghost sm" data-editmember="'+uid+'">ערוך הרשאות</button>' : '')+
+        '<button class="logout-btn" data-removecoach="'+uid+'" title="הסר">🗑</button>'+
+      '</div>'+
+    '</div>';
+}
+// Focused permissions modal: title text field, simple "כל הקבוצות"/"קבוצות נבחרות" toggle
+// (checkbox grid only shown when "קבוצות נבחרות" is selected), and canManageStaff toggle (owner-only).
+function memberPermModalHtml(uid){
+  var nm = CLUB_COACH_NAMES[uid] || uid;
+  var info = memberInfoFor(uid) || defaultMemberInfo();
   var isOwnerEditor = (MY_CLUB && ME.uid===MY_CLUB.adminUid);
+  var unrestricted = !info.assignedCategories || !info.assignedCategories.length;
+  var myEff = effectiveCategories(ME.uid);
   var catsHtml = AGE_GROUPS.map(function(g){
-    var checked = !info.assignedCategories || !info.assignedCategories.length || info.assignedCategories.indexOf(g)!==-1;
-    var disabled = !editable || (!isOwnerEditor && effectiveCategories(ME.uid)!==null && effectiveCategories(ME.uid).indexOf(g)===-1);
+    var checked = unrestricted || info.assignedCategories.indexOf(g)!==-1;
+    var disabled = !isOwnerEditor && myEff!==null && myEff.indexOf(g)===-1;
     return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--card2);border-radius:8px;padding:4px 8px;font-size:12px'+(disabled?';opacity:.5':'')+'">'+
       '<input type="checkbox" class="memberCatInput" data-member="'+uid+'" value="'+g+'" '+(checked?'checked':'')+(disabled?' disabled':'')+' style="width:auto">'+g+
     '</label>';
   }).join('');
-  return '<div class="row" style="margin-top:6px;align-items:flex-start">'+
-      '<span>'+nm+(editable?'':'')+'</span>'+
-      '<button class="logout-btn" data-removecoach="'+uid+'" title="הסר">🗑</button>'+
+  return '<h3 style="margin-bottom:14px">הרשאות — '+nm+'</h3>'+
+    '<div class="field"><label>תפקיד</label><input id="memberPermTitleInput" data-member="'+uid+'" value="'+info.title+'" placeholder="תפקיד (לדוגמה: מאמן כושר)"></div>'+
+    '<div class="field" style="margin-top:10px"><label>גישה לקבוצות</label>'+
+      '<div style="display:flex;gap:8px;margin-top:4px">'+
+        '<button type="button" class="btn ghost sm memberScopeBtn" id="memberScopeAll" data-scope="all" style="flex:1'+(unrestricted?';background:var(--accent);color:#fff':'')+'">כל הקבוצות</button>'+
+        '<button type="button" class="btn ghost sm memberScopeBtn" id="memberScopeSel" data-scope="sel" style="flex:1'+(!unrestricted?';background:var(--accent);color:#fff':'')+'">קבוצות נבחרות</button>'+
+      '</div>'+
     '</div>'+
-    (editable
-      ? '<div class="field" style="margin:4px 0 0 0"><input class="memberTitleInput" data-member="'+uid+'" value="'+info.title+'" placeholder="תפקיד (לדוגמה: מאמן כושר)" style="font-size:12px"></div>'+
-        '<div class="field" style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0 0">'+catsHtml+'</div>'+
-        (isOwnerEditor
-          ? '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:4px 0 6px 0;font-size:12px"><input type="checkbox" class="memberManageStaffInput" data-member="'+uid+'" '+(info.canManageStaff?'checked':'')+' style="width:auto">יכול לנהל ולגייס צוות</label>'
-          : '')+
-        '<button class="btn ghost sm" data-savemember="'+uid+'" style="margin-bottom:8px">שמור הגדרות תפקיד</button>'
-      : '<div class="muted" style="margin:2px 0 6px 0;font-size:12px">תפקיד: '+info.title+'</div>');
+    '<div class="field" id="memberCatsWrap" style="display:'+(unrestricted?'none':'flex')+';flex-wrap:wrap;gap:8px;margin-top:10px">'+catsHtml+'</div>'+
+    (isOwnerEditor
+      ? '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:12px 0 6px 0;font-size:13px"><input type="checkbox" id="memberPermManageStaffInput" data-member="'+uid+'" '+(info.canManageStaff?'checked':'')+' style="width:auto">יכול לנהל ולגייס צוות</label>'
+      : '')+
+    '<button class="btn" data-savemember="'+uid+'" style="margin-top:10px">שמור הרשאות</button>';
+}
+function openMemberPermModal(uid){
+  if(!canEditMember(uid)) return;
+  openModal(memberPermModalHtml(uid));
+  wireMemberPermModal(uid);
+}
+function wireMemberPermModal(uid){
+  var allBtn = document.getElementById('memberScopeAll');
+  var selBtn = document.getElementById('memberScopeSel');
+  var wrap = document.getElementById('memberCatsWrap');
+  if(allBtn) allBtn.onclick = function(){
+    wrap.style.display = 'none';
+    allBtn.style.background = 'var(--accent)'; allBtn.style.color = '#fff';
+    selBtn.style.background = ''; selBtn.style.color = '';
+  };
+  if(selBtn) selBtn.onclick = function(){
+    wrap.style.display = 'flex';
+    selBtn.style.background = 'var(--accent)'; selBtn.style.color = '#fff';
+    allBtn.style.background = ''; allBtn.style.color = '';
+  };
+  var saveBtn = document.querySelector('[data-savemember="'+uid+'"]');
+  if(saveBtn) saveBtn.onclick = function(){
+    var titleEl = document.getElementById('memberPermTitleInput');
+    var manageEl = document.getElementById('memberPermManageStaffInput');
+    var unrestrictedNow = wrap && wrap.style.display==='none';
+    var assignedCategories = [];
+    if(!unrestrictedNow){
+      var catEls = document.querySelectorAll('.memberCatInput[data-member="'+uid+'"]:checked');
+      assignedCategories = Array.prototype.slice.call(catEls).map(function(cb){ return cb.value; });
+    }
+    var patch = {title:(titleEl?titleEl.value.trim():'מאמן') || 'מאמן', assignedCategories:assignedCategories};
+    if(manageEl) patch.canManageStaff = manageEl.checked;
+    updateClubMemberInfo(uid, patch);
+    closeModal();
+  };
 }
 /* ---------------- Club admin dashboard (manager-only, club-wide oversight) ---------------- */
 function clubAdminTeamRows(){
@@ -2555,6 +2722,64 @@ function openClubAdminDash(){
     };
   });
 }
+/* ---------------- Team training plans (read-only, club-owner oversight) ----------------
+   Training plans remain strictly coachUid-scoped storage (per the hard requirement); this view
+   only ADDS a read-only fan-out query across every coach uid in the club, batched into chunks of
+   10 (Firestore 'in' query limit), grouped by coach name. No edit/delete handlers are wired here.
+   Restricted to the club OWNER only: plan documents carry no category field, so there is no clean
+   linkage to a canManageStaff manager's effectiveCategories. Exposing this to scoped managers would
+   risk leaking other coaches' plans outside their assigned categories, so it is intentionally
+   owner-only for now. */
+function chunkArray(arr, size){
+  var out = [];
+  for(var i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
+  return out;
+}
+function teamPlansViewHtml(plansByCoach, coachOrder){
+  var body = coachOrder.length===0
+    ? '<div class="muted" style="text-align:center;margin-top:10px">אין עדיין תוכניות אימון בצוות</div>'
+    : coachOrder.map(function(uid){
+        var name = CLUB_COACH_NAMES[uid] || uid;
+        var plans = plansByCoach[uid] || [];
+        var plansHtml = plans.length===0
+          ? '<div class="muted" style="font-size:12px;margin-top:4px">אין תוכניות</div>'
+          : plans.map(function(p){
+              return '<div class="card" style="margin-top:6px"><b>'+p.name+'</b>'+
+                '<div class="muted" style="margin-top:4px">'+(p.drills?p.drills.length:0)+' תרגילים</div>'+
+              '</div>';
+            }).join('');
+        return '<div class="card"><div class="row"><b>👨‍🏫 '+name+'</b><span class="muted">'+plans.length+' תוכניות</span></div>'+plansHtml+'</div>';
+      }).join('');
+  return '<h3 style="margin-bottom:14px">📋 תוכניות אימון של הצוות</h3>'+body;
+}
+function openTeamPlansView(){
+  if(!MY_CLUB || ME.uid!==MY_CLUB.adminUid) return; // owner-only (see note above)
+  var uids = (MY_CLUB.coaches || []).slice();
+  if(uids.indexOf(ME.uid)===-1) uids.push(ME.uid);
+  if(uids.length===0){
+    openModal(teamPlansViewHtml({}, []));
+    return;
+  }
+  openModal('<div class="muted" style="text-align:center">טוען תוכניות...</div>');
+  var chunks = chunkArray(uids, 10);
+  Promise.all(chunks.map(function(chunk){
+    return db.collection(P+'trainingplans').where('coachUid','in',chunk).get();
+  })).then(function(snaps){
+    var plansByCoach = {};
+    var coachOrder = uids.slice();
+    snaps.forEach(function(snap){
+      snap.forEach(function(doc){
+        var p = doc.data();
+        if(!plansByCoach[p.coachUid]) plansByCoach[p.coachUid] = [];
+        plansByCoach[p.coachUid].push(p);
+      });
+    });
+    openModal(teamPlansViewHtml(plansByCoach, coachOrder));
+  }).catch(function(err){
+    console.error('openTeamPlansView failed', err);
+    openModal('<div class="muted" style="text-align:center">שגיאה בטעינת התוכניות</div>');
+  });
+}
 function tplSettings(){
   return ''+
   '<div class="section-title">⚙️ הגדרות</div>'+
@@ -2647,22 +2872,27 @@ function wireTab(i){
         removeCoachFromClub(btn.dataset.removecoach);
       };
     });
-    document.querySelectorAll('[data-savemember]').forEach(function(btn){
+    document.querySelectorAll('[data-editmember]').forEach(function(btn){
       btn.onclick = function(){
-        var uid = btn.dataset.savemember;
-        var titleEl = document.querySelector('.memberTitleInput[data-member="'+uid+'"]');
-        var manageEl = document.querySelector('.memberManageStaffInput[data-member="'+uid+'"]');
-        var catEls = document.querySelectorAll('.memberCatInput[data-member="'+uid+'"]:checked');
-        var checkedCats = Array.prototype.slice.call(catEls).map(function(cb){ return cb.value; });
-        var totalCatEls = document.querySelectorAll('.memberCatInput[data-member="'+uid+'"]').length;
-        var assignedCategories = (checkedCats.length===totalCatEls) ? [] : checkedCats; // all checked = unrestricted
-        var patch = {title:(titleEl?titleEl.value.trim():'מאמן') || 'מאמן', assignedCategories:assignedCategories};
-        if(manageEl) patch.canManageStaff = manageEl.checked;
-        updateClubMemberInfo(uid, patch);
+        openMemberPermModal(btn.dataset.editmember);
       };
     });
     var btnOpenClubAdminDash = document.getElementById('btnOpenClubAdminDash');
     if(btnOpenClubAdminDash) btnOpenClubAdminDash.onclick = function(){ openClubAdminDash(); };
+    var btnInviteByPhone = document.getElementById('btnInviteByPhone');
+    if(btnInviteByPhone) btnInviteByPhone.onclick = function(){
+      var phoneEl = document.getElementById('invitePhoneInput');
+      var phone = phoneEl ? phoneEl.value.trim() : '';
+      if(!phone) return;
+      inviteCoachByPhone(phone);
+    };
+    document.querySelectorAll('[data-cancelinvite]').forEach(function(btn){
+      btn.onclick = function(){
+        cancelPendingInvite(btn.dataset.cancelinvite);
+      };
+    });
+    var btnOpenTeamPlans = document.getElementById('btnOpenTeamPlans');
+    if(btnOpenTeamPlans) btnOpenTeamPlans.onclick = function(){ openTeamPlansView(); };
   }
 }
 
