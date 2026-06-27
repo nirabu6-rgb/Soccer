@@ -886,8 +886,8 @@ function playerBadgeRowHtml(player){
 function playerPhysicalBarsHtml(player){
   return PHYSICAL_ATTRS.map(function(a){
     var v = (player && typeof player[a.k]==='number') ? player[a.k] : 0;
-    return '<div style="margin-bottom:8px"><div class="row"><span style="font-size:12px">'+a.l+'</span><span class="muted">'+v+'/100</span></div>'+
-      '<div class="pbar-outer"><div class="pbar-fill" style="width:'+v+'%"></div></div></div>';
+    return '<div style="margin-bottom:8px"><div class="row"><span style="font-size:12px">'+a.l+'</span><span class="muted">'+v+'/5</span></div>'+
+      '<div class="pbar-outer"><div class="pbar-fill" style="width:'+(v*20)+'%"></div></div></div>';
   }).join('');
 }
 function ratingSelect(id, selected){
@@ -936,9 +936,9 @@ function openAddPlayerModal(editIdx){
       '<option value="frozen"'+(p&&p.sub_status==='frozen'?' selected':'')+'>מוקפא</option>'+
       '<option value="expired"'+(p&&p.sub_status==='expired'?' selected':'')+'>פג תוקף</option>'+
     '</select></div>'+
-    '<div class="section-title" style="font-size:14px;margin-top:6px">מדדים פיזיים (0-100)</div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">מדדים פיזיים (1-5)</div>'+
     PHYSICAL_ATTRS.map(function(a){
-      return '<div class="field"><label>'+a.l+'</label><input type="number" min="0" max="100" id="phys_'+a.k+'" value="'+(p&&typeof p[a.k]==='number'?p[a.k]:0)+'"></div>';
+      return '<div class="field"><label>'+a.l+'</label>'+ratingSelect('phys_'+a.k, (p&&typeof p[a.k]==='number')?p[a.k]:3)+'</div>';
     }).join('')+
     '<div class="field"><label>יעד לשיפור</label><input id="playerGoalInput" placeholder="לדוגמה: לשפר זריזות ברגל החלשה" value="'+(p?(p.improvement_goal||'').replace(/"/g,'&quot;'):'')+'"></div>'+
     '<div class="section-title" style="font-size:14px;margin-top:6px">פציעות</div>'+
@@ -1014,7 +1014,7 @@ function openAddPlayerModal(editIdx){
     };
     PHYSICAL_ATTRS.forEach(function(a){
       var v = parseInt(document.getElementById('phys_'+a.k).value,10);
-      extra[a.k] = (isNaN(v)) ? 0 : Math.max(0, Math.min(100, v));
+      extra[a.k] = (isNaN(v)) ? 3 : Math.max(1, Math.min(5, v));
     });
     readPhotoFile(document.getElementById('playerPhotoInput'), function(photo){
       if(isEdit){
