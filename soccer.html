@@ -228,10 +228,86 @@ var DRILL_CATEGORIES = ['חימום','טכניקה','כוח','משחק','סיו�
 var editingDrillLibItem = null;
 var drillPickerCallback = null;
 
+/* ---------------- AI-style plan wizard (fixed-step, no real AI) ---------------- */
+var WIZ_QUESTIONS = [
+  {key:'target', label:'בשביל מי בונים את התוכנית?'},
+  {key:'goal', label:'מה המטרה המרכזית?'},
+  {key:'freq', label:'כמה ימי אימון בשבוע?'},
+  {key:'injury', label:'מגבלה רפואית / פציעה שיש להתחשב בה?'}
+];
+var WIZ_GOALS = ['שיפור מהירות','טכניקה','כוח','משחק קבוצתי'];
+var WIZ_GOAL_TO_CATEGORY = {'שיפור מהירות':'חימום','טכניקה':'טכניקה','כוח':'כוח','משחק קבוצתי':'משחק'};
+var WIZ_STATE = {step:0, answers:{target:'',goal:WIZ_GOALS[0],freq:'3',injury:''}};
+
 var AGE_GROUPS = ['נוער','נערים א\'','נערים ב\'','נערים ג\'','ילדים א\'','ילדים ב\'','ילדים ג\'','טרום א\'','טרום ב\'','טרום ג\'','בית הספר לכדורגל'];
 var CLUB_TEAMS = {};
 var CLUB_TEAMS_LOADED = false;
 var currentTeamCategory = null;
+
+/* ---------------- Player video clips library ---------------- */
+var PLAYER_CLIPS = [];
+var PLAYER_CLIPS_LOADED = false;
+function loadPlayerClips(){
+  if(!ME.uid) return;
+  db.collection(P+'playerclips').where('coachUid','==',ME.uid).get().then(function(snap){
+    PLAYER_CLIPS = snap.docs.map(function(d){ return d.data(); });
+    PLAYER_CLIPS_LOADED = true;
+    if(currentTeamCategory) renderTeamDetail();
+  });
+}
+function clipsForPlayer(name, category){
+  return PLAYER_CLIPS.filter(function(c){ return c.playerName===name && c.category===category; });
+}
+function playerClipsListHtml(name, category){
+  var clips = clipsForPlayer(name, category);
+  if(!PLAYER_CLIPS_LOADED){
+    return '<div class="muted" style="font-size:11px">טוען קליפים...</div>';
+  }
+  if(clips.length===0){
+    return '<div class="muted" style="font-size:11px">אין עדיין קליפים</div>';
+  }
+  return clips.map(function(c){
+    return '<div class="row" style="padding:4px 0;border-bottom:1px solid #e3e6ec;font-size:12px">'+
+      '<a href="'+c.url+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🎬 '+c.title+'</a>'+
+      '<span class="muted" style="margin-right:6px">'+(c.date||'')+'</span>'+
+      '<button class="logout-btn" data-delclip="'+c.id+'" title="מחק">🗑</button>'+
+    '</div>';
+  }).join('');
+}
+function openAddClipModal(playerName){
+  var html = '<h3 style="margin-bottom:14px">+ הוספת קליפ — '+playerName+'</h3>'+
+    '<div class="field"><label>כותרת</label><input id="clipTitleInput" placeholder="לדוגמה: שער במשחק מול..."></div>'+
+    '<div class="field"><label>קישור (YouTube / Drive וכו׳)</label><input id="clipUrlInput" placeholder="https://..."></div>'+
+    '<div class="field"><label>תאריך</label><input type="date" id="clipDateInput"></div>'+
+    '<button class="btn" id="btnSaveClip">שמור קליפ</button>';
+  openModal(html);
+  document.getElementById('btnSaveClip').onclick = function(){
+    var title = document.getElementById('clipTitleInput').value.trim();
+    var url = document.getElementById('clipUrlInput').value.trim();
+    if(!title || !url) return;
+    var clip = {
+      id: genCode(8),
+      coachUid: ME.uid,
+      playerName: playerName,
+      category: currentTeamCategory,
+      title: title,
+      url: url,
+      date: document.getElementById('clipDateInput').value || ''
+    };
+    db.collection(P+'playerclips').doc(clip.id).set(clip).then(function(){
+      PLAYER_CLIPS.push(clip);
+      closeModal();
+      renderTeamDetail();
+    });
+  };
+}
+function deletePlayerClip(id){
+  if(!confirm('למחוק את הקליפ?')) return;
+  db.collection(P+'playerclips').doc(id).delete().then(function(){
+    PLAYER_CLIPS = PLAYER_CLIPS.filter(function(c){ return c.id!==id; });
+    renderTeamDetail();
+  });
+}
 
 var DAYS = [{k:'sun',l:'יום א\''},{k:'mon',l:'יום ב\''},{k:'tue',l:'יום ג\''},{k:'wed',l:'יום ד\''},{k:'thu',l:'יום ה\''},{k:'fri',l:'יום ו\''},{k:'sat',l:'שבת'}];
 function genTimeSlots(){
@@ -473,6 +549,7 @@ function enterApp(){
   buildNav();
   renderTab(0);
   loadClubTeams();
+  loadPlayerClips();
 }
 function buildNav(){
   var bar = document.getElementById('navBar');
@@ -529,6 +606,7 @@ function tplPlans(){
     '<button class="btn" id="btnNewPlan">+ תוכנית אימון חדשה</button>'+
     '<button class="btn ghost" id="btnOpenDrillLib">🗂 בנק תרגילים</button>'+
   '</div>'+
+  '<button class="btn ghost" id="btnAiWizard" style="margin-bottom:14px">🤖 בנה תוכנית עם עוזר חכם</button>'+
   (TRAINING_PLANS.length===0
     ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוצרו תוכניות אימון</div>'
     : TRAINING_PLANS.map(function(p,i){
@@ -761,6 +839,9 @@ function renderTeamDetail(){
               '</div>';
             }).join('')
           : '')+
+        '<div class="section-title" style="font-size:12px;margin:10px 0 4px">🎬 קליפים</div>'+
+        playerClipsListHtml(p.name, currentTeamCategory)+
+        '<button class="btn ghost sm" data-addclip="'+i+'" style="margin-top:6px">+ הוסף קליפ</button>'+
         '</div>';
       }).join('')
     )+
@@ -769,6 +850,19 @@ function renderTeamDetail(){
   document.getElementById('btnAddPlayer').onclick = function(){ openAddPlayerModal(); };
   document.querySelectorAll('[data-editplayer]').forEach(function(el){
     el.onclick = function(){ openAddPlayerModal(parseInt(el.dataset.editplayer,10)); };
+  });
+  document.querySelectorAll('[data-addclip]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var idx = parseInt(btn.dataset.addclip,10);
+      openAddClipModal(t.players[idx].name);
+    };
+  });
+  document.querySelectorAll('[data-delclip]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      deletePlayerClip(btn.dataset.delclip);
+    };
   });
   document.querySelectorAll('[data-delstaff]').forEach(function(btn){
     btn.onclick = function(){
@@ -1502,6 +1596,8 @@ function wireTab(i){
     if(nb) nb.onclick = function(){ openPlanBuilder(null); };
     var ndl = document.getElementById('btnOpenDrillLib');
     if(ndl) ndl.onclick = function(){ openDrillLib(); };
+    var nwz = document.getElementById('btnAiWizard');
+    if(nwz) nwz.onclick = function(){ openWizardModal(); };
     document.querySelectorAll('[data-viewplan]').forEach(function(btn){
       btn.onclick = function(){ openPlanBuilder(parseInt(btn.dataset.viewplan,10)); };
     });
@@ -1881,6 +1977,124 @@ function savePlan(){
     renderTab(0);
   });
 }
+/* ---------------- AI-style plan wizard modal flow ---------------- */
+function openWizardModal(){
+  WIZ_STATE = {step:0, answers:{target:'',goal:WIZ_GOALS[0],freq:'3',injury:''}};
+  if(!CLUB_TEAMS_LOADED) loadClubTeams();
+  renderWizardModal();
+}
+function wizardAllPlayers(){
+  var out = [];
+  AGE_GROUPS.forEach(function(cat){
+    var t = CLUB_TEAMS[cat];
+    if(t && t.players) t.players.forEach(function(pl){ out.push({name:pl.name, category:cat, player:pl}); });
+  });
+  return out;
+}
+function wizardPrefillInjury(targetName){
+  var found = wizardAllPlayers().filter(function(x){ return x.name===targetName; })[0];
+  if(!found) return '';
+  var pl = found.player;
+  if(pl.injury_status==='injured' || pl.injury_status==='rehab'){
+    return pl.injury_rehab_plan || (pl.injury_status==='injured' ? 'השחקן מוגדר כפצוע' : 'השחקן בתהליך שיקום');
+  }
+  return '';
+}
+function renderWizardModal(){
+  var step = WIZ_STATE.step;
+  var totalSteps = WIZ_QUESTIONS.length;
+  var html = '<h3>🤖 בניית תוכנית עם עוזר חכם</h3>'+
+    '<div class="muted" style="margin-bottom:14px">שאלה '+(Math.min(step+1,totalSteps))+' מתוך '+totalSteps+'</div>';
+  if(step >= totalSteps){
+    var a = WIZ_STATE.answers;
+    html += '<div class="card">'+
+      '<div class="row"><span>מטרה</span><span class="muted">'+a.target+'</span></div>'+
+      '<div class="row" style="margin-top:6px"><span>יעד</span><span class="muted">'+a.goal+'</span></div>'+
+      '<div class="row" style="margin-top:6px"><span>תדירות</span><span class="muted">'+a.freq+' בשבוע</span></div>'+
+      '<div class="row" style="margin-top:6px"><span>מגבלה רפואית</span><span class="muted">'+(a.injury||'אין')+'</span></div>'+
+    '</div>'+
+    '<button class="btn" id="wizCreatePlan" style="margin-top:10px">✅ צור תוכנית</button>'+
+    '<button class="btn ghost" id="wizBack" style="margin-top:8px">חזרה</button>';
+    openModal(html);
+    document.getElementById('wizBack').onclick = function(){ WIZ_STATE.step--; renderWizardModal(); };
+    document.getElementById('wizCreatePlan').onclick = function(){
+      var plan = buildPlanFromWizard(WIZ_STATE.answers);
+      closeModal();
+      var idx = TRAINING_PLANS.length;
+      TRAINING_PLANS.push(plan);
+      openPlanBuilder(idx);
+    };
+    return;
+  }
+  var q = WIZ_QUESTIONS[step];
+  var fieldHtml = '';
+  if(q.key==='target'){
+    var players = wizardAllPlayers();
+    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
+      '<option value="כל הקבוצה">כל הקבוצה</option>'+
+      players.map(function(x){ return '<option value="'+x.name+'">'+x.name+' ('+x.category+')</option>'; }).join('')+
+    '</select></div>';
+  } else if(q.key==='goal'){
+    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
+      WIZ_GOALS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
+    '</select></div>';
+  } else if(q.key==='freq'){
+    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
+      [2,3,4,5,6].map(function(n){ return '<option value="'+n+'"'+(n===3?' selected':'')+'>'+n+' בשבוע</option>'; }).join('')+
+    '</select></div>';
+  } else if(q.key==='injury'){
+    var prefill = WIZ_STATE.answers.injury || wizardPrefillInjury(WIZ_STATE.answers.target);
+    fieldHtml = '<div class="field"><label>'+q.label+'</label><textarea id="wizInput" rows="2" placeholder="אין מגבלה">'+prefill+'</textarea></div>';
+  }
+  html += fieldHtml+
+    '<button class="btn" id="wizNext" style="margin-top:8px">הבא ›</button>'+
+    (step>0 ? '<button class="btn ghost" id="wizBack" style="margin-top:8px">‹ חזרה</button>' : '');
+  openModal(html);
+  document.getElementById('wizNext').onclick = function(){
+    var el = document.getElementById('wizInput');
+    WIZ_STATE.answers[q.key] = el.value.trim();
+    WIZ_STATE.step++;
+    renderWizardModal();
+  };
+  var backBtn = document.getElementById('wizBack');
+  if(backBtn) backBtn.onclick = function(){ WIZ_STATE.step--; renderWizardModal(); };
+}
+function wizardPhaseTitles(goal){
+  var titles = {
+    'שיפור מהירות':['חימום דינמי','ספרינטים וכוח נפץ','משחק תרגיל קצר'],
+    'טכניקה':['חימום עם כדור','תרגול שליטה ומסירות','משחק תרגיל יישומי'],
+    'כוח':['חימום ומוביליות','תרגילי כוח פונקציונלי','שחרור ומתיחות'],
+    'משחק קבוצתי':['חימום קבוצתי','תרגילי החזקה ומעברים','משחק קבוצתי מלא']
+  };
+  return titles[goal] || titles['טכניקה'];
+}
+function buildPlanFromWizard(a){
+  var category = WIZ_GOAL_TO_CATEGORY[a.goal] || 'טכניקה';
+  var phaseTitles = wizardPhaseTitles(a.goal);
+  var matchingDrills = DRILL_LIB_LOADED ? DRILL_LIB.filter(function(d){ return d.category===category; }) : [];
+  var phases = phaseTitles.map(function(title, i){
+    var items = [];
+    if(matchingDrills[i]){
+      var d = matchingDrills[i];
+      items.push({drillId:d.id, title:d.title, category:d.category, duration_min:d.duration_min||0, notes:''});
+    } else {
+      items.push({drillId:null, title:title, category:category, duration_min:15, notes:''});
+    }
+    return {name:title, items:items};
+  });
+  var nameTarget = a.target && a.target!=='כל הקבוצה' ? a.target : 'הקבוצה';
+  var plan = {
+    id: genCode(8),
+    coachUid: ME.uid,
+    name: 'תוכנית עוזר חכם — '+nameTarget+' · '+a.goal,
+    drills: [],
+    phases: phases,
+    wizardMeta: {target:a.target, goal:a.goal, freq:a.freq, injury:a.injury}
+  };
+  db.collection(P+'trainingplans').doc(plan.id).set(plan);
+  return plan;
+}
+
 /* ---------------- Session builder phases (בונה אימונים) ---------------- */
 function addPhase(){
   if(!editingPlan.phases) editingPlan.phases = [];
