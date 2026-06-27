@@ -37,6 +37,10 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .nav-btn{display:flex;align-items:center;gap:10px;justify-content:flex-start;flex:none;border:none;background:none;padding:13px 18px;font-size:14px;color:var(--sub);cursor:pointer;text-align:right;width:100%}
 .nav-btn .ic{font-size:20px;margin-bottom:0}
 .nav-btn.sel{color:var(--accent2);font-weight:700}
+.nav-btn{position:relative}
+.nav-badge{position:absolute;left:14px;top:8px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px}
+.alert-card{border-right:4px solid var(--warn)}
+.alert-card.danger{border-right:4px solid var(--bad)}
 .section-title{font-size:18px;font-weight:700;margin:6px 0 12px}
 .card{background:var(--card);border:1px solid #e3e6ec;border-radius:14px;padding:14px;margin-bottom:12px}
 .muted{color:var(--sub);font-size:13px}
@@ -236,6 +240,111 @@ var PITCHES_LOADED = false;
 var currentPitchIdx = null;
 var currentPitchDay = 'sun';
 
+/* ---------------- Alerts / reminders ---------------- */
+var LOW_PUNCH_THRESHOLD = 2;
+var MEDICAL_EXPIRY_WARN_DAYS = 14;
+function daysBetween(dateStr){
+  // returns (dateStr - today) in days, dateStr is 'YYYY-MM-DD'
+  var d = new Date(dateStr+'T00:00:00');
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.round((d.getTime()-today.getTime())/86400000);
+}
+function computeAlerts(){
+  var alerts = [];
+  AGE_GROUPS.forEach(function(cat){
+    var t = CLUB_TEAMS[cat];
+    if(!t || !t.players) return;
+    t.players.forEach(function(pl){
+      // 1. Low punch-card balance
+      if(pl.sub_type==='punch' && typeof pl.remaining_punches==='number' && pl.remaining_punches<=LOW_PUNCH_THRESHOLD){
+        alerts.push({type:'punch', severity:'warning', category:cat, playerName:pl.name,
+          text:'לשחקן '+pl.name+' נותרו '+pl.remaining_punches+' ניקובים בכרטיסייה'});
+      }
+      // 2. Medical approval
+      if(pl.medical_approval===false){
+        alerts.push({type:'medical', severity:'danger', category:cat, playerName:pl.name,
+          text:'לשחקן '+pl.name+' אין אישור רפואי בתוקף'});
+      } else if(pl.medical_expiry){
+        var diff = daysBetween(pl.medical_expiry);
+        if(diff<0){
+          alerts.push({type:'medical', severity:'danger', category:cat, playerName:pl.name,
+            text:'אישור רפואי של '+pl.name+' פג תוקף'});
+        } else if(diff<=MEDICAL_EXPIRY_WARN_DAYS){
+          alerts.push({type:'medical', severity:'warning', category:cat, playerName:pl.name,
+            text:'אישור רפואי של '+pl.name+' עומד לפוג ב-'+pl.medical_expiry});
+        }
+      }
+    });
+  });
+  // 3. Consecutive absences: scan PITCHES (best-effort chronological order:
+  // pitches in array order, days in DAYS order sun..sat, sessions in schedule order per day).
+  // Note: there is no absolute date per session beyond day-of-week, so this is a
+  // best-effort ordering proxy across all pitches/sessions rather than true calendar order.
+  var streaks = {}; // name -> current consecutive absent streak
+  var flagged = {}; // name -> already flagged (avoid duplicate alerts per player)
+  PITCHES.forEach(function(p){
+    DAYS.forEach(function(d){
+      var sessions = (p.schedule && p.schedule[d.k]) || [];
+      sessions.forEach(function(s){
+        var attendance = s.attendance || {};
+        for(var name in attendance){
+          var val = attendance[name];
+          if(val==='absent'){
+            streaks[name] = (streaks[name]||0)+1;
+            if(streaks[name]>=3 && !flagged[name]){
+              flagged[name] = true;
+              alerts.push({type:'absence', severity:'danger', category:findPlayerCategory(name), playerName:name,
+                text:'לשחקן '+name+' 3 היעדרויות רצופות'});
+            }
+          } else {
+            streaks[name] = 0;
+          }
+        }
+      });
+    });
+  });
+  return alerts;
+}
+function findPlayerCategory(name){
+  for(var i=0;i<AGE_GROUPS.length;i++){
+    var t = CLUB_TEAMS[AGE_GROUPS[i]];
+    if(t && t.players && t.players.some(function(pl){ return pl.name===name; })) return AGE_GROUPS[i];
+  }
+  return '';
+}
+function refreshAlertsUI(){
+  var badge = document.querySelector('.nav-btn[data-tab="0"] .nav-badge');
+  var alerts = computeAlerts();
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    var existing = btn.querySelector('.nav-badge');
+    if(existing) existing.remove();
+    if(btn.dataset.tab==='0' && alerts.length>0){
+      var b = document.createElement('span');
+      b.className = 'nav-badge';
+      b.textContent = alerts.length;
+      btn.appendChild(b);
+    }
+  });
+  if(TAB===0){
+    var box = document.getElementById('alertsBox');
+    if(box) box.innerHTML = alertsSectionHtml(alerts);
+  }
+}
+function alertsSectionHtml(alerts){
+  if(!alerts) alerts = computeAlerts();
+  var head = '<div class="row" style="margin-bottom:8px"><div class="section-title" style="margin:0">🔔 התראות</div>'+
+    (alerts.length>0 ? '<span class="badge">'+alerts.length+'</span>' : '')+'</div>';
+  if(alerts.length===0){
+    return head+'<div class="card muted" style="text-align:center">אין התראות כרגע</div>';
+  }
+  return head + alerts.map(function(a){
+    return '<div class="card alert-card'+(a.severity==='danger'?' danger':'')+'">'+a.text+
+      (a.category ? '<div class="muted" style="margin-top:4px;font-size:11px">'+a.category+'</div>' : '')+
+    '</div>';
+  }).join('');
+}
+
 /* ---------------- Auth: phone + OTP ---------------- */
 function setupRecaptcha(){
   if(window.recaptchaVerifier) return;
@@ -365,6 +474,7 @@ function buildNav(){
     };
   });
   document.getElementById('btnCloseDrawer').onclick = closeDrawer;
+  refreshAlertsUI();
 }
 function openDrawer(){
   document.getElementById('navBar').classList.add('show');
@@ -397,6 +507,7 @@ function tplPlans(){
     return '<div class="section-title">📋 תוכניות אימון</div><div class="muted" style="text-align:center">טוען...</div>';
   }
   return ''+
+  '<div id="alertsBox">'+alertsSectionHtml()+'</div>'+
   '<div class="section-title">📋 תוכניות אימון</div>'+
   '<div class="muted" style="margin-bottom:10px">בנה תוכנית אימון עם סרטוטים אינטראקטיביים על המגרש ושמור אותה לשימוש חוזר</div>'+
   '<div class="action-row" style="margin-bottom:14px">'+
@@ -569,6 +680,7 @@ function loadClubTeams(){
     CLUB_TEAMS_LOADED = true;
     if(TAB===1) renderTab(1);
     if(currentTeamCategory) renderTeamDetail();
+    refreshAlertsUI();
   });
 }
 function saveClubTeams(){
@@ -760,6 +872,7 @@ function openAddPlayerModal(editIdx){
       saveClubTeams();
       closeModal();
       renderTeamDetail();
+      refreshAlertsUI();
     });
   };
 }
@@ -787,6 +900,7 @@ function loadPitches(){
     PITCHES = snap.docs.map(function(d){ return d.data(); });
     PITCHES_LOADED = true;
     if(TAB===2) renderTab(2);
+    refreshAlertsUI();
   });
 }
 function emptySchedule(){
@@ -1028,6 +1142,7 @@ function openAttendanceModal(day, idx){
     savePitch(p);
     closeModal();
     renderPitchDetail();
+    refreshAlertsUI();
   };
 }
 
