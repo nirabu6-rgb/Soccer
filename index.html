@@ -414,13 +414,13 @@ function renderTeamDetail(){
     (t.players.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין שחקנים</div>' :
       t.players.map(function(p,i){
         return '<div class="card"><div class="row">'+
-          '<div class="row" style="gap:10px;justify-content:flex-start">'+
+          '<div class="row" style="gap:10px;justify-content:flex-start;cursor:pointer" data-editplayer="'+i+'">'+
             (p.photo ? '<img src="'+p.photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">' : '<span style="font-size:22px">👤</span>')+
             '<div><b>'+p.name+'</b><div class="muted">דירוג: '+'⭐'.repeat(p.rating||0)+'</div></div>'+
           '</div>'+
           '<button class="logout-btn" data-delplayer="'+i+'" title="מחק">🗑</button>'+
         '</div>'+
-        '<div class="muted" style="margin-top:6px;font-size:11px;display:flex;flex-wrap:wrap;gap:6px">'+
+        '<div class="muted" style="margin-top:6px;font-size:11px;display:flex;flex-wrap:wrap;gap:6px;cursor:pointer" data-editplayer="'+i+'">'+
           SKILL_ATTRS.map(function(sk){ return sk.l+': '+((p.skills&&p.skills[sk.k])||0); }).join(' · ')+
         '</div></div>';
       }).join('')
@@ -428,6 +428,9 @@ function renderTeamDetail(){
     '<button class="btn" id="btnAddPlayer">+ הוסף שחקן</button>';
   document.getElementById('btnAddStaff').onclick = function(){ openAddStaffModal(); };
   document.getElementById('btnAddPlayer').onclick = function(){ openAddPlayerModal(); };
+  document.querySelectorAll('[data-editplayer]').forEach(function(el){
+    el.onclick = function(){ openAddPlayerModal(parseInt(el.dataset.editplayer,10)); };
+  });
   document.querySelectorAll('[data-delstaff]').forEach(function(btn){
     btn.onclick = function(){
       t.staff.splice(parseInt(btn.dataset.delstaff,10),1);
@@ -435,7 +438,8 @@ function renderTeamDetail(){
     };
   });
   document.querySelectorAll('[data-delplayer]').forEach(function(btn){
-    btn.onclick = function(){
+    btn.onclick = function(e){
+      e.stopPropagation();
       t.players.splice(parseInt(btn.dataset.delplayer,10),1);
       saveClubTeams(); renderTeamDetail();
     };
@@ -484,18 +488,20 @@ function ratingSelect(id, selected){
   for(var i=1;i<=5;i++) opts += '<option value="'+i+'"'+(i===selected?' selected':'')+'>'+i+'</option>';
   return '<select id="'+id+'">'+opts+'</select>';
 }
-function openAddPlayerModal(){
-  var html = '<h3 style="margin-bottom:14px">הוספת שחקן</h3>'+
-    '<div class="field"><label>שם</label><input id="playerNameInput" placeholder="שם מלא"></div>'+
+function openAddPlayerModal(editIdx){
+  var isEdit = (editIdx!==undefined && editIdx!==null);
+  var p = isEdit ? CLUB_TEAMS[currentTeamCategory].players[editIdx] : null;
+  var html = '<h3 style="margin-bottom:14px">'+(isEdit?'עריכת שחקן':'הוספת שחקן')+'</h3>'+
+    '<div class="field"><label>שם</label><input id="playerNameInput" placeholder="שם מלא" value="'+(p?p.name:'')+'"></div>'+
     '<div class="field"><label>תמונה (אופציונלי)</label><input id="playerPhotoInput" type="file" accept="image/*"></div>'+
-    '<div class="field"><label>דירוג כללי (1-5)</label>'+ratingSelect('playerRatingInput',3)+'</div>'+
+    '<div class="field"><label>דירוג כללי (1-5)</label>'+ratingSelect('playerRatingInput', p?p.rating:3)+'</div>'+
     '<div class="section-title" style="font-size:14px;margin-top:6px">יכולות (1-5)</div>'+
     SKILL_ATTRS.map(function(sk){
       return '<div class="field" style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
-        '<label style="margin:0">'+sk.l+'</label>'+ratingSelect('skill_'+sk.k, 3)+
+        '<label style="margin:0">'+sk.l+'</label>'+ratingSelect('skill_'+sk.k, p&&p.skills?p.skills[sk.k]:3)+
       '</div>';
     }).join('')+
-    '<button class="btn" id="btnSavePlayer">הוסף</button>';
+    '<button class="btn" id="btnSavePlayer">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
   openModal(html);
   document.getElementById('btnSavePlayer').onclick = function(){
     var name = document.getElementById('playerNameInput').value.trim();
@@ -504,7 +510,12 @@ function openAddPlayerModal(){
     var skills = {};
     SKILL_ATTRS.forEach(function(sk){ skills[sk.k] = parseInt(document.getElementById('skill_'+sk.k).value,10); });
     readPhotoFile(document.getElementById('playerPhotoInput'), function(photo){
-      CLUB_TEAMS[currentTeamCategory].players.push({name:name, photo:photo, rating:rating, skills:skills});
+      if(isEdit){
+        p.name = name; p.rating = rating; p.skills = skills;
+        if(photo) p.photo = photo;
+      } else {
+        CLUB_TEAMS[currentTeamCategory].players.push({name:name, photo:photo, rating:rating, skills:skills});
+      }
       saveClubTeams();
       closeModal();
       renderTeamDetail();
@@ -688,6 +699,7 @@ function openSessionDetailModal(day, idx){
   openModal(html);
   var openRoster = function(){
     closeModal();
+    document.getElementById('pitchScreen').style.display = 'none';
     if(!CLUB_TEAMS_LOADED) loadClubTeams();
     openTeamDetail(s.category);
   };
