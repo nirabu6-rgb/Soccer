@@ -1072,6 +1072,7 @@ function renderTeamDetail(){
         '<div class="section-title" style="font-size:12px;margin:10px 0 4px">🎬 קליפים</div>'+
         playerClipsListHtml(p.name, currentTeamCategory)+
         '<button class="btn ghost sm" data-addclip="'+i+'" style="margin-top:6px">+ הוסף קליפ</button>'+
+        '<button class="btn ghost sm" data-shareplayer="'+i+'" style="margin-top:6px">📤 שיתוף עם ההורה</button>'+
         '</div>';
       }).join('')
     )+
@@ -1093,6 +1094,13 @@ function renderTeamDetail(){
     btn.onclick = function(e){
       e.stopPropagation();
       deletePlayerClip(btn.dataset.delclip);
+    };
+  });
+  document.querySelectorAll('[data-shareplayer]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var idx = parseInt(btn.dataset.shareplayer,10);
+      sharePlayerReport(t.players[idx], currentTeamCategory);
     };
   });
   document.querySelectorAll('[data-delstaff]').forEach(function(btn){
@@ -2185,6 +2193,7 @@ function renderPlanBuilderModal(){
          '<button class="frame-add-chip" id="btnNewFrame" title="התחל פריים ריק">🧹</button>'+
        '</div>'+
        (editingDrillIndex!==null ? '<button class="btn ghost" id="btnDelCurrentFrame" style="margin-bottom:10px">🗑 מחק פריים '+(editingDrillIndex+1)+'</button>' : '')))+
+  '<button class="btn ghost sm" id="btnSharePlan" style="margin-bottom:14px">📤 שיתוף</button>'+
   '<div style="margin-top:18px;border-top:1px solid #e3e6ec;padding-top:14px">'+phasesSectionHtml()+'</div>'+
   '<div style="margin-top:18px;border-top:1px solid #e3e6ec;padding-top:14px">'+weeksSectionHtml()+'</div>'+
   '';
@@ -2514,6 +2523,8 @@ function wirePlanBuilderModal(){
   document.getElementById('btnSavePlan').onclick = function(){ savePlan(); };
   var cloneBtn = document.getElementById('btnCloneFromCoachTraining');
   if(cloneBtn) cloneBtn.onclick = function(){ openCoachTrainingPickerModal(function(tr){ cloneFromCoachTraining(tr); }); };
+  var sharePlanBtn = document.getElementById('btnSharePlan');
+  if(sharePlanBtn) sharePlanBtn.onclick = function(){ sharePlan(); };
   document.querySelectorAll('[data-tool]').forEach(function(btn){
     btn.onclick = function(){
       var t = btn.dataset.tool;
@@ -2803,6 +2814,85 @@ function genCode(len){
   var chars = 'abcdefghijklmnopqrstuvwxyz0123456789', s = '';
   for(var i=0;i<len;i++) s += chars.charAt(Math.floor(Math.random()*chars.length));
   return s;
+}
+
+/* ---------------- Share via WhatsApp / Email ---------------- */
+function cleanPhoneForWa(phone){
+  if(!phone) return '';
+  var digits = (''+phone).replace(/\D/g,'');
+  if(!digits) return '';
+  if(digits.charAt(0)==='0') digits = '972'+digits.substring(1);
+  else if(digits.indexOf('972')!==0 && digits.length<=10) digits = '972'+digits;
+  return digits;
+}
+function planTextSummary(plan){
+  var lines = [];
+  lines.push('תוכנית אימון — '+(plan.name||'ללא שם'));
+  var phases = plan.phases || [];
+  if(phases.length){
+    lines.push('');
+    lines.push('שלבי האימון:');
+    phases.forEach(function(ph){
+      lines.push('• '+ph.name);
+      (ph.items||[]).forEach(function(it){
+        lines.push('   - '+it.title+(it.duration_min?' ('+it.duration_min+' דק׳)':'')+(it.notes?' — '+it.notes:''));
+      });
+    });
+  }
+  var weeks = plan.weeks || [];
+  if(weeks.length){
+    lines.push('');
+    lines.push('שלבי עונה:');
+    weeks.forEach(function(w){
+      var statusT = w.status==='done' ? 'הושלם' : (w.status==='open' ? 'פתוח' : 'נעול');
+      lines.push('• '+w.label+' ('+statusT+')'+(w.notes?' — '+w.notes:''));
+    });
+  }
+  return lines.join('\n');
+}
+function playerReportSummaryText(player, category){
+  var p = player;
+  var lines = [];
+  lines.push('דוח שחקן — '+p.name);
+  if(category) lines.push('קבוצה: '+category);
+  var stats = countPlayerAttendance(p.name);
+  lines.push('נוכחות: '+stats.present+' אימונים'+(stats.maxStreak?' · רצף מקסימלי '+stats.maxStreak:''));
+  if(p.sub_type==='punch'){
+    lines.push('כרטיסיית ניקובים: נותרו '+(typeof p.remaining_punches==='number'?p.remaining_punches:'-')+' מתוך '+(typeof p.total_punches==='number'?p.total_punches:'-'));
+  } else if(p.sub_type==='monthly'){
+    lines.push('מנוי חודשי: '+(p.sub_status==='active'?'פעיל':(p.sub_status==='frozen'?'מוקפא':'פג תוקף')));
+  }
+  lines.push('אישור רפואי: '+(p.medical_approval?('בתוקף'+(p.medical_expiry?' עד '+p.medical_expiry:'')):'אין אישור רפואי בתוקף'));
+  var injStatus = p.injury_status || 'healthy';
+  if(injStatus!=='healthy'){
+    lines.push('סטטוס פציעה: '+INJURY_STATUS_INFO[injStatus].t+(p.injury_expected_return?' · חזרה משוערת '+p.injury_expected_return:''));
+    if(p.injury_rehab_plan) lines.push('תוכנית שיקום: '+p.injury_rehab_plan);
+  }
+  lines.push('מדדים פיזיים: '+PHYSICAL_ATTRS.map(function(a){ return a.l+' '+((typeof p[a.k]==='number')?p[a.k]:0)+'/5'; }).join(' · '));
+  if(p.improvement_goal) lines.push('יעד לשיפור: '+p.improvement_goal);
+  return lines.join('\n');
+}
+function openShareModal(title, text, phone, email){
+  var waUrl = phone ? ('https://wa.me/'+phone+'?text='+encodeURIComponent(text)) : ('https://wa.me/?text='+encodeURIComponent(text));
+  var mailUrl = 'mailto:'+(email||'')+'?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(text);
+  var html = '<h3 style="margin-bottom:14px">📤 שיתוף</h3>'+
+    '<div class="muted" style="margin-bottom:14px;white-space:pre-wrap;max-height:200px;overflow:auto;font-size:12px">'+text.replace(/</g,'&lt;')+'</div>'+
+    '<div class="grid2" style="margin-bottom:8px">'+
+      '<button class="btn ghost" id="shareWaBtn">📲 שלח ב-WhatsApp</button>'+
+      '<button class="btn ghost" id="shareMailBtn">✉️ שלח באימייל</button>'+
+    '</div>';
+  openModal(html);
+  document.getElementById('shareWaBtn').onclick = function(){ window.open(waUrl, '_blank'); };
+  document.getElementById('shareMailBtn').onclick = function(){ window.location.href = mailUrl; };
+}
+function sharePlan(){
+  var text = planTextSummary(editingPlan);
+  openShareModal(editingPlan.name||'תוכנית אימון', text, '', '');
+}
+function sharePlayerReport(player, category){
+  var text = playerReportSummaryText(player, category);
+  var phone = cleanPhoneForWa(player.parent_phone);
+  openShareModal('דוח שחקן — '+player.name, text, phone, player.parent_email||'');
 }
 
 /* ---------------- Modal helpers ---------------- */
