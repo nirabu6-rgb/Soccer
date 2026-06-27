@@ -1650,27 +1650,48 @@ function chargePunch(pl){
 function refundPunch(pl){
   if(pl.sub_type==='punch' && typeof pl.remaining_punches==='number') pl.remaining_punches = pl.remaining_punches+1;
 }
-function openAttendanceModal(day, idx){
+function renderAttendanceModal(day, idx){
   var p = PITCHES[currentPitchIdx];
   var s = p.schedule[day][idx];
   var team = CLUB_TEAMS[s.category] || {players:[]};
   var attendance = s.attendance || {};
+  var guests = s.guests || [];
   var html = '<h3 style="margin-bottom:6px">רישום נוכחות</h3>'+
     '<div class="muted" style="margin-bottom:14px">'+s.category+' · '+s.start+' - '+s.end+'</div>'+
-    (team.players.length===0 ? '<div class="muted">אין שחקנים בקבוצה זו</div>' :
+    (team.players.length===0 && guests.length===0 ? '<div class="muted">אין שחקנים בקבוצה זו</div>' :
       team.players.map(function(pl,i){
         var cur = attendance[pl.name] || 'present';
         return '<div class="card" style="padding:10px">'+
           '<div class="row" style="margin-bottom:8px"><b>'+pl.name+'</b>'+
           (pl.sub_type==='punch' ? '<span class="muted" style="font-size:11px">ניקובים: '+(typeof pl.remaining_punches==='number'?pl.remaining_punches:'-')+'</span>' : '')+
           '</div>'+
-          '<div class="action-row" data-attrow="'+i+'">'+
+          '<div class="action-row" data-attrow="p'+i+'">'+
+            '<button type="button" class="attBtn'+(cur==='present'?' sel':'')+'" data-val="present">✔ נוכח</button>'+
+            '<button type="button" class="attBtn'+(cur==='absent'?' sel':'')+'" data-val="absent">✘ חיסור</button>'+
+            '<button type="button" class="attBtn'+(cur==='excused'?' sel':'')+'" data-val="excused">⚠ מוצדק</button>'+
+          '</div></div>';
+      }).join('')+
+      guests.map(function(g,gi){
+        var cur = attendance[g.name] || 'present';
+        return '<div class="card" style="padding:10px">'+
+          '<div class="row" style="margin-bottom:8px"><b>'+g.name+'</b> <span class="badge">אורח</span>'+
+          '<button type="button" class="btn ghost sm" data-delguest="'+gi+'" title="הסר אורח" style="width:auto;display:inline-block;margin-right:8px;color:#f87171;border-color:#f87171">🗑 הסר</button>'+
+          '</div>'+
+          '<div class="action-row" data-attrow="g'+gi+'">'+
             '<button type="button" class="attBtn'+(cur==='present'?' sel':'')+'" data-val="present">✔ נוכח</button>'+
             '<button type="button" class="attBtn'+(cur==='absent'?' sel':'')+'" data-val="absent">✘ חיסור</button>'+
             '<button type="button" class="attBtn'+(cur==='excused'?' sel':'')+'" data-val="excused">⚠ מוצדק</button>'+
           '</div></div>';
       }).join('')
     )+
+    '<div id="guestAddBox" style="margin-top:10px">'+
+      '<button type="button" class="btn ghost sm" id="btnAddGuestToggle">+ הוסף שחקן אורח/ניסיון</button>'+
+      '<div id="guestAddForm" style="display:none;margin-top:8px">'+
+        '<div class="field"><label>שם השחקן</label><input id="guestNameInput" placeholder="שם מלא"></div>'+
+        '<div class="field"><label>טלפון הורה</label><input id="guestParentPhoneInput" placeholder="טלפון הורה"></div>'+
+        '<button type="button" class="btn" id="btnConfirmAddGuest" style="margin-top:6px">הוסף</button>'+
+      '</div>'+
+    '</div>'+
     '<button class="btn" id="btnSaveAttendance" style="margin-top:10px">שמור נוכחות</button>';
   openModal(html);
   document.querySelectorAll('[data-attrow]').forEach(function(row){
@@ -1681,11 +1702,35 @@ function openAttendanceModal(day, idx){
       };
     });
   });
+  document.getElementById('btnAddGuestToggle').onclick = function(){
+    document.getElementById('guestAddForm').style.display = 'block';
+  };
+  document.querySelectorAll('[data-delguest]').forEach(function(btn){
+    btn.onclick = function(){
+      var gi = parseInt(btn.getAttribute('data-delguest'), 10);
+      var removed = guests.splice(gi, 1)[0];
+      if(removed) delete attendance[removed.name];
+      s.guests = guests;
+      s.attendance = attendance;
+      savePitch(p);
+      renderAttendanceModal(day, idx);
+    };
+  });
+  document.getElementById('btnConfirmAddGuest').onclick = function(){
+    var nameInput = document.getElementById('guestNameInput');
+    var phoneInput = document.getElementById('guestParentPhoneInput');
+    var name = (nameInput.value||'').trim();
+    if(!name){ nameInput.focus(); return; }
+    guests.push({ name: name, parentPhone: (phoneInput.value||'').trim() });
+    s.guests = guests;
+    savePitch(p);
+    renderAttendanceModal(day, idx);
+  };
   document.getElementById('btnSaveAttendance').onclick = function(){
     var newAttendance = {};
     var charged = s.attendanceCharged || {};
     team.players.forEach(function(pl,i){
-      var row = document.querySelector('[data-attrow="'+i+'"]');
+      var row = document.querySelector('[data-attrow="p'+i+'"]');
       var selBtn = row.querySelector('.attBtn.sel');
       var val = selBtn ? selBtn.dataset.val : 'present';
       newAttendance[pl.name] = val;
@@ -1698,14 +1743,24 @@ function openAttendanceModal(day, idx){
         charged[pl.name] = false;
       }
     });
+    guests.forEach(function(g,gi){
+      var row = document.querySelector('[data-attrow="g'+gi+'"]');
+      var selBtn = row ? row.querySelector('.attBtn.sel') : null;
+      var val = selBtn ? selBtn.dataset.val : 'present';
+      newAttendance[g.name] = val;
+    });
     s.attendance = newAttendance;
     s.attendanceCharged = charged;
+    s.guests = guests;
     saveClubTeams();
     savePitch(p);
     closeModal();
     renderPitchDetail();
     refreshAlertsUI();
   };
+}
+function openAttendanceModal(day, idx){
+  renderAttendanceModal(day, idx);
 }
 
 /* ---------------- Tab 3: Settings ---------------- */
