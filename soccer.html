@@ -67,6 +67,7 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .toolbox.grid-fallback{display:none}
 .action-row{display:flex;gap:8px;margin-bottom:10px}
 .action-row button{flex:1;padding:10px 4px;border-radius:10px;border:1px solid #dde1e7;background:#fff;font-size:12px;cursor:pointer}
+.action-row button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
 .frames-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch}
 .frame-chip{flex:none;width:78px;text-align:center;cursor:pointer}
 .frame-chip svg{width:78px;height:52px;background:#3eac46;border-radius:8px;border:2px solid transparent}
@@ -439,6 +440,11 @@ function renderTeamDetail(){
         '</div>'+
         '<div class="muted" style="margin-top:6px;font-size:11px;display:flex;flex-wrap:wrap;gap:6px;cursor:pointer" data-editplayer="'+i+'">'+
           SKILL_ATTRS.map(function(sk){ return sk.l+': '+((p.skills&&p.skills[sk.k])||0); }).join(' · ')+
+        '</div>'+
+        '<div style="margin-top:6px;font-size:11px;display:flex;flex-wrap:wrap;gap:6px;cursor:pointer" data-editplayer="'+i+'">'+
+          (p.medical_approval ? '<span style="color:var(--good)">✅ אישור רפואי בתוקף</span>' : '<span style="color:var(--bad)">⚠️ אין אישור רפואי</span>')+
+          (p.sub_type==='punch' ? '<span class="muted">· ניקובים שנותרו: '+(typeof p.remaining_punches==='number'?p.remaining_punches:'-')+(typeof p.remaining_punches==='number' && p.remaining_punches<=2 ? ' ⚠️' : '')+'</span>' : '')+
+          (p.sub_type==='monthly' ? '<span class="muted">· מנוי חודשי: '+(p.sub_status==='active'?'פעיל':(p.sub_status==='frozen'?'מוקפא':'פג תוקף'))+'</span>' : '')+
         '</div></div>';
       }).join('')
     )+
@@ -518,6 +524,34 @@ function openAddPlayerModal(editIdx){
         '<label style="margin:0">'+sk.l+'</label>'+ratingSelect('skill_'+sk.k, p&&p.skills?p.skills[sk.k]:3)+
       '</div>';
     }).join('')+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">פרטים אישיים</div>'+
+    '<div class="field"><label>תאריך לידה</label><input type="date" id="playerBirthInput" value="'+(p?(p.birth_date||''):'')+'"></div>'+
+    '<div class="field"><label>מידת ביגוד</label><input id="playerSizeInput" placeholder="לדוגמה: 12 / S / M" value="'+(p?(p.clothing_size||''):'')+'"></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">פרטי הורה</div>'+
+    '<div class="field"><label>שם ההורה</label><input id="playerParentNameInput" placeholder="שם מלא" value="'+(p?(p.parent_name||''):'')+'"></div>'+
+    '<div class="field"><label>טלפון ההורה</label><input id="playerParentPhoneInput" placeholder="050-0000000" value="'+(p?(p.parent_phone||''):'')+'"></div>'+
+    '<div class="field"><label>אימייל ההורה</label><input id="playerParentEmailInput" placeholder="email@example.com" value="'+(p?(p.parent_email||''):'')+'"></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">סטטוס רפואי</div>'+
+    '<div class="field"><label>אישור רפואי בתוקף</label><select id="playerMedicalInput">'+
+      '<option value="yes"'+(p&&p.medical_approval?' selected':'')+'>כן</option>'+
+      '<option value="no"'+(p&&!p.medical_approval?' selected':'')+'>לא</option>'+
+    '</select></div>'+
+    '<div class="field"><label>תוקף האישור עד</label><input type="date" id="playerMedicalExpiryInput" value="'+(p?(p.medical_expiry||''):'')+'"></div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">מנוי / כרטיסייה</div>'+
+    '<div class="field"><label>סוג מנוי</label><select id="playerSubTypeInput">'+
+      '<option value="none"'+(!p||!p.sub_type||p.sub_type==='none'?' selected':'')+'>ללא</option>'+
+      '<option value="punch"'+(p&&p.sub_type==='punch'?' selected':'')+'>כרטיסיית ניקובים</option>'+
+      '<option value="monthly"'+(p&&p.sub_type==='monthly'?' selected':'')+'>מנוי חודשי</option>'+
+    '</select></div>'+
+    '<div class="field"><label>סך ניקובים שנרכשו</label><input type="number" min="0" id="playerTotalPunchesInput" value="'+(p?(p.total_punches!=null?p.total_punches:''):'')+'"></div>'+
+    '<div class="field"><label>ניקובים שנותרו</label><input type="number" min="0" id="playerRemainingPunchesInput" value="'+(p?(p.remaining_punches!=null?p.remaining_punches:''):'')+'"></div>'+
+    '<div class="field"><label>תחילת תוקף</label><input type="date" id="playerSubStartInput" value="'+(p?(p.sub_start||''):'')+'"></div>'+
+    '<div class="field"><label>סיום תוקף</label><input type="date" id="playerSubEndInput" value="'+(p?(p.sub_end||''):'')+'"></div>'+
+    '<div class="field"><label>סטטוס מנוי</label><select id="playerSubStatusInput">'+
+      '<option value="active"'+(!p||p.sub_status==='active'?' selected':'')+'>פעיל</option>'+
+      '<option value="frozen"'+(p&&p.sub_status==='frozen'?' selected':'')+'>מוקפא</option>'+
+      '<option value="expired"'+(p&&p.sub_status==='expired'?' selected':'')+'>פג תוקף</option>'+
+    '</select></div>'+
     '<button class="btn" id="btnSavePlayer">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
   openModal(html);
   document.getElementById('btnSavePlayer').onclick = function(){
@@ -526,12 +560,30 @@ function openAddPlayerModal(editIdx){
     var rating = parseInt(document.getElementById('playerRatingInput').value,10);
     var skills = {};
     SKILL_ATTRS.forEach(function(sk){ skills[sk.k] = parseInt(document.getElementById('skill_'+sk.k).value,10); });
+    var extra = {
+      birth_date: document.getElementById('playerBirthInput').value,
+      clothing_size: document.getElementById('playerSizeInput').value.trim(),
+      parent_name: document.getElementById('playerParentNameInput').value.trim(),
+      parent_phone: document.getElementById('playerParentPhoneInput').value.trim(),
+      parent_email: document.getElementById('playerParentEmailInput').value.trim(),
+      medical_approval: document.getElementById('playerMedicalInput').value==='yes',
+      medical_expiry: document.getElementById('playerMedicalExpiryInput').value,
+      sub_type: document.getElementById('playerSubTypeInput').value,
+      total_punches: document.getElementById('playerTotalPunchesInput').value ? parseInt(document.getElementById('playerTotalPunchesInput').value,10) : null,
+      remaining_punches: document.getElementById('playerRemainingPunchesInput').value ? parseInt(document.getElementById('playerRemainingPunchesInput').value,10) : null,
+      sub_start: document.getElementById('playerSubStartInput').value,
+      sub_end: document.getElementById('playerSubEndInput').value,
+      sub_status: document.getElementById('playerSubStatusInput').value
+    };
     readPhotoFile(document.getElementById('playerPhotoInput'), function(photo){
       if(isEdit){
         p.name = name; p.rating = rating; p.skills = skills;
+        for(var k in extra) p[k] = extra[k];
         if(photo) p.photo = photo;
       } else {
-        CLUB_TEAMS[currentTeamCategory].players.push({name:name, photo:photo, rating:rating, skills:skills});
+        var np = {name:name, photo:photo, rating:rating, skills:skills};
+        for(var k2 in extra) np[k2] = extra[k2];
+        CLUB_TEAMS[currentTeamCategory].players.push(np);
       }
       saveClubTeams();
       closeModal();
@@ -706,6 +758,7 @@ function openSessionDetailModal(day, idx){
   var html = '<div class="row" style="margin-bottom:6px"><h3 id="sessCatLink" style="margin:0;cursor:pointer;text-decoration:underline">'+s.category+'</h3><button class="logout-btn" id="btnSessMenu" title="עוד">⋮</button></div>'+
     '<div class="muted" style="margin-bottom:14px">'+s.start+' - '+s.end+'</div>'+
     '<button class="btn ghost sm" id="btnViewRoster" style="margin-bottom:14px">👥 צפה בסגל הקבוצה</button>'+
+    '<button class="btn sm" id="btnAttendance" style="margin-bottom:14px">✅ רישום נוכחות</button>'+
     '<div class="muted" style="margin-bottom:14px">מאמן: '+(getTeamCoachName(s.category)||'לא הוגדר')+'</div>'+
     '<div id="sessMenuBox" style="display:none">'+
       '<div class="muted" style="margin-bottom:8px">צבע ביומן</div>'+
@@ -723,6 +776,7 @@ function openSessionDetailModal(day, idx){
   };
   document.getElementById('sessCatLink').onclick = openRoster;
   document.getElementById('btnViewRoster').onclick = openRoster;
+  document.getElementById('btnAttendance').onclick = function(){ openAttendanceModal(day, idx); };
   document.getElementById('btnSessMenu').onclick = function(){
     var box = document.getElementById('sessMenuBox');
     box.style.display = box.style.display==='none' ? 'block' : 'none';
@@ -737,6 +791,68 @@ function openSessionDetailModal(day, idx){
   });
   document.getElementById('btnDelSession').onclick = function(){
     p.schedule[day].splice(idx,1);
+    savePitch(p);
+    closeModal();
+    renderPitchDetail();
+  };
+}
+function chargePunch(pl){
+  if(pl.sub_type==='punch' && typeof pl.remaining_punches==='number') pl.remaining_punches = Math.max(0, pl.remaining_punches-1);
+}
+function refundPunch(pl){
+  if(pl.sub_type==='punch' && typeof pl.remaining_punches==='number') pl.remaining_punches = pl.remaining_punches+1;
+}
+function openAttendanceModal(day, idx){
+  var p = PITCHES[currentPitchIdx];
+  var s = p.schedule[day][idx];
+  var team = CLUB_TEAMS[s.category] || {players:[]};
+  var attendance = s.attendance || {};
+  var html = '<h3 style="margin-bottom:6px">רישום נוכחות</h3>'+
+    '<div class="muted" style="margin-bottom:14px">'+s.category+' · '+s.start+' - '+s.end+'</div>'+
+    (team.players.length===0 ? '<div class="muted">אין שחקנים בקבוצה זו</div>' :
+      team.players.map(function(pl,i){
+        var cur = attendance[pl.name] || 'present';
+        return '<div class="card" style="padding:10px">'+
+          '<div class="row" style="margin-bottom:8px"><b>'+pl.name+'</b>'+
+          (pl.sub_type==='punch' ? '<span class="muted" style="font-size:11px">ניקובים: '+(typeof pl.remaining_punches==='number'?pl.remaining_punches:'-')+'</span>' : '')+
+          '</div>'+
+          '<div class="action-row" data-attrow="'+i+'">'+
+            '<button type="button" class="attBtn'+(cur==='present'?' sel':'')+'" data-val="present">✔ נוכח</button>'+
+            '<button type="button" class="attBtn'+(cur==='absent'?' sel':'')+'" data-val="absent">✘ חיסור</button>'+
+            '<button type="button" class="attBtn'+(cur==='excused'?' sel':'')+'" data-val="excused">⚠ מוצדק</button>'+
+          '</div></div>';
+      }).join('')
+    )+
+    '<button class="btn" id="btnSaveAttendance" style="margin-top:10px">שמור נוכחות</button>';
+  openModal(html);
+  document.querySelectorAll('[data-attrow]').forEach(function(row){
+    row.querySelectorAll('.attBtn').forEach(function(btn){
+      btn.onclick = function(){
+        row.querySelectorAll('.attBtn').forEach(function(b){ b.classList.remove('sel'); });
+        btn.classList.add('sel');
+      };
+    });
+  });
+  document.getElementById('btnSaveAttendance').onclick = function(){
+    var newAttendance = {};
+    var charged = s.attendanceCharged || {};
+    team.players.forEach(function(pl,i){
+      var row = document.querySelector('[data-attrow="'+i+'"]');
+      var selBtn = row.querySelector('.attBtn.sel');
+      var val = selBtn ? selBtn.dataset.val : 'present';
+      newAttendance[pl.name] = val;
+      var wasCharged = !!charged[pl.name];
+      if(val==='present' && !wasCharged){
+        chargePunch(pl);
+        charged[pl.name] = true;
+      } else if(val!=='present' && wasCharged){
+        refundPunch(pl);
+        charged[pl.name] = false;
+      }
+    });
+    s.attendance = newAttendance;
+    s.attendanceCharged = charged;
+    saveClubTeams();
     savePitch(p);
     closeModal();
     renderPitchDetail();
