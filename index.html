@@ -110,6 +110,22 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .pbar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .injury-tag{font-size:10px;padding:2px 8px;border-radius:10px;margin-top:3px;display:inline-block;background:var(--bad);color:#fff;font-weight:700}
 .injury-tag.rehab{background:var(--warn);color:#241a00}
+.report-page{background:#fff;border-radius:14px;padding:18px;max-width:680px;margin:0 auto}
+.report-header{display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--accent);padding-bottom:12px;margin-bottom:14px}
+.report-header img{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none}
+.report-header .ph-fallback{width:56px;height:56px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+.report-title{font-size:19px;font-weight:800}
+.report-sub{font-size:13px;color:var(--sub);margin-top:2px}
+.report-section{margin-bottom:14px}
+.report-section .st{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;border-right:3px solid var(--accent);padding-right:6px}
+.report-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #eef0f4}
+.report-feedback{background:var(--card2);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6;white-space:pre-wrap}
+@media print{
+  .no-print{display:none !important}
+  body,#appScreen,.builder-screen{background:#fff !important}
+  .builder-body{overflow:visible !important;padding:0 !important}
+  .report-page{box-shadow:none;max-width:100%}
+}
 
 @media (min-width:880px){
   body{display:flex;justify-content:center}
@@ -209,6 +225,22 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
     <b style="flex:1">📑 ספריית אימונים שלי</b>
   </div>
   <div class="builder-body" id="coachTrainingLibBody"></div>
+</div>
+
+<div class="builder-screen" id="reportArchiveScreen" style="display:none">
+  <div class="builder-header">
+    <button class="icon-btn" id="btnCloseReportArchive" title="סגור">→</button>
+    <b style="flex:1">🗄 ארכיון דוחות</b>
+  </div>
+  <div class="builder-body" id="reportArchiveBody"></div>
+</div>
+
+<div class="builder-screen" id="playerReportScreen" style="display:none">
+  <div class="builder-header no-print">
+    <button class="icon-btn" id="btnClosePlayerReport" title="סגור">→</button>
+    <b style="flex:1">📄 דוח חודשי</b>
+  </div>
+  <div class="builder-body" id="playerReportBody"></div>
 </div>
 
 <script>
@@ -1073,6 +1105,7 @@ function renderTeamDetail(){
         playerClipsListHtml(p.name, currentTeamCategory)+
         '<button class="btn ghost sm" data-addclip="'+i+'" style="margin-top:6px">+ הוסף קליפ</button>'+
         '<button class="btn ghost sm" data-shareplayer="'+i+'" style="margin-top:6px">📤 שיתוף עם ההורה</button>'+
+        '<button class="btn ghost sm" data-monthlyreport="'+i+'" style="margin-top:6px">📄 דוח חודשי</button>'+
         '</div>';
       }).join('')
     )+
@@ -1101,6 +1134,13 @@ function renderTeamDetail(){
       e.stopPropagation();
       var idx = parseInt(btn.dataset.shareplayer,10);
       sharePlayerReport(t.players[idx], currentTeamCategory);
+    };
+  });
+  document.querySelectorAll('[data-monthlyreport]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var idx = parseInt(btn.dataset.monthlyreport,10);
+      openMonthlyReportFeedbackModal(t.players[idx], currentTeamCategory);
     };
   });
   document.querySelectorAll('[data-delstaff]').forEach(function(btn){
@@ -1827,6 +1867,7 @@ function tplSettings(){
     '<div class="row" style="margin-top:8px"><span>תפקיד</span><span class="muted">'+roleLabel(ME.role)+'</span></div>'+
     '<div class="row" style="margin-top:8px"><span>טלפון</span><span class="muted">'+ME.phone+'</span></div>'+
   '</div>'+
+  '<button class="btn ghost" id="btnOpenReportArchive" style="margin-bottom:14px">🗄 ארכיון דוחות</button>'+
   tplClubSection();
 }
 function wireTab(i){
@@ -1871,6 +1912,8 @@ function wireTab(i){
       };
     });
   } else if(i===3){
+    var btnOpenReportArchive = document.getElementById('btnOpenReportArchive');
+    if(btnOpenReportArchive) btnOpenReportArchive.onclick = function(){ openReportArchive(); };
     var btnCreateClub = document.getElementById('btnCreateClub');
     if(btnCreateClub) btnCreateClub.onclick = function(){
       var name = document.getElementById('clubNameInput').value.trim();
@@ -2894,6 +2937,193 @@ function sharePlayerReport(player, category){
   var phone = cleanPhoneForWa(player.parent_phone);
   openShareModal('דוח שחקן — '+player.name, text, phone, player.parent_email||'');
 }
+
+/* ---------------- Monthly printable PDF report + archive ---------------- */
+var HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function currentMonthLabel(){
+  var d = new Date();
+  return HEB_MONTHS[d.getMonth()]+' '+d.getFullYear();
+}
+function todayLabel(){
+  var d = new Date();
+  return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+}
+function subStatusLabel(p){
+  if(p.sub_type==='punch') return 'כרטיסיית ניקובים — נותרו '+(typeof p.remaining_punches==='number'?p.remaining_punches:'-')+' מתוך '+(typeof p.total_punches==='number'?p.total_punches:'-');
+  if(p.sub_type==='monthly') return 'מנוי חודשי — '+(p.sub_status==='active'?'פעיל':(p.sub_status==='frozen'?'מוקפא':'פג תוקף'));
+  return 'ללא מנוי';
+}
+function medicalStatusLabel(p){
+  return p.medical_approval ? ('בתוקף'+(p.medical_expiry?' עד '+p.medical_expiry:'')) : 'אין אישור רפואי בתוקף';
+}
+function attendancePctForPlayer(player, category){
+  var stats = countPlayerAttendance(player.name);
+  // total scheduled session-slots this player is assigned to attend, across the team's recurring weekly schedule
+  var total = 0;
+  PITCHES.forEach(function(pt){
+    DAYS.forEach(function(d){
+      var sessions = (pt.schedule && pt.schedule[d.k]) || [];
+      sessions.forEach(function(s){
+        var att = s.attendance || {};
+        if(att[player.name]!==undefined) total++;
+      });
+    });
+  });
+  var pct = total>0 ? Math.round((stats.present/total)*100) : 0;
+  return {pct:pct, present:stats.present, total:total, maxStreak:stats.maxStreak};
+}
+function reportPageHtml(rec){
+  var clubName = (typeof MY_CLUB!=='undefined' && MY_CLUB && MY_CLUB.name) ? MY_CLUB.name : 'מועדון כדורגל';
+  var accent = (typeof MY_CLUB!=='undefined' && MY_CLUB && MY_CLUB.color) ? MY_CLUB.color : DEFAULT_ACCENT;
+  var photoHtml = rec.photo
+    ? '<img src="'+rec.photo+'">'
+    : '<div class="ph-fallback">👤</div>';
+  return '<div class="report-page" style="border-right:4px solid '+accent+'">'+
+    '<div class="report-header">'+photoHtml+
+      '<div>'+
+        '<div class="report-title">'+rec.playerName+'</div>'+
+        '<div class="report-sub">'+clubName+(rec.category?' · '+rec.category:'')+'</div>'+
+        '<div class="report-sub">דוח חודשי — '+rec.month_label+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="report-section">'+
+      '<div class="st">נוכחות החודש</div>'+
+      '<div class="report-row"><span>אחוז נוכחות</span><b>'+rec.attendance_pct+'%</b></div>'+
+    '</div>'+
+    '<div class="report-section">'+
+      '<div class="st">מנוי / כרטיסייה</div>'+
+      '<div class="report-row"><span>סטטוס</span><span>'+rec.sub_status+'</span></div>'+
+    '</div>'+
+    '<div class="report-section">'+
+      '<div class="st">מצב רפואי</div>'+
+      '<div class="report-row"><span>אישור רפואי</span><span>'+rec.medical_status+'</span></div>'+
+    '</div>'+
+    (rec.physical_html ? '<div class="report-section"><div class="st">מדדים פיזיים</div>'+rec.physical_html+'</div>' : '')+
+    (rec.badges_html ? '<div class="report-section"><div class="st">תגים והישגים</div>'+rec.badges_html+'</div>' : '')+
+    '<div class="report-section">'+
+      '<div class="st">הערות מאמן</div>'+
+      '<div class="report-feedback">'+(rec.coach_feedback ? rec.coach_feedback.replace(/</g,'&lt;') : '— ללא הערות —')+'</div>'+
+    '</div>'+
+    '<div class="muted" style="font-size:11px;text-align:center;margin-top:10px">הופק בתאריך '+(rec.created_at_label||todayLabel())+'</div>'+
+  '</div>';
+}
+var currentReportRecord = null;
+function openMonthlyReportFeedbackModal(player, category){
+  var html = '<h3 style="margin-bottom:14px">📄 דוח חודשי — '+player.name+'</h3>'+
+    '<div class="muted" style="margin-bottom:10px">הוסף הערות מאמן (אופציונלי) לפני יצירת הדוח עבור '+currentMonthLabel()+'</div>'+
+    '<div class="field"><label>הערות מאמן</label><textarea id="reportFeedbackInput" rows="4" placeholder="התרשמות, נקודות לשיפור, עידוד..."></textarea></div>'+
+    '<button class="btn" id="btnBuildReport">צור דוח</button>';
+  openModal(html);
+  document.getElementById('btnBuildReport').onclick = function(){
+    var feedback = document.getElementById('reportFeedbackInput').value.trim();
+    closeModal();
+    openPlayerReportScreen(player, category, feedback);
+  };
+}
+function buildReportRecord(player, category, feedback){
+  var attStats = attendancePctForPlayer(player, category);
+  return {
+    id: genCode(10),
+    coachUid: ME.uid,
+    playerName: player.name,
+    category: category||'',
+    photo: player.photo||'',
+    month_label: currentMonthLabel(),
+    attendance_pct: attStats.pct,
+    sub_status: subStatusLabel(player),
+    medical_status: medicalStatusLabel(player),
+    coach_feedback: feedback||'',
+    created_at_label: todayLabel(),
+    physical_html: playerPhysicalBarsHtml(player),
+    badges_html: playerBadgeRowHtml(player)
+  };
+}
+function openPlayerReportScreen(player, category, feedback){
+  currentReportRecord = buildReportRecord(player, category, feedback);
+  renderPlayerReportScreen();
+  document.getElementById('playerReportScreen').style.display = 'flex';
+}
+function renderPlayerReportScreen(){
+  var rec = currentReportRecord;
+  var body = document.getElementById('playerReportBody');
+  body.innerHTML =
+    '<div class="action-row no-print" style="margin-bottom:14px">'+
+      '<button class="btn ghost" id="btnPrintReport">🖨 הדפס / שמור כ-PDF</button>'+
+      '<button class="btn" id="btnSaveReportArchive">💾 שמור לארכיון</button>'+
+    '</div>'+
+    reportPageHtml(rec);
+  document.getElementById('btnPrintReport').onclick = function(){ window.print(); };
+  document.getElementById('btnSaveReportArchive').onclick = function(){ saveReportToArchive(rec); };
+}
+function closePlayerReportScreen(){
+  document.getElementById('playerReportScreen').style.display = 'none';
+}
+var COACH_REPORTS = [];
+var COACH_REPORTS_LOADED = false;
+function loadCoachReports(cb){
+  if(!ME.uid) return;
+  db.collection(P+'reports').where('coachUid','==',ME.uid).get().then(function(snap){
+    COACH_REPORTS = snap.docs.map(function(d){ return d.data(); });
+    COACH_REPORTS_LOADED = true;
+    if(cb) cb();
+    var scr = document.getElementById('reportArchiveScreen');
+    if(scr && scr.style.display!=='none') renderReportArchiveScreen();
+  });
+}
+function saveReportToArchive(rec){
+  db.collection(P+'reports').doc(rec.id).set(rec).then(function(){
+    if(COACH_REPORTS_LOADED){
+      var idx = COACH_REPORTS.findIndex(function(r){ return r.id===rec.id; });
+      if(idx===-1) COACH_REPORTS.push(rec); else COACH_REPORTS[idx] = rec;
+    }
+    alert('הדוח נשמר בארכיון');
+  });
+}
+function deleteCoachReport(id){
+  if(!confirm('למחוק את הדוח מהארכיון?')) return;
+  db.collection(P+'reports').doc(id).delete().then(function(){
+    COACH_REPORTS = COACH_REPORTS.filter(function(r){ return r.id!==id; });
+    renderReportArchiveScreen();
+  });
+}
+function openReportArchive(){
+  document.getElementById('reportArchiveScreen').style.display = 'flex';
+  if(!COACH_REPORTS_LOADED){
+    document.getElementById('reportArchiveBody').innerHTML = '<div class="muted" style="text-align:center">טוען...</div>';
+    loadCoachReports(function(){ renderReportArchiveScreen(); });
+  } else {
+    renderReportArchiveScreen();
+  }
+}
+function closeReportArchive(){
+  document.getElementById('reportArchiveScreen').style.display = 'none';
+}
+function renderReportArchiveScreen(){
+  var body = document.getElementById('reportArchiveBody');
+  body.innerHTML =
+    '<div class="muted" style="margin-bottom:10px">דוחות חודשיים שנשמרו לשחקנים</div>'+
+    (COACH_REPORTS.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נשמרו דוחות</div>'
+      : COACH_REPORTS.slice().reverse().map(function(r){
+          return '<div class="card">'+
+            '<div class="row"><b>'+r.playerName+'</b><button class="logout-btn" data-delreport="'+r.id+'" title="מחק">🗑</button></div>'+
+            '<div class="muted" style="margin-top:4px">'+r.month_label+' · נוכחות '+r.attendance_pct+'% · '+(r.created_at_label||'')+'</div>'+
+            '<button class="btn ghost sm" data-viewreport="'+r.id+'" style="margin-top:8px">פתח דוח</button>'+
+          '</div>';
+        }).join('')
+    );
+  document.querySelectorAll('[data-viewreport]').forEach(function(btn){
+    btn.onclick = function(){
+      var rec = COACH_REPORTS.filter(function(r){ return r.id===btn.dataset.viewreport; })[0];
+      if(rec){ currentReportRecord = rec; renderPlayerReportScreen(); document.getElementById('playerReportScreen').style.display = 'flex'; }
+    };
+  });
+  document.querySelectorAll('[data-delreport]').forEach(function(btn){
+    btn.onclick = function(){ deleteCoachReport(btn.dataset.delreport); };
+  });
+}
+document.getElementById('btnClosePlayerReport').onclick = function(){ closePlayerReportScreen(); };
+document.getElementById('btnCloseReportArchive').onclick = function(){ closeReportArchive(); };
 
 /* ---------------- Modal helpers ---------------- */
 function openModal(html){
