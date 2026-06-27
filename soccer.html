@@ -1534,6 +1534,29 @@ function getTeamCoachName(cat){
   var t = CLUB_TEAMS[cat];
   return (t && t.staff && t.staff.length) ? t.staff[0].name : '';
 }
+function findScheduleConflict(day, start, end, category, targetPitchId, excludeSessionIdx){
+  var newStart = timeToMin(start), newEnd = timeToMin(end);
+  var newCoach = getTeamCoachName(category);
+  for(var pi=0; pi<PITCHES.length; pi++){
+    var pitch = PITCHES[pi];
+    var sessions = (pitch.schedule && pitch.schedule[day]) || [];
+    for(var si=0; si<sessions.length; si++){
+      if(pitch.id===targetPitchId && si===excludeSessionIdx) continue;
+      var s = sessions[si];
+      var sStart = timeToMin(s.start), sEnd = timeToMin(s.end);
+      var overlaps = (newStart < sEnd) && (newEnd > sStart);
+      if(!overlaps) continue;
+      if(pitch.id===targetPitchId){
+        return {type:'pitch', pitch:pitch, session:s};
+      }
+      var sCoach = getTeamCoachName(s.category);
+      if(newCoach && sCoach && newCoach===sCoach){
+        return {type:'coach', pitch:pitch, session:s, coach:newCoach};
+      }
+    }
+  }
+  return null;
+}
 function openAddSessionModal(day, startTime){
   var start = startTime || TIME_SLOTS[0];
   var startIdx = TIME_SLOTS.indexOf(start);
@@ -1560,6 +1583,15 @@ function openAddSessionModal(day, startTime){
     var st = document.getElementById('sessionStartInput').value;
     var en = document.getElementById('sessionEndInput').value;
     if(en<=st) return;
+    var conflict = findScheduleConflict(d, st, en, cat, p.id, -1);
+    if(conflict){
+      if(conflict.type==='pitch'){
+        alert('מגרש זה תפוס כבר בשעה הזו (אימון '+conflict.session.category+', '+conflict.session.start+'-'+conflict.session.end+')');
+      } else {
+        alert('קיימת התנגשות: המאמן '+conflict.coach+' משובץ באותה שעה במגרש '+conflict.pitch.name);
+      }
+      return;
+    }
     currentPitchDay = d;
     p.schedule[d].push({category:cat, start:st, end:en, color:SESSION_COLORS[0]});
     p.schedule[d].sort(function(a,b){ return a.start<b.start?-1:1; });
