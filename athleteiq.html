@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AthleteIQ</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --card2:#eef0f3; --accent:#22b8d8; --accent2:#0ea5b8;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --text:#1c2230; --sub:#6b7280;
+  --nav:64px; --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%;height:-webkit-fill-available}
+body{
+  margin:0;height:100%;height:-webkit-fill-available;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  background:linear-gradient(160deg,#f5f6f8,#eef0f3 60%,#f5f6f8);
+  color:var(--text);direction:rtl;overflow-x:hidden;
+}
+#login{min-height:100vh;min-height:-webkit-fill-available;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.logo{font-size:48px;margin-bottom:6px}
+.brand{font-size:28px;font-weight:800;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px}
+.tag{color:var(--sub);font-size:13px;margin-bottom:28px}
+.field{width:100%;max-width:340px;margin-bottom:12px;text-align:right}
+.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
+input,select{
+  width:100%;padding:13px 14px;border-radius:12px;border:1px solid #dde1e8;
+  background:var(--card);color:var(--text);font-size:15px;outline:none;
+}
+input:focus,select:focus{border-color:var(--accent)}
+.sportgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:340px;margin-bottom:6px}
+.sport{background:var(--card);border:2px solid #dde1e8;border-radius:14px;padding:10px 4px;text-align:center;cursor:pointer;font-size:22px}
+.sport.sel{border-color:var(--accent);background:var(--card2)}
+.sport span{display:block;font-size:10px;color:var(--sub);margin-top:4px}
+.modegrid{display:flex;gap:10px;width:100%;max-width:340px;margin-bottom:18px}
+.mode{flex:1;background:var(--card);border:2px solid #dde1e8;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer}
+.mode.sel{border-color:var(--accent2);background:var(--card2)}
+.mode .ic{font-size:24px}
+.mode .t{font-size:13px;font-weight:700;margin-top:4px}
+.mode .d{font-size:11px;color:var(--sub);margin-top:2px}
+.btn{
+  width:100%;max-width:340px;padding:14px;border-radius:12px;border:none;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04111a;
+  font-weight:800;font-size:15px;cursor:pointer;margin-top:4px;
+}
+.btn.ghost{background:transparent;border:1px solid #dde1e8;color:var(--text);font-weight:600}
+.btn:disabled{opacity:.4}
+.link{color:var(--accent);font-size:13px;margin-top:14px;cursor:pointer}
+
+#app{display:none;height:100vh;height:-webkit-fill-available;flex-direction:column}
+.topbar{padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar .who{display:flex;align-items:center;gap:8px}
+.avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#04111a}
+.who .n{font-size:14px;font-weight:700}
+.who .s{font-size:11px;color:var(--sub)}
+.badge-plan{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--card2);border:1px solid #dde1e8;color:var(--accent)}
+.logout-btn{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;padding:6px;margin-right:4px}
+.topbar .right{display:flex;align-items:center}
+.week-block{margin-bottom:10px}
+.week-head{display:flex;align-items:center;justify-content:space-between;padding:4px 2px}
+.week-head b{font-size:13px}
+.locked-day{display:flex;align-items:center;gap:8px;padding:7px 0;color:var(--sub);font-size:13px}
+.chat-wrap{display:flex;flex-direction:column;max-height:50vh;overflow-y:auto;margin-bottom:10px;gap:8px}
+.msg{max-width:80%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.4}
+.msg.bot{background:var(--card2);align-self:flex-start}
+.msg.me{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04111a;align-self:flex-end}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font-size:11px;padding:6px 10px;border-radius:14px;background:var(--card2);border:1px solid #dde1e8;cursor:pointer}
+.chat-input-row{display:flex;gap:8px}
+.chat-input-row input{flex:1}
+.jersey{display:inline-flex;width:22px;height:22px;border-radius:5px;background:var(--card2);align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:4px}
+
+.content{flex:1;overflow-y:auto;padding:6px 14px calc(var(--nav) + var(--sab) + 14px);-webkit-overflow-scrolling:touch}
+.section-title{font-size:18px;font-weight:800;margin:14px 0 10px}
+.card{background:var(--card);border:1px solid #e3e6ec;border-radius:16px;padding:16px;margin-bottom:12px}
+.card.tap{cursor:pointer;transition:transform .1s}
+.card.tap:active{transform:scale(.98)}
+.row{display:flex;align-items:center;justify-content:space-between}
+.muted{color:var(--sub);font-size:12px}
+.pill{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;background:var(--card2);border:1px solid #dde1e8;margin-left:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--card2);border-radius:12px;padding:12px;text-align:center}
+.stat .v{font-size:20px;font-weight:800}
+.stat .l{font-size:11px;color:var(--sub);margin-top:2px}
+.bar-outer{height:8px;border-radius:5px;background:#e5e8ed;overflow:hidden;margin-top:8px}
+.bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.upload-box{border:2px dashed #c7cdd8;border-radius:16px;padding:30px 16px;text-align:center;color:var(--sub);margin-bottom:14px}
+.upload-box .ic{font-size:34px;margin-bottom:8px}
+.tabs-mini{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+.tab-mini{padding:7px 14px;border-radius:20px;background:var(--card);border:1px solid #dde1e8;font-size:12px;white-space:nowrap;cursor:pointer}
+.tab-mini.sel{background:var(--accent);color:#04111a;font-weight:700;border-color:var(--accent)}
+.plan-day{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e3e6ec}
+.plan-day:last-child{border-bottom:none}
+.daydot{width:34px;height:34px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.daydot.done{background:var(--good);color:#04201a}
+.player-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e3e6ec;cursor:pointer}
+.player-row:last-child{border-bottom:none}
+.player-row .pavatar{width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.status-tag{font-size:10px;padding:2px 8px;border-radius:10px;margin-top:3px;display:inline-block}
+textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #dde1e8;background:var(--card);color:var(--text);font-size:14px;outline:none;resize:vertical;font-family:inherit}
+textarea:focus{border-color:var(--accent)}
+.badge-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.badge-item{flex-shrink:0;width:72px;text-align:center}
+.badge-item .ic{font-size:30px;background:var(--card2);border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px}
+.badge-item.locked .ic{opacity:.3}
+.badge-item .t{font-size:10px;color:var(--sub)}
+.plan-card{border:1px solid #dde1e8;border-radius:16px;padding:16px;margin-bottom:12px}
+.plan-card.featured{border-color:var(--accent);background:linear-gradient(160deg,#eef0f3,#ffffff)}
+.plan-card .price{font-size:26px;font-weight:800;margin:8px 0}
+.plan-card .price span{font-size:13px;color:var(--sub);font-weight:400}
+.plan-card ul{padding-right:18px;margin:10px 0;font-size:13px;color:var(--text)}
+.plan-card li{margin-bottom:6px}
+.crown{position:absolute;top:-10px;right:16px;background:var(--warn);color:#241a00;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700}
+
+.nav{
+  position:relative;flex-shrink:0;display:flex;
+  height:calc(var(--nav) + var(--sab));padding-bottom:var(--sab);
+  background:rgba(255,255,255,.92);border-top:1px solid #e3e6ec;backdrop-filter:blur(10px);
+}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--sub);font-size:10px;cursor:pointer;border:none;background:none}
+.nav-btn .ic{font-size:19px}
+.nav-btn.sel{color:var(--accent)}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px;max-height:85vh;overflow-y:auto}
+.modal h3{margin-top:0}
+.close-x{position:absolute;left:16px;top:16px;font-size:20px;color:var(--sub);cursor:pointer}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN / ONBOARDING ===================== -->
+<div id="login">
+  <div class="logo">🏆</div>
+  <div class="brand">AthleteIQ</div>
+  <div class="tag">בנה את הספורטאי הבא בגרסה הטובה ביותר שלו</div>
+
+  <div id="step1">
+    <div class="field"><label>שם מלא</label><input id="regName" placeholder="לדוגמה: דין כהן"></div>
+    <div class="field">
+      <label>בחר ענף ספורט</label>
+      <div class="sportgrid" id="sportGrid"></div>
+    </div>
+    <div class="field">
+      <label>מצב שימוש</label>
+      <div class="modegrid" id="modeGrid">
+        <div class="mode sel" data-mode="player"><div class="ic">🏃</div><div class="t">שחקן</div><div class="d">פרופיל אישי ומעקב</div></div>
+        <div class="mode" data-mode="coach"><div class="ic">👨‍💼</div><div class="t">מאמן</div><div class="d">ניהול קבוצה</div></div>
+        <div class="mode" data-mode="club"><div class="ic">🏟️</div><div class="t">מועדון</div><div class="d">ניהול קבוצות, מאמנים וגילאים</div></div>
+      </div>
+    </div>
+    <button class="btn" id="btnEnter">כניסה ל-AthleteIQ</button>
+    <div class="link" id="btnDemo">המשך כאורח לדמו מהיר</div>
+    <div class="link" id="btnCoachCodeLink" style="margin-top:6px">מאמן עם קוד מועדון? כניסה כאן</div>
+  </div>
+  <div id="step2coachcode" style="display:none">
+    <div class="field"><label>קוד מאמן</label><input id="ccLoginCode" placeholder="לדוגמה: AB12CD"></div>
+    <div class="field"><label>סיסמה</label><input id="ccLoginPass" placeholder="סיסמה" type="password"></div>
+    <div id="ccLoginErr" class="muted" style="color:var(--bad);display:none;margin-bottom:8px">קוד או סיסמה שגויים</div>
+    <button class="btn" id="btnCoachCodeEnter">כניסה כמאמן</button>
+    <div class="link" id="btnCoachCodeBack" style="margin-top:6px">חזרה</div>
+  </div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app">
+  <div class="topbar">
+    <div class="who" id="hdrMenuBtn" style="cursor:pointer">
+      <div class="avatar" id="hdrAvatar">A</div>
+      <div>
+        <div class="n" id="hdrName">שחקן</div>
+        <div class="s" id="hdrSport">⚽ כדורגל</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="badge-plan" id="hdrPlan">חינם</div>
+    </div>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="nav" id="navBar"></div>
+</div>
+
+<!-- generic modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script>
+/* ---------------- Firebase ---------------- */
+var firebaseConfig = {apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+var P = 'ath_'; // collection prefix for AthleteIQ
+
+/* ---------------- State ---------------- */
+var SPORTS = [
+  {id:'soccer',ic:'⚽',t:'כדורגל'},{id:'basket',ic:'🏀',t:'כדורסל'},
+  {id:'tennis',ic:'🎾',t:'טניס'},{id:'swim',ic:'🏊',t:'שחייה'},
+  {id:'run',ic:'🏃',t:'ריצה'},{id:'volley',ic:'🏐',t:'כדורעף'},
+  {id:'fit',ic:'🏋️',t:'פיטנס'},{id:'other',ic:'🥇',t:'אחר'}
+];
+var POSITIONS = ['שוער','מגן ימני','מגן שמאלי','בלם','קשר הגנתי','קשר התקפי','קשר ימני','קשר שמאלי','אגף ימני','אגף שמאלי','חלוץ'];
+var AGE_GROUPS = ['טרום ג\'','טרום ב\'','טרום א\'','ילדים ג\'','ילדים ב\'','ילדים א\'','נערים ג\'','נערים ב\'','נערים א\'','נוער'];
+var ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
+var TAB = 0;
+var selSport = 'soccer', selMode = 'player';
+
+/* ---------------- Nav ---------------- */
+var NAV_TABS = {
+  0:{ic:'📊',t:'דשבורד'}, 1:{ic:'🎥',t:'וידאו'}, 2:{ic:'📋',t:'אימונים'},
+  3:{ic:'👨‍💼',t:'מאמן'}, 4:{ic:'💳',t:'מינוי'}, 5:{ic:'📚',t:'ספריית אימונים'},
+  6:{ic:'🏟️',t:'דשבורד'}, 7:{ic:'📋',t:'אימונים'}, 8:{ic:'🔑',t:'הרשאות'},
+  9:{ic:'🗂️',t:'לוז קבוצות'}
+};
+var NAV_IDS = [0,1,2,4];
+function buildNav(){
+  NAV_IDS = isClub() ? [6,7,9,8,4] : (ME.mode==='coach' ? [0,3,5,4] : [0,1,2,4]);
+  var bar = document.getElementById('navBar');
+  bar.innerHTML = NAV_IDS.map(function(id,i){
+    return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+id+'"><div class="ic">'+NAV_TABS[id].ic+'</div>'+NAV_TABS[id].t+'</button>';
+  }).join('');
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    btn.onclick = function(){ selectNav(parseInt(btn.dataset.tab,10)); };
+  });
+}
+function selectNav(i){
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('sel')});
+  var btn = document.querySelector('.nav-btn[data-tab="'+i+'"]');
+  if(btn) btn.classList.add('sel');
+  renderTab(i);
+}
+
+var PLAYER_PLAN = null;
+var PLAYER_CLIPS = [];
+var CHAT_LOG = [];
+
+var MOCK_PLAYERS = [];
+var STATUS_INFO = {
+  healthy:{ic:'✅',t:'תקין',color:'var(--good)'},
+  injured:{ic:'🩹',t:'פציעה',color:'var(--bad)'},
+  rehab:{ic:'🦵',t:'שיקום',color:'var(--warn)'}
+};
+
+var BADGES = [
+  {ic:'🔥',t:'שבוע רצוף',got:true},{ic:'⚡',t:'מהירות+',got:true},
+  {ic:'🎯',t:'דיוק מסירות',got:true},{ic:'🏅',t:'10 אימונים',got:false},
+  {ic:'💪',t:'כוח מתפרץ',got:false},{ic:'👑',t:'שחקן החודש',got:false}
+];
+
+var TRAINING_PLAN = {
+  daily:[
+    {d:'ראשון',t:'חימום + ספרינטים',done:true},
+    {d:'שני',t:'כוח פלג גוף תחתון',done:true},
+    {d:'שלישי',t:'מנוחה אקטיבית',done:true},
+    {d:'רביעי',t:'טכניקת כדרור ומסירות',done:false},
+    {d:'חמישי',t:'אימון מהירות וכוח נפץ',done:false},
+    {d:'שישי',t:'משחק תרגיל קבוצתי',done:false},
+    {d:'שבת',t:'מנוחה',done:false}
+  ],
+  weekly:'שבוע 6 מתוך 12 — שלב בניית כוח בסיס',
+  seasonal:'עונת אביב 2026 — מטרה: שיפור מהירות 8%, כוח נפץ 12%'
+};
+var TEAM_PLAN = TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};});
+var CLUB_EXERCISES = [];
+var COACH_TRAININGS = [];
+var COACH_TRAININGS_LOADED = false;
+var COACH_UPDATES_OPT = false;
+var CLUB_COACHES = [];
+var CLUB_COACHES_LOADED = false;
+var CLUB_ROLES = ['מאמן ראשי','עוזר מאמן','אנליסט','פיזיותרפיסט','אחר'];
+var CLUB_FIELDS = [];
+var CLUB_FIELDS_LOADED = false;
+var CLUB_SCHEDULE = [];
+var CLUB_SCHEDULE_LOADED = false;
+var CLUB_SCHEDULE_VIEW = 'weekly';
+var CLUB_SELECTED_FIELD = null;
+var CLUB_GROUPS_VIEW = 'weekly';
+var CLUB_DAILY_DAY = null;
+var CLUB_FIELD_VIEW = 'weekly';
+var CLUB_FIELD_DAY = null;
+var CLUB_FIELD_WEEK_OFFSET = 0;
+var CLUB_FIELD_MONTH_OFFSET = 0;
+var CLUB_GROUPS_WEEK_OFFSET = 0;
+var CLUB_GROUPS_MONTH_OFFSET = 0;
+var IN_FIELD_MODAL = false;
+var CLUB_GROUP_PLANS = {};
+var CLUB_GROUP_PLANS_LOADED = {};
+var CLUB_SELECTED_GROUP = null;
+var PLAN_LIBRARY = [
+  {id:1, title:'בניית מהירות בסיסית', author:'מאמן רוני אביטל, ישראל', country:'ישראל', sport:'soccer', focus:'מהירות', weeks:4, days:[
+    {d:'ראשון',t:'חימום + ספרינטים קצרים'},{d:'שני',t:'כוח פלג גוף תחתון'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'ספרינטים עם שינוי כיוון'},{d:'חמישי',t:'אימון פליאומטרי'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:2, title:'Total Endurance Builder', author:'Coach Marco Rossi, Italy', country:'Italy', sport:'soccer', focus:'סיבולת', weeks:6, days:[
+    {d:'ראשון',t:'ריצה ארוכה בעצימות נמוכה'},{d:'שני',t:'אינטרוולים בינוניים'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'אימון סיבולת עם כדור'},{d:'חמישי',t:'ריצת טמפו'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:3, title:'טכניקת כדרור מתקדמת', author:'מאמנת שירה גולן, ישראל', country:'ישראל', sport:'soccer', focus:'טכניקה', weeks:4, days:[
+    {d:'ראשון',t:'כדרור בין שערונים'},{d:'שני',t:'מסירות קצרות וארוכות'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'כדרור בלחץ זמן'},{d:'חמישי',t:'שליטה ובלימה'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:4, title:'Explosive Strength Program', author:'Coach James Carter, England', country:'England', sport:'soccer', focus:'כוח', weeks:8, days:[
+    {d:'ראשון',t:'כוח מתפרץ - רגליים'},{d:'שני',t:'אימון פלייומטריה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'כוח עליון וליבה'},{d:'חמישי',t:'ספרינטים בעלייה'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:5, title:'תוכנית שיקום וחזרה לפעילות', author:'מאמן דורון לב, ישראל', country:'ישראל', sport:'soccer', focus:'שיקום', weeks:6, days:[
+    {d:'ראשון',t:'תרגילי גמישות ומוביליות'},{d:'שני',t:'חיזוק שרירי ליבה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'הליכה/ריצה קלה מבוקרת'},{d:'חמישי',t:'תרגילי שיווי משקל'},{d:'שישי',t:'תרגול עדין עם כדור'},{d:'שבת',t:'מנוחה'}
+  ]},
+  {id:6, title:'Youth Development Plan', author:'Coach Lucas Fernandez, Spain', country:'Spain', sport:'soccer', focus:'התפתחות כללית', weeks:10, days:[
+    {d:'ראשון',t:'משחקים קטנים (Small-sided games)'},{d:'שני',t:'תרגילי קואורדינציה'},{d:'שלישי',t:'מנוחה אקטיבית'},
+    {d:'רביעי',t:'טכניקה בסיסית בכדור'},{d:'חמישי',t:'משחקי כוח וזריזות'},{d:'שישי',t:'משחק תרגיל קבוצתי'},{d:'שבת',t:'מנוחה'}
+  ]}
+];
+var TEAM_SETTINGS = {duration:60, waterBreakMin:5, transitionSec:30};
+
+/* ---------------- Sport grid build ---------------- */
+(function buildSportGrid(){
+  var g = document.getElementById('sportGrid');
+  SPORTS.forEach(function(s){
+    var d = document.createElement('div');
+    d.className = 'sport' + (s.id===selSport?' sel':'');
+    d.dataset.id = s.id;
+    d.innerHTML = s.ic + '<span>'+s.t+'</span>';
+    d.onclick = function(){
+      selSport = s.id;
+      document.querySelectorAll('.sport').forEach(function(el){el.classList.remove('sel')});
+      d.classList.add('sel');
+    };
+    g.appendChild(d);
+  });
+})();
+document.querySelectorAll('.mode').forEach(function(el){
+  el.onclick = function(){
+    selMode = el.dataset.mode;
+    document.querySelectorAll('.mode').forEach(function(m){m.classList.remove('sel')});
+    el.classList.add('sel');
+  };
+});
+
+/* ---------------- Login ---------------- */
+function sportInfo(id){ return SPORTS.filter(function(s){return s.id===id})[0] || SPORTS[0]; }
+
+function doLogin(name, asGuest){
+  name = (name||'').trim();
+  if(!name) name = 'אורח';
+  ME.name = name;
+  ME.sport = selSport;
+  ME.mode = selMode==='club' ? 'coach' : selMode;
+  ME.uid = localStorage.getItem('ath_uid') || ('u_' + Math.random().toString(36).slice(2,10));
+  if(selMode==='club'){ ME.coachPlan = 'club_monthly'; }
+  localStorage.setItem('ath_uid', ME.uid);
+  localStorage.setItem('ath_name', ME.name);
+  localStorage.setItem('ath_sport', ME.sport);
+  localStorage.setItem('ath_mode', ME.mode);
+  enterApp();
+}
+
+document.getElementById('btnEnter').onclick = function(){
+  doLogin(document.getElementById('regName').value, false);
+};
+document.getElementById('btnCoachCodeLink').onclick = function(){
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2coachcode').style.display = 'block';
+};
+document.getElementById('btnCoachCodeBack').onclick = function(){
+  document.getElementById('step2coachcode').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+};
+document.getElementById('btnCoachCodeEnter').onclick = function(){
+  var code = document.getElementById('ccLoginCode').value.trim().toUpperCase();
+  var password = document.getElementById('ccLoginPass').value.trim();
+  if(!code || !password) return;
+  db.collection(P+'clubcoaches').doc(code).get().then(function(doc){
+    if(doc.exists && doc.data().password===password){
+      var data = doc.data();
+      ME.uid = 'coach_'+code;
+      ME.name = data.name;
+      ME.sport = 'soccer';
+      ME.mode = 'coach';
+      ME.coachPlan = 'club_monthly';
+      ME.subCoach = true;
+      ME.ageGroups = data.ageGroups || [];
+      localStorage.setItem('ath_uid', ME.uid);
+      localStorage.setItem('ath_name', ME.name);
+      localStorage.setItem('ath_sport', ME.sport);
+      localStorage.setItem('ath_mode', 'coach');
+      enterApp();
+    } else {
+      document.getElementById('ccLoginErr').style.display = 'block';
+    }
+  });
+};
+document.getElementById('btnDemo').onclick = function(){
+  selSport = 'soccer'; selMode = 'player';
+  doLogin('שחקן דמו', true);
+};
+
+COACH_UPDATES_OPT = localStorage.getItem('ath_updatesopt') === '1';
+function enterApp(){
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('hdrName').textContent = ME.name;
+  document.getElementById('hdrAvatar').textContent = ME.name.charAt(0);
+  document.getElementById('hdrSport').textContent = sportInfo(ME.sport).ic + ' ' + sportInfo(ME.sport).t;
+  refreshPlanBadge();
+  buildNav();
+  renderTab(NAV_IDS[0]);
+}
+function refreshPlanBadge(){
+  var coachLabels = {
+    coach_monthly:'מאמן · חודשי', coach_yearly:'מאמן · שנתי',
+    club_monthly:'מועדון · חודשי', club_yearly:'מועדון · שנתי'
+  };
+  document.getElementById('hdrPlan').textContent = ME.mode==='coach' ? (ME.coachPlan ? coachLabels[ME.coachPlan] : 'מאמן · לא רשום') : (ME.plan==='premium'?'פרימיום':'חינם');
+}
+function isClub(){ return ME.coachPlan==='club_monthly' || ME.coachPlan==='club_yearly'; }
+
+function doLogout(){
+  localStorage.removeItem('ath_uid');
+  localStorage.removeItem('ath_name');
+  localStorage.removeItem('ath_sport');
+  localStorage.removeItem('ath_mode');
+  ME = {uid:'', name:'', sport:'soccer', mode:'player', plan:'free', coachPlan:null, ageGroups:[]};
+  PLAYER_PLAN = null; PLAYER_CLIPS = []; CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
+  COACH_TRAININGS = []; COACH_TRAININGS_LOADED = false;
+  closeModal();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login').style.display = 'flex';
+  document.getElementById('regName').value = '';
+}
+document.getElementById('hdrMenuBtn').onclick = openHeaderMenu;
+
+/* auto-login if returning user */
+(function autoLogin(){
+  var uid = localStorage.getItem('ath_uid');
+  if(uid){
+    ME.uid = uid;
+    ME.name = localStorage.getItem('ath_name') || 'שחקן';
+    ME.sport = localStorage.getItem('ath_sport') || 'soccer';
+    ME.mode = localStorage.getItem('ath_mode') || 'player';
+    enterApp();
+  }
+})();
+
+/* ---------------- Nav (click wiring happens inside buildNav) ---------------- */
+
+function renderTab(i){
+  TAB = i;
+  var c = document.getElementById('content');
+  if(i===0) c.innerHTML = tplDashboard();
+  else if(i===1) c.innerHTML = tplVideo();
+  else if(i===2) c.innerHTML = tplTraining();
+  else if(i===3) c.innerHTML = tplCoach();
+  else if(i===4) c.innerHTML = tplSub();
+  else if(i===5) c.innerHTML = tplCoachLibrary();
+  else if(i===6) c.innerHTML = tplClubDashboard();
+  else if(i===7) c.innerHTML = tplClubTraining();
+  else if(i===8) c.innerHTML = tplClubPermissions();
+  else if(i===9) c.innerHTML = tplClubGroupsSchedule();
+  wireTab(i);
+}
+
+/* ---------------- TAB 0: Dashboard ---------------- */
+function tplDashboard(){
+  var myRecord = MOCK_PLAYERS.filter(function(p){return p.name===ME.name})[0];
+  var statusCard = '';
+  if(myRecord && myRecord.status !== 'healthy'){
+    var st = STATUS_INFO[myRecord.status];
+    statusCard = '<div class="card" style="border-color:'+st.color+'">'+
+      '<div class="row"><b>'+st.ic+' סטטוס מהמאמן: '+st.t+'</b></div>'+
+      (myRecord.note ? '<div class="muted" style="margin-top:6px">'+myRecord.note+'</div>' : '')+
+    '</div>';
+  }
+  return ''+
+  '<div class="section-title">היי '+ME.name.split(' ')[0]+' 👋</div>'+
+  statusCard+
+  '<div class="grid3" style="margin-bottom:14px">'+
+    '<div class="stat"><div class="v">82</div><div class="l">דירוג כללי</div></div>'+
+    '<div class="stat"><div class="v">23</div><div class="l">אימונים</div></div>'+
+    '<div class="stat"><div class="v">+8%</div><div class="l">שיפור החודש</div></div>'+
+  '</div>'+
+  '<div class="card">'+
+    '<div class="row"><b>התקדמות עונתית</b><span class="muted">שלב 6/12</span></div>'+
+    '<div class="bar-outer"><div class="bar-fill" style="width:50%"></div></div>'+
+  '</div>'+
+  '<div class="section-title" style="font-size:15px">יכולות מרכזיות</div>'+
+  capRow('מהירות',78)+capRow('כוח',65)+capRow('טכניקה',84)+capRow('סיבולת',70)+
+  '<div class="section-title" style="font-size:15px">תגים</div>'+
+  '<div class="badge-row">'+BADGES.map(function(b){
+    return '<div class="badge-item '+(b.got?'':'locked')+'"><div class="ic">'+b.ic+'</div><div class="t">'+b.t+'</div></div>';
+  }).join('')+'</div>'+
+  '<div class="card tap" id="goCompare" style="margin-top:14px">'+
+    '<div class="row"><div><b>📊 השוואה לקבוצת השווים</b><div class="muted">איך אני מדורג מול שחקנים בני גילי</div></div><div>›</div></div>'+
+  '</div>';
+}
+function capRow(label,val){
+  return '<div class="card" style="padding:12px 16px;margin-bottom:8px"><div class="row"><span style="font-size:13px">'+label+'</span><span class="muted">'+val+'%</span></div><div class="bar-outer"><div class="bar-fill" style="width:'+val+'%"></div></div></div>';
+}
+
+/* ---------------- TAB 1: Personal video clips (player only, no AI processing) ---------------- */
+var DAY_NAMES = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+function tplVideo(){
+  if(ME.mode==='coach'){
+    return '<div class="section-title">🎥 וידאו</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:30px;margin-bottom:8px">👥</div>'+
+      '<b>ניתוח וידאו לשחקנים</b>'+
+      '<div class="muted" style="margin:8px 0">העלאה וניתוח סרטוני משחק לפי מספר חולצה מתבצעים ממסך ניהול הקבוצה</div>'+
+      '<button class="btn ghost" id="goTeamTab">למסך ניהול הקבוצה</button>'+
+    '</div>';
+  }
+  return ''+
+  '<div class="section-title">🎥 הקטעים שלי</div>'+
+  '<div class="muted" style="margin-bottom:10px">העלה קטעי וידאו אישיים מהאימונים והמשחקים שלך לשמירה בפרופיל</div>'+
+  '<button class="btn" id="btnAddClip" style="margin-bottom:14px">+ הוסף קטע וידאו</button>'+
+  (PLAYER_CLIPS.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא העלית קטעים</div>'
+    : PLAYER_CLIPS.map(function(c,i){
+        return '<div class="card"><div class="row"><span>🎬 '+c.title+'</span><span class="pill">'+c.date+'</span></div></div>';
+      }).join('')
+  );
+}
+
+/* ---------------- TAB 2: Player self-built training plan (locked by week) ---------------- */
+function genPlayerPlan(goal, freq, duration){
+  var weeksByDuration = {daily:1, weekly:4, monthly:8, yearly:24};
+  var totalWeeks = weeksByDuration[duration] || 4;
+  var focusPool = ['חימום וספרינטים','כוח פלג גוף תחתון','טכניקה ושליטה בכדור','מהירות וכוח נפץ','סיבולת אירובית','מנוחה אקטיבית','משחק תרגיל'];
+  var weeks = [];
+  for(var w=0; w<totalWeeks; w++){
+    var days = [];
+    for(var d=0; d<7; d++){
+      var isRest = (d===6) || (d===2 && freq<6);
+      days.push({d:DAY_NAMES[d], t: isRest ? 'מנוחה' : focusPool[(w+d)%focusPool.length], done:false});
+    }
+    weeks.push(days);
+  }
+  return {goal:goal, freq:freq, duration:duration, totalWeeks:totalWeeks, currentWeek:1, weeks:weeks};
+}
+
+function tplTraining(){
+  if(ME.mode==='coach'){
+    return '<div class="section-title">📋 אימונים</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:30px;margin-bottom:8px">👥</div>'+
+      '<b>תוכניות אימון לקבוצה ולשחקנים</b>'+
+      '<div class="muted" style="margin:8px 0">בניית תוכנית קבוצתית ותוכניות אישיות מתבצעת ממסך ניהול הקבוצה</div>'+
+      '<button class="btn ghost" id="goTeamTab2">למסך ניהול הקבוצה</button>'+
+    '</div>';
+  }
+  if(!PLAYER_PLAN){
+    return ''+
+    '<div class="section-title">📋 בניית תוכנית אימון אישית</div>'+
+    '<div class="muted" style="margin-bottom:10px">בנה לעצמך תוכנית אימון מתקדמת. התוכנית תיחשף לך שבוע בשבועו כדי שתעבוד לפי השלבים.</div>'+
+    '<div class="field"><label>מטרה</label><select id="ppGoal">'+
+      '<option value="speed">שיפור מהירות</option><option value="strength">כוח</option>'+
+      '<option value="technique">טכניקה</option><option value="endurance">סיבולת</option>'+
+    '</select></div>'+
+    '<div class="field"><label>תדירות אימונים בשבוע</label><select id="ppFreq">'+
+      '<option value="3">3 בשבוע</option><option value="4">4 בשבוע</option><option value="5" selected>5 בשבוע</option><option value="6">6 בשבוע</option>'+
+    '</select></div>'+
+    '<div class="field"><label>אורך התוכנית</label><select id="ppDuration">'+
+      '<option value="daily">יומית (שבוע אחד)</option><option value="weekly" selected>שבועית (4 שבועות)</option>'+
+      '<option value="monthly">חודשית (8 שבועות)</option><option value="yearly">שנתית (24 שבועות)</option>'+
+    '</select></div>'+
+    '<button class="btn" id="ppBuild">צור תוכנית אימון</button>';
+  }
+  var pp = PLAYER_PLAN;
+  var html = '<div class="section-title">📋 התוכנית שלי</div>'+
+    '<div class="card"><div class="row"><b>שבוע '+pp.currentWeek+' מתוך '+pp.totalWeeks+'</b><span class="pill">'+(pp.currentWeek>=pp.totalWeeks?'תוכנית הושלמה':'בתהליך')+'</span></div>'+
+    '<div class="bar-outer"><div class="bar-fill" style="width:'+Math.round(pp.currentWeek/pp.totalWeeks*100)+'%"></div></div></div>';
+  pp.weeks.forEach(function(week, wi){
+    var wn = wi+1;
+    if(wn === pp.currentWeek){
+      html += '<div class="week-block"><div class="week-head"><b>🔓 שבוע '+wn+' — פתוח כעת</b></div><div class="card">'+
+        week.map(function(d,i){
+          return '<div class="plan-day"><div class="daydot '+(d.done?'done':'')+'" data-wday="'+i+'">'+(i+1)+'</div><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div></div>'+(d.done?'✅':'⬜')+'</div>';
+        }).join('')+'</div></div>';
+    } else if(wn < pp.currentWeek){
+      html += '<div class="week-block"><div class="week-head"><b>✅ שבוע '+wn+' — הושלם</b></div></div>';
+    } else {
+      html += '<div class="week-block"><div class="week-head"><b>🔒 שבוע '+wn+'</b><span class="muted">ייחשף בתחילת השבוע</span></div><div class="card">'+
+        week.map(function(d){ return '<div class="locked-day">🔒 '+d.d+'</div>'; }).join('')+'</div></div>';
+    }
+  });
+  if(pp.currentWeek < pp.totalWeeks){
+    html += '<button class="btn" id="ppNextWeek" style="margin-top:6px">🔓 פתח את השבוע הבא</button>';
+  }
+  html += '<button class="btn ghost" id="ppRestart" style="margin-top:8px">בנה תוכנית חדשה</button>';
+  return html;
+}
+
+/* ---------------- TAB 5: Coach training library ---------------- */
+function tplCoachLibrary(){
+  if(ME.mode !== 'coach'){
+    return '<div class="section-title">📚 ספריית אימונים</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
+      '<b>זמין למאמנים בלבד</b>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לבנות ולשמור אימונים בספרייה האישית שלך</div>'+
+      '<button class="btn ghost" id="switchCoachLib">החלף למצב מאמן</button>'+
+    '</div>';
+  }
+  if(!COACH_TRAININGS_LOADED){
+    return '<div class="section-title">📚 ספריית אימונים</div><div class="muted" style="text-align:center">טוען...</div>';
+  }
+  return ''+
+  '<div class="section-title">📚 ספריית אימונים</div>'+
+  '<div class="muted" style="margin-bottom:10px">בנה אימונים ושמור אותם בספרייה האישית שלך לשימוש חוזר</div>'+
+  '<button class="btn" id="btnAddCoachTraining" style="margin-bottom:14px">+ הוסף אימון לספרייה</button>'+
+  '<div class="card" style="margin-bottom:14px">'+
+    '<label class="row" style="cursor:pointer"><input type="checkbox" id="updatesOptIn" '+(COACH_UPDATES_OPT?'checked':'')+'><span style="margin-right:8px">📣 קבלת עדכונים כשנוסף אימון חדש לספרייה</span></label>'+
+  '</div>'+
+  (COACH_TRAININGS.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו אימונים לספרייה</div>'
+    : COACH_TRAININGS.map(function(tr,i){
+        return '<div class="card"><div class="row"><b>'+tr.name+'</b><button class="logout-btn" data-deltrain="'+i+'" title="מחק אימון">🗑</button></div>'+
+          (tr.description ? '<div class="muted" style="margin-top:6px">'+tr.description+'</div>' : '')+
+          (tr.imageData ? '<img src="'+tr.imageData+'" style="width:100%;border-radius:10px;margin-top:8px">' : '')+
+          (tr.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+tr.sketchNote+'</div>' : '')+
+        '</div>';
+      }).join('')
+  );
+}
+function loadCoachTrainings(){
+  if(!ME.uid) return;
+  db.collection(P+'coachtrainings').where('coachUid','==',ME.uid).get().then(function(snap){
+    COACH_TRAININGS = snap.docs.map(function(d){ return d.data(); });
+    COACH_TRAININGS_LOADED = true;
+    if(TAB===5) renderTab(5);
+  });
+}
+function openAddCoachTrainingModal(){
+  openModal('<h3>+ הוספת אימון לספרייה</h3>'+
+    '<div class="field"><label>שם האימון</label><input id="ctName" placeholder="לדוגמה: אימון מסירות ושליטה"></div>'+
+    '<div class="field"><label>תיאור האימון</label><textarea id="ctDesc" rows="3" placeholder="תיאור מהלך האימון..."></textarea></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="ctImg" type="file" accept="image/*"></div>'+
+    '<div id="ctImgPreview"></div>'+
+    '<div class="field"><label>תיאור סרטוט/תנועה</label><textarea id="ctSketch" rows="2" placeholder="תיאור טקסטואלי של הסרטוט/התנועה על המגרש"></textarea></div>'+
+    '<button class="btn" id="ctSave">שמור אימון</button>');
+  var imgData = '';
+  document.getElementById('ctImg').onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      imgData = ev.target.result;
+      document.getElementById('ctImgPreview').innerHTML = '<img src="'+imgData+'" style="width:100%;border-radius:10px;margin-top:8px">';
+    };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('ctSave').onclick = function(){
+    var n = document.getElementById('ctName').value.trim();
+    if(!n) return;
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var tr = {
+      id:id, coachUid:ME.uid,
+      name:n,
+      description:document.getElementById('ctDesc').value.trim(),
+      imageData:imgData,
+      sketchNote:document.getElementById('ctSketch').value.trim()
+    };
+    db.collection(P+'coachtrainings').doc(id).set(tr).then(function(){
+      COACH_TRAININGS.push(tr);
+      closeModal();
+      renderTab(5);
+    });
+  };
+}
+
+/* ---------------- TAB 3: Coach mode ---------------- */
+function tplCoach(){
+  if(ME.mode !== 'coach'){
+    return '<div class="section-title">👨‍💼 מצב מאמן</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
+      '<b>מצב מאמן נעול</b>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לנהל שחקנים ולבנות תוכניות קבוצתיות</div>'+
+      '<button class="btn ghost" id="switchCoach">החלף למצב מאמן</button>'+
+    '</div>';
+  }
+  if(!ME.coachPlan){
+    return ''+
+    '<div class="section-title">👨‍💼 מצב מאמן</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔐</div>'+
+      '<b>הצטרף כמאמן</b>'+
+      '<div class="muted" style="margin:8px 0">רכוש חבילת מאמן כדי לבנות קבוצה, להעלות ולנתח סרטוני שחקנים לפי מספר חולצה, ולקבל תוכניות אימון AI לקבוצה ולכל שחקן</div>'+
+    '</div>'+
+    '<div class="section-title" style="font-size:15px">חבילת מאמן רגילה</div>'+
+    coachPriceCard('coach_monthly','חבילה חודשית','149')+
+    coachPriceCard('coach_yearly','חבילה שנתית','1290')+
+    '<div class="section-title" style="font-size:15px">חבילת מועדון</div>'+
+    '<div class="muted" style="margin-bottom:10px">חבילת מועדון פותחת גם את לשונית "מועדון" — בניית תוכנית תרגילים מפורטת עם תמונות וסרטוטים לכל תרגיל</div>'+
+    coachPriceCard('club_monthly','מועדון · חודשי','349')+
+    coachPriceCard('club_yearly','מועדון · שנתי','2990');
+  }
+  var injuredCount = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy'}).length;
+  return ''+
+  (ME.subCoach && ME.ageGroups && ME.ageGroups.length ? '<div class="muted" style="margin-bottom:10px">🏟️ אתה מאמן קבוצת/ות: <b>'+ME.ageGroups.join(' · ')+'</b></div>' : '')+
+  '<div class="section-title">👨‍💼 ניהול קבוצה</div>'+
+  '<div class="grid3" style="margin-bottom:14px">'+
+    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים</div></div>'+
+    '<div class="stat"><div class="v">81</div><div class="l">ממוצע דירוג</div></div>'+
+    '<div class="stat"><div class="v" style="color:'+(injuredCount?'var(--warn)':'var(--good)')+'">'+injuredCount+'</div><div class="l">פציעות/שיקום</div></div>'+
+  '</div>'+
+  '<div class="grid2" style="margin-bottom:14px">'+
+    '<button class="btn" id="btnAddPlayer">+ הוסף שחקן</button>'+
+    '<button class="btn ghost" id="btnAiChat">🤖 צ\'אט AI לתוכנית</button>'+
+  '</div>'+
+  '<div class="section-title" style="font-size:15px">שחקנים (לחיצה לפרטים, תוכנית אישית וניתוח וידאו)</div>'+
+  '<div class="card">'+MOCK_PLAYERS.map(function(p,idx){
+    var trendIc = p.trend==='up'?'📈':p.trend==='down'?'📉':'➖';
+    var st = STATUS_INFO[p.status];
+    return '<div class="player-row" data-idx="'+idx+'"><div class="jersey">'+p.jersey+'</div><div class="pavatar">'+p.name.charAt(0)+'</div><div style="flex:1"><b>'+p.name+'</b><div class="muted">'+p.pos+' · גיל '+p.age+'</div>'+
+      (p.status!=='healthy' ? '<div class="status-tag" style="background:'+st.color+';color:#04111a">'+st.ic+' '+st.t+'</div>' : '')+
+      '</div><div style="text-align:left"><div><b>'+p.rating+'</b></div><div class="muted">'+trendIc+'</div></div>'+
+      '<button class="logout-btn" data-del="'+idx+'" title="מחק שחקן">🗑</button></div>';
+  }).join('')+'</div>'+
+  '<div class="section-title" style="font-size:15px">תוכנית קבוצתית</div>'+
+  '<div class="card tap" id="teamPlanCard"><div class="row"><span>📋 תוכנית אימון לקבוצה — שבוע 6</span><span>›</span></div>'+
+    '<div class="muted" style="margin-top:6px">⏱ '+TEAM_SETTINGS.duration+' דק\' · 💧 '+TEAM_SETTINGS.waterBreakMin+' דק\' הפסקות מים · 🔄 '+TEAM_SETTINGS.transitionSec+' שנ\' מעברים</div>'+
+  '</div>'+
+  '<div class="grid2" style="margin-top:10px">'+
+    '<button class="btn ghost" id="btnEditTeamPlan">✏️ עריכת תוכנית קבוצתית</button>'+
+    '<button class="btn ghost" id="btnPlanLibrary">📚 ספריית תוכניות</button>'+
+  '</div>';
+}
+function coachPriceCard(id,title,price){
+  var isYearly = id.indexOf('yearly') !== -1;
+  return '<div class="plan-card" style="position:relative">'+
+    '<div class="row"><b style="font-size:16px">'+title+'</b></div>'+
+    '<div class="price">₪'+price+'<span> / '+(isYearly?'שנה':'חודש')+'</span></div>'+
+    '<button class="btn" data-coachplan="'+id+'">רכוש חבילה</button>'+
+  '</div>';
+}
+
+/* ---------------- TAB 5: Club exercise builder (club tier only) ---------------- */
+function clubLockOrUpsell(title, desc){
+  if(ME.mode !== 'coach'){
+    return '<div class="section-title">🏟️ '+title+'</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔒</div>'+
+      '<b>מצב מאמן נעול</b>'+
+      '<div class="muted" style="margin:8px 0">עבור לחשבון מאמן כדי לגשת לכלים של המועדון</div>'+
+      '<button class="btn ghost" id="switchCoachClub">החלף למצב מאמן</button>'+
+    '</div>';
+  }
+  if(!isClub()){
+    return ''+
+    '<div class="section-title">🏟️ '+title+'</div>'+
+    '<div class="card" style="text-align:center">'+
+      '<div style="font-size:34px;margin-bottom:8px">🔐</div>'+
+      '<b>פתח את חבילת המועדון</b>'+
+      '<div class="muted" style="margin:8px 0">'+desc+'</div>'+
+    '</div>'+
+    coachPriceCard('club_monthly','מועדון · חודשי','349')+
+    coachPriceCard('club_yearly','מועדון · שנתי','2990');
+  }
+  return null;
+}
+
+/* ---------------- TAB 6: Club dashboard ---------------- */
+function tplClubDashboard(){
+  var locked = clubLockOrUpsell('דשבורד מועדון','דשבורד ניהול מועדון מלא — מאמנים, שחקנים, סטטוס תוכניות ולוז מגרשים');
+  if(locked!==null) return locked;
+  var injured = MOCK_PLAYERS.filter(function(p){return p.status!=='healthy';});
+  var now = new Date();
+  var updatedThisMonth = CLUB_COACHES.filter(function(c){
+    if(!c.lastPlanUpdate) return false;
+    var d = new Date(c.lastPlanUpdate);
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  });
+  var notUpdated = CLUB_COACHES.filter(function(c){
+    if(!c.lastPlanUpdate) return true;
+    var d = new Date(c.lastPlanUpdate);
+    return !(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear());
+  });
+  return ''+
+  '<div class="section-title">🏟️ דשבורד ניהול מועדון</div>'+
+  '<div class="grid3" style="margin-bottom:14px">'+
+    '<div class="stat"><div class="v">'+CLUB_COACHES.length+'</div><div class="l">מאמנים</div></div>'+
+    '<div class="stat"><div class="v">'+MOCK_PLAYERS.length+'</div><div class="l">שחקנים סה"כ</div></div>'+
+    '<div class="stat"><div class="v">'+updatedThisMonth.length+'</div><div class="l">תוכניות עודכנו החודש</div></div>'+
+  '</div>'+
+  '<button class="btn ghost" id="btnGoRoster" style="margin-bottom:14px">👥 ניהול רשימת שחקנים</button>'+
+  '<details style="margin-bottom:10px"><summary class="btn ghost" style="display:list-item;cursor:pointer">📋 סטטוס עדכון תוכניות אימון</summary>'+
+  '<div class="card" style="margin-top:8px">'+
+    '<div class="muted" style="margin-bottom:8px">ניתן לעדכן תוכנית שבועית/חודשית בכל שלב בשנה — אין חובה לעדכן בתחילתה</div>'+
+    (notUpdated.length===0 && CLUB_COACHES.length>0
+      ? '<div class="muted" style="color:#7ee787">✅ כל המאמנים עדכנו תוכנית החודש</div>'
+      : (CLUB_COACHES.length===0
+        ? '<div class="muted">עדיין לא נוספו מאמנים</div>'
+        : '<div class="muted" style="margin-bottom:6px">⏳ מאמנים שעדיין לא עדכנו תוכנית החודש:</div>'+
+          notUpdated.map(function(c){
+            return '<div class="row" style="padding:6px 0;border-bottom:1px solid #e3e6ec"><span>'+c.name+'</span>'+
+              '<span class="muted">'+(c.lastPlanUpdate ? 'עודכן לאחרונה ב-'+new Date(c.lastPlanUpdate).toLocaleDateString('he-IL') : 'אין עדכון עדיין')+'</span></div>';
+          }).join('')
+      )
+    )+
+  '</div></details>'+
+  (injured.length
+    ? '<details style="margin-bottom:10px"><summary class="btn ghost" style="display:list-item;cursor:pointer">🩹 מצב רפואי במחלקה</summary>'+
+      '<div class="card" style="margin-top:8px">'+
+        injured.map(function(p){
+          return '<div class="row" style="padding:6px 0;border-bottom:1px solid #e3e6ec"><span>'+p.name+' (#'+p.jersey+')</span>'+
+            '<span class="status-tag" style="background:'+STATUS_INFO[p.status].color+';color:#04111a">'+STATUS_INFO[p.status].ic+' '+STATUS_INFO[p.status].t+(p.expectedReturn?' · חזרה '+p.expectedReturn:'')+'</span></div>';
+        }).join('')+
+      '</div></details>'
+    : '')+
+  '';
+}
+var SLOT_MIN = 15;
+function genTimeSlots(){
+  var arr = [];
+  for(var h=14;h<=21;h++){
+    for(var m=0;m<60;m+=SLOT_MIN){
+      arr.push((h<10?'0':'')+h+':'+(m<10?'0':'')+m);
+    }
+  }
+  return arr;
+}
+var TIME_SLOTS = genTimeSlots();
+var MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function fmtDDMM(d){ return (d.getDate()<10?'0':'')+d.getDate()+'/'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1); }
+function startOfWeek(offsetWeeks){
+  var d = new Date();
+  d.setDate(d.getDate() + offsetWeeks*7);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+function weekRangeLabel(offsetWeeks){
+  var s = startOfWeek(offsetWeeks);
+  var e = new Date(s); e.setDate(s.getDate()+6);
+  return (offsetWeeks===0?'השבוע הזה · ':'')+fmtDDMM(s)+' – '+fmtDDMM(e);
+}
+function monthLabel(offsetMonths){
+  var d = new Date();
+  d.setMonth(d.getMonth() + offsetMonths);
+  return (offsetMonths===0?'החודש הזה · ':'')+MONTH_NAMES[d.getMonth()]+' '+d.getFullYear();
+}
+function weekNavRow(navAttr, offset){
+  return '<div class="row" style="margin-bottom:10px;gap:6px">'+
+    '<button class="logout-btn" data-'+navAttr+'="-1" title="שבוע קודם" style="font-size:16px">◀</button>'+
+    '<div class="muted" style="flex:1;text-align:center;font-size:12px">'+weekRangeLabel(offset)+'</div>'+
+    '<button class="logout-btn" data-'+navAttr+'="1" title="שבוע הבא" style="font-size:16px">▶</button>'+
+  '</div>';
+}
+function weekDayHeader(day, offsetWeeks){
+  var idx = DAY_NAMES.indexOf(day);
+  var d = startOfWeek(offsetWeeks);
+  d.setDate(d.getDate() + idx);
+  return '<div style="font-weight:700">'+d.getDate()+'</div><div style="font-size:10px">'+day+'</div>';
+}
+function monthNavRow(navAttr, offset){
+  return '<div class="row" style="margin-bottom:10px;gap:6px">'+
+    '<button class="logout-btn" data-'+navAttr+'="-1" title="חודש קודם" style="font-size:16px">◀</button>'+
+    '<div class="muted" style="flex:1;text-align:center;font-size:12px">'+monthLabel(offset)+'</div>'+
+    '<button class="logout-btn" data-'+navAttr+'="1" title="חודש הבא" style="font-size:16px">▶</button>'+
+  '</div>';
+}
+function addMinutesToTime(start, mins){
+  var parts = start.split(':');
+  var total = parseInt(parts[0],10)*60 + parseInt(parts[1],10) + mins;
+  var h = Math.floor(total/60), m = total%60;
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+}
+function shiftClubSchedule(id, dayDelta, slotDelta){
+  var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+  if(!s) return;
+  if(dayDelta){
+    var di = DAY_NAMES.indexOf(s.day) + dayDelta;
+    if(di<0 || di>=DAY_NAMES.length) return;
+    s.day = DAY_NAMES[di];
+  }
+  if(slotDelta && s.start){
+    var si = TIME_SLOTS.indexOf(s.start) + slotDelta;
+    if(si<0 || si>=TIME_SLOTS.length) return;
+    s.start = TIME_SLOTS[si];
+    s.time = s.start + '-' + addMinutesToTime(s.start, s.duration||30);
+  }
+  db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+  refreshFieldsUI();
+}
+function refreshFieldsUI(){
+  if(IN_FIELD_MODAL){ openCalendarSettingsModal(); }
+  else { renderTab(TAB===9?9:6); }
+}
+function clubFieldsBoard(){
+  if(CLUB_FIELDS.length && !CLUB_SELECTED_FIELD){ CLUB_SELECTED_FIELD = CLUB_FIELDS[0].id; }
+  if(CLUB_SELECTED_FIELD && !CLUB_FIELDS.some(function(f){return f.id===CLUB_SELECTED_FIELD;})){ CLUB_SELECTED_FIELD = CLUB_FIELDS.length ? CLUB_FIELDS[0].id : null; }
+  var html = '<div class="row" style="gap:6px;margin-bottom:10px">'+
+    '<select id="fieldPicker" style="flex:1">'+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(CLUB_SELECTED_FIELD===f.id?'selected':'')+'>🏟 '+f.name+'</option>'; }).join('')+
+    '</select>'+
+    '<button class="btn ghost" id="btnAddField">+ מגרש</button>'+
+  '</div>';
+  if(!CLUB_FIELDS.length){
+    return html + '<div class="card" style="text-align:center;color:var(--sub);margin-bottom:14px">עדיין לא נוספו מגרשים — הוסף מגרש כדי לבנות לו לוח שבועי</div>';
+  }
+  var field = CLUB_FIELDS.filter(function(f){return f.id===CLUB_SELECTED_FIELD;})[0];
+  html += '<div class="row" style="margin-bottom:10px">'+
+    '<button class="btn ghost" id="btnAddSchedule">+ הוסף קבוצת אימון למגרש</button>'+
+    '<button class="logout-btn" data-delfield="'+field.id+'" title="מחק מגרש">🗑</button></div>';
+  html += '<div class="tabs-mini" style="margin-bottom:10px">'+
+    [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
+      return '<button class="tab-mini '+(CLUB_FIELD_VIEW===v[0]?'sel':'')+'" data-fieldview="'+v[0]+'">'+v[1]+'</button>';
+    }).join('')+
+  '</div>';
+  var fieldDays = DAY_NAMES;
+  if(CLUB_FIELD_VIEW==='daily'){
+    if(!CLUB_FIELD_DAY) CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
+    fieldDays = [CLUB_FIELD_DAY];
+    html += weekNavRow('fieldweeknav', CLUB_FIELD_WEEK_OFFSET);
+    html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:10px;flex-wrap:wrap">'+
+      DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_FIELD_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-fielddaytab="'+d+'">'+d+'</button>'; }).join('')+
+    '</div>';
+  } else if(CLUB_FIELD_VIEW==='weekly'){
+    html += weekNavRow('fieldweeknav', CLUB_FIELD_WEEK_OFFSET);
+  } else if(CLUB_FIELD_VIEW==='monthly' || CLUB_FIELD_VIEW==='yearly'){
+    var lblF = CLUB_FIELD_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += monthNavRow('fieldmonthnav', CLUB_FIELD_MONTH_OFFSET);
+    html += '<div class="muted" style="margin-bottom:8px">תצוגה '+lblF+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lblF+'</div>';
+  }
+  html += '<div class="muted" style="margin-bottom:8px;font-size:12px">לחיצה ארוכה על תא פנוי תיצור אימון חדש בו · גרור אימון לתא אחר כדי להזיז אותו, או השתמש בחיצים ◀▶ / ▲▼ על הבלוק</div>';
+  var fieldRowSkip = {};
+  fieldDays.forEach(function(d){ fieldRowSkip[d] = 0; });
+  var fieldItemsAll = CLUB_SCHEDULE.filter(function(s){return s.fieldId===field.id;});
+  html += '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:680px">'+
+    '<tr><td style="width:50px"></td>'+
+      fieldDays.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px">'+weekDayHeader(d, CLUB_FIELD_WEEK_OFFSET)+'</td>'; }).join('')+
+    '</tr>'+
+    TIME_SLOTS.map(function(slot){
+      return '<tr>'+
+        '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
+        fieldDays.map(function(day){
+          if(fieldRowSkip[day] > 0){ fieldRowSkip[day]--; return ''; }
+          var starting = fieldItemsAll.filter(function(s){return s.day===day && s.start===slot;});
+          if(!starting.length){
+            return '<td data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
+          }
+          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/SLOT_MIN); }));
+          fieldRowSkip[day] = maxSpan - 1;
+          return '<td rowspan="'+maxSpan+'" data-droptime="'+slot+'" data-dropday="'+day+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
+            starting.map(function(s){
+              return '<div class="card" draggable="true" data-dragsch="'+s.id+'" style="margin:0 0 3px;padding:5px 6px;font-size:11px;cursor:grab;height:100%">'+
+                '<div style="font-weight:700">'+s.group+'</div>'+
+                '<div class="muted" style="font-size:10px">'+(s.time||s.start)+'</div>'+
+                '<div class="row" style="margin-top:3px;gap:3px">'+
+                  '<button class="logout-btn" data-shiftday="'+s.id+':-1" title="יום קודם" style="font-size:10px;padding:0 4px">◀</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':-15" title="שעה קודם" style="font-size:10px;padding:0 4px">▲</button>'+
+                  '<button class="logout-btn" data-shifttime="'+s.id+':15" title="שעה הבאה" style="font-size:10px;padding:0 4px">▼</button>'+
+                  '<button class="logout-btn" data-shiftday="'+s.id+':1" title="יום הבא" style="font-size:10px;padding:0 4px">▶</button>'+
+                  '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:10px;padding:0 4px">🗑</button>'+
+                '</div>'+
+              '</div>';
+            }).join('')+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    }).join('')+
+  '</table></div>';
+  var overlapNote = clubOverlapNote(field.id);
+  if(overlapNote) html += '<div class="muted" style="margin:10px 0">⚠️ '+overlapNote+'</div>';
+  return html;
+}
+function clubOverlapNote(fieldId){
+  var byDay = {};
+  CLUB_SCHEDULE.filter(function(s){return s.fieldId===fieldId && s.time;}).forEach(function(s){
+    var key = s.day+'_'+s.time;
+    byDay[key] = byDay[key] || [];
+    byDay[key].push(s.group);
+  });
+  var notes = [];
+  Object.keys(byDay).forEach(function(k){
+    if(byDay[k].length>1) notes.push(k.replace('_',' · ')+': '+byDay[k].join(' + '));
+  });
+  return notes.length ? 'יותר מקבוצה אחת מתאמנת באותו זמן — '+notes.join(' | ') : '';
+}
+
+/* ---------------- TAB 7: Club training ---------------- */
+function tplClubTraining(){
+  var locked = clubLockOrUpsell('אימונים','בנה תוכנית אימון לכל קבוצת גיל בנפרד — יומית, שבועית ושנתית — ותרגילים מצולמים לקבוצה');
+  if(locked!==null) return locked;
+  var gp = CLUB_SELECTED_GROUP ? (CLUB_GROUP_PLANS[CLUB_SELECTED_GROUP] || null) : null;
+  return ''+
+  '<div class="section-title">📋 אימוני המועדון לפי קבוצת גיל</div>'+
+  '<div class="muted" style="margin-bottom:10px">בחר קבוצת גיל כדי לבנות או לעדכן את תוכנית האימון שלה</div>'+
+  '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%;margin-bottom:14px">'+
+    AGE_GROUPS.map(function(g){
+      return '<div class="sport'+(CLUB_SELECTED_GROUP===g?' sel':'')+'" data-grp="'+g+'" style="font-size:13px;padding:12px 6px;cursor:pointer'+(CLUB_SELECTED_GROUP===g?';outline:2px solid var(--accent)':'')+'">'+g+'</div>';
+    }).join('')+
+  '</div>'+
+  (CLUB_SELECTED_GROUP
+    ? '<div class="card" style="margin-bottom:14px">'+
+        '<div class="row"><b>'+CLUB_SELECTED_GROUP+'</b></div>'+
+        (gp
+          ? '<div class="muted" style="margin:8px 0"><b>שבועי:</b> '+(gp.weekly||'-')+'</div>'+
+            '<div class="muted" style="margin:8px 0"><b>שנתי:</b> '+(gp.yearly||'-')+'</div>'+
+            (gp.daily||[]).map(function(d){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #e3e6ec"><span>'+d.d+'</span><span class="muted">'+d.t+'</span></div>'; }).join('')
+          : '<div class="muted" style="margin:8px 0">עדיין לא נבנתה תוכנית לקבוצה זו</div>')+
+        '<button class="btn" id="btnEditGroupPlan" style="margin-top:10px">✏️ '+(gp?'עריכת תוכנית הקבוצה':'בניית תוכנית לקבוצה')+'</button>'+
+      '</div>'
+    : '')+
+  '<div class="section-title">🏟️ בניית תרגילי מועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">בנה ספריית תרגילים מפורטת, עם תמונה ותיאור סרטוט/תנועה לכל תרגיל</div>'+
+  '<button class="btn" id="btnAddClubExercise" style="margin-bottom:14px">+ הוסף תרגיל</button>'+
+  (CLUB_EXERCISES.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו תרגילים</div>'
+    : CLUB_EXERCISES.map(function(ex,i){
+        return '<div class="card"><div class="row"><b>'+ex.name+'</b><button class="logout-btn" data-delex="'+i+'" title="מחק תרגיל">🗑</button></div>'+
+          (ex.description ? '<div class="muted" style="margin-top:6px">'+ex.description+'</div>' : '')+
+          (ex.imageData ? '<img src="'+ex.imageData+'" style="width:100%;border-radius:10px;margin-top:8px">' : '')+
+          (ex.sketchNote ? '<div class="muted" style="margin-top:6px">✏️ '+ex.sketchNote+'</div>' : '')+
+        '</div>';
+      }).join('')
+  );
+}
+
+/* ---------------- TAB 9: Club groups schedule ---------------- */
+function tplClubGroupsSchedule(){
+  var locked = clubLockOrUpsell('לוז קבוצות','לוח שעות מלא לכל קבוצת גיל — יומי, שבועי, חודשי ושנתי');
+  if(locked!==null) return locked;
+  if(!CLUB_FIELDS_LOADED || !CLUB_SCHEDULE_LOADED){
+    return '<div class="section-title">🗂️ לוז קבוצות</div><div class="muted" style="text-align:center">טוען...</div>';
+  }
+  var fieldsById = {};
+  CLUB_FIELDS.forEach(function(f){ fieldsById[f.id] = f.name; });
+  var html = ''+
+  '<div class="section-title">🗂️ לוז קבוצות</div>'+
+  '<div class="tabs-mini" style="margin-bottom:10px">'+
+    [['daily','יומי'],['weekly','שבועי'],['monthly','חודשי'],['yearly','שנתי']].map(function(v){
+      return '<button class="tab-mini '+(CLUB_GROUPS_VIEW===v[0]?'sel':'')+'" data-gsview="'+v[0]+'">'+v[1]+'</button>';
+    }).join('')+
+  '</div>'+
+  '<button class="btn ghost" id="btnAddScheduleFromGroups" style="margin-bottom:14px">+ הוסף קבוצה ללוז</button>';
+
+  if(CLUB_GROUPS_VIEW==='daily'){
+    if(!CLUB_DAILY_DAY) CLUB_DAILY_DAY = DAY_NAMES[new Date().getDay()];
+    html += weekNavRow('gsweeknav', CLUB_GROUPS_WEEK_OFFSET);
+    html += '<div class="row" style="gap:6px;overflow-x:auto;margin-bottom:12px;flex-wrap:wrap">'+
+      DAY_NAMES.map(function(d){ return '<button class="btn '+(CLUB_DAILY_DAY===d?'':'ghost')+'" style="white-space:nowrap" data-daytab="'+d+'">'+d+'</button>'; }).join('')+
+    '</div>'+
+    clubGroupsGrid([CLUB_DAILY_DAY], fieldsById, CLUB_GROUPS_WEEK_OFFSET);
+  } else if(CLUB_GROUPS_VIEW==='weekly'){
+    html += weekNavRow('gsweeknav', CLUB_GROUPS_WEEK_OFFSET);
+    html += '<div class="muted" style="margin-bottom:10px">לוח שעות שבועי לכל הקבוצות — לחיצה על קבוצה מציגה מאמנים, צוות ושחקנים</div>'+
+    clubGroupsGrid(DAY_NAMES, fieldsById, CLUB_GROUPS_WEEK_OFFSET);
+  } else {
+    var lbl = CLUB_GROUPS_VIEW==='monthly' ? 'חודשי' : 'שנתי';
+    html += monthNavRow('gsmonthnav', CLUB_GROUPS_MONTH_OFFSET);
+    html += '<div class="muted" style="margin-bottom:10px">תצוגה '+lbl+' — הלוח השבועי חוזר על עצמו בכל שבוע ב'+lbl+'</div>'+
+    clubGroupsGrid(DAY_NAMES, fieldsById, 0);
+  }
+  return html;
+}
+function clubGroupsGrid(days, fieldsById, weekOffset){
+  weekOffset = weekOffset || 0;
+  if(!CLUB_SCHEDULE.length){
+    return '<div class="card" style="text-align:center;color:var(--sub)">אין קבוצות מתוזמנות בתצוגה זו</div>';
+  }
+  var grpRowSkip = {};
+  days.forEach(function(d){ grpRowSkip[d] = 0; });
+  return '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:'+(days.length>1?680:240)+'px">'+
+    '<tr><td style="width:50px"></td>'+
+      days.map(function(d){ return '<td style="text-align:center;font-size:12px;padding:4px">'+weekDayHeader(d, weekOffset)+'</td>'; }).join('')+
+    '</tr>'+
+    TIME_SLOTS.map(function(slot){
+      return '<tr>'+
+        '<td class="muted" style="font-size:11px;padding:2px 4px;vertical-align:top;white-space:nowrap">'+slot+'</td>'+
+        days.map(function(day){
+          if(grpRowSkip[day] > 0){ grpRowSkip[day]--; return ''; }
+          var starting = CLUB_SCHEDULE.filter(function(s){return s.day===day && s.start===slot;});
+          if(!starting.length){
+            return '<td style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px"></td>';
+          }
+          var maxSpan = Math.max.apply(null, starting.map(function(s){ return Math.ceil((s.duration||30)/SLOT_MIN); }));
+          grpRowSkip[day] = maxSpan - 1;
+          return '<td rowspan="'+maxSpan+'" style="border:1px solid #e3e6ec;padding:2px;vertical-align:top;min-width:90px">'+
+            starting.map(function(s){
+              return '<div class="card" style="margin:0 0 3px;padding:5px 6px;font-size:11px;height:100%">'+
+                '<div class="row" style="align-items:flex-start"><div class="tap" data-groupdetail="'+s.group+'" style="flex:1;cursor:pointer">'+
+                  '<div style="font-weight:700">'+s.group+'</div>'+
+                  '<div class="muted" style="font-size:10px">'+(s.time||s.start)+' · 🏟 '+(fieldsById[s.fieldId]||'-')+'</div>'+
+                '</div>'+
+                '<button class="logout-btn" data-delsch="'+s.id+'" title="מחק" style="font-size:11px;padding:0 2px">🗑</button></div>'+
+              '</div>';
+            }).join('')+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    }).join('')+
+  '</table></div>';
+}
+function openGroupDetailModal(group){
+  var coaches = CLUB_COACHES.filter(function(c){return c.ageGroups && c.ageGroups.indexOf(group)!==-1;});
+  var players = MOCK_PLAYERS.filter(function(p){return p.group===group;});
+  openModal('<h3>'+group+'</h3>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">👥 מאמנים וצוות</div>'+
+    (coaches.length===0
+      ? '<div class="muted" style="margin-bottom:10px">אין מאמן או איש צוות משובץ לקבוצה זו</div>'
+      : coaches.map(function(c){ return '<div class="card" style="margin-bottom:8px"><b>'+c.name+'</b><div class="muted" style="margin-top:4px">'+(c.role||'מאמן ראשי')+'</div></div>'; }).join(''))+
+    '<div class="section-title" style="font-size:14px">⚽ שחקנים ('+players.length+')</div>'+
+    (players.length===0
+      ? '<div class="muted">אין שחקנים בקבוצה זו</div>'
+      : players.map(function(p){ return '<div class="row" style="padding:5px 0;border-bottom:1px solid #e3e6ec"><span>'+p.name+' · '+p.pos+'</span><span class="muted">#'+p.jersey+'</span></div>'; }).join(''))+
+    '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
+}
+
+/* ---------------- TAB 8: Club permissions / staff ---------------- */
+function tplClubPermissions(){
+  var locked = clubLockOrUpsell('הרשאות','צרף מאמנים ואנשי צוות עם תפקיד מוגדר — מאמן ראשי, עוזר מאמן, אנליסט ועוד');
+  if(locked!==null) return locked;
+  return ''+
+  '<div class="section-title">🔑 הרשאות וצוות המועדון</div>'+
+  '<div class="muted" style="margin-bottom:10px">צור לכל איש צוות שם מלא, תפקיד וקוד+סיסמה אישיים — הוא יתחבר בעצמו, באופן עצמאי, ויקבל גישה למצב מאמן</div>'+
+  '<button class="btn ghost" id="btnAddCoach" style="margin-bottom:14px">+ הוסף איש צוות</button>'+
+  (!CLUB_COACHES_LOADED
+    ? '<div class="muted" style="text-align:center">טוען...</div>'
+    : (CLUB_COACHES.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו אנשי צוות</div>'
+      : CLUB_COACHES.map(function(cch,i){
+          return '<div class="card"><div class="row"><b>'+cch.name+'</b><button class="logout-btn" data-delcoach="'+cch.code+'" title="מחק">🗑</button></div>'+
+            '<div class="muted" style="margin-top:4px">תפקיד: '+(cch.role||'מאמן ראשי')+'</div>'+
+            (cch.ageGroups && cch.ageGroups.length ? '<div class="muted" style="margin-top:4px">קבוצות: '+cch.ageGroups.join(' · ')+(cch.ageGroups.length>1?' (אחראי על כמה קבוצות)':'')+'</div>' : '')+
+            '<div class="muted" style="margin-top:6px">קוד: <b>'+cch.code+'</b> · סיסמה: <b>'+cch.password+'</b></div>'+
+          '</div>';
+        }).join('')
+    )
+  );
+}
+
+/* ---------------- TAB 4: Subscriptions ---------------- */
+function tplSub(){
+  return ''+
+  '<div class="section-title">💳 מינויים</div>'+
+  subCard('חינם','0',['פרופיל שחקן בסיסי','דשבורד סטטיסטיקות','תוכנית אימון יומית'],false,false)+
+  subCard('פרימיום','39',['כל מה שבחינם','תוכניות עונתיות מלאות','ניתוח וידאו AI (בקרוב)','תגים והשוואות מתקדמות'],true,false)+
+  subCard('מאמן','99',['ניהול עד 30 שחקנים','תוכניות קבוצתיות ואישיות','דוחות התקדמות לכל שחקן'],false,false)+
+  subCard('מועדון','299',['ניהול בלתי מוגבל של קבוצות','ריבוי מאמנים','דשבורד ניהול מועדון'],false,true);
+}
+function subCard(title,price,feats,featured,club){
+  return '<div class="plan-card '+(featured?'featured':'')+'" style="position:relative">'+
+    (featured?'<div class="crown">⭐ מומלץ</div>':'')+
+    '<div class="row"><b style="font-size:16px">'+(club?'🏟️ ':featured?'💎 ':'🆓 ')+title+'</b></div>'+
+    '<div class="price">₪'+price+'<span> / חודש</span></div>'+
+    '<ul>'+feats.map(function(f){return '<li>✓ '+f+'</li>'}).join('')+'</ul>'+
+    '<button class="btn '+(price==='0'?'ghost':'')+'" data-plan="'+title+'">'+(price==='0'?'התוכנית הנוכחית':'שדרג עכשיו')+'</button>'+
+  '</div>';
+}
+
+/* ---------------- Wire interactions per tab ---------------- */
+function wireTab(i){
+  if(i===1){
+    var goTeam = document.getElementById('goTeamTab');
+    if(goTeam) goTeam.onclick = function(){ selectNav(3); };
+    var addClip = document.getElementById('btnAddClip');
+    if(addClip) addClip.onclick = function(){
+      openModal('<h3>+ הוספת קטע וידאו</h3>'+
+        '<div class="field"><label>כותרת הקטע</label><input id="clTitle" placeholder="לדוגמה: אימון כדרור"></div>'+
+        '<div class="field"><label>תאריך</label><input id="clDate" type="date"></div>'+
+        '<button class="btn" id="clSave">שמור קטע</button>');
+      document.getElementById('clSave').onclick = function(){
+        var t = document.getElementById('clTitle').value.trim();
+        if(!t) return;
+        PLAYER_CLIPS.push({title:t, date:document.getElementById('clDate').value || ''});
+        closeModal();
+        renderTab(1);
+      };
+    };
+  }
+  if(i===2){
+    var goTeam2 = document.getElementById('goTeamTab2');
+    if(goTeam2) goTeam2.onclick = function(){ selectNav(3); };
+    var ppBuild = document.getElementById('ppBuild');
+    if(ppBuild) ppBuild.onclick = function(){
+      var goal = document.getElementById('ppGoal').value;
+      var freq = parseInt(document.getElementById('ppFreq').value,10);
+      var duration = document.getElementById('ppDuration').value;
+      PLAYER_PLAN = genPlayerPlan(goal, freq, duration);
+      renderTab(2);
+    };
+    var ppNext = document.getElementById('ppNextWeek');
+    if(ppNext) ppNext.onclick = function(){
+      if(PLAYER_PLAN.currentWeek < PLAYER_PLAN.totalWeeks){
+        PLAYER_PLAN.currentWeek++;
+        renderTab(2);
+      }
+    };
+    var ppRestart = document.getElementById('ppRestart');
+    if(ppRestart) ppRestart.onclick = function(){
+      openModal('<h3>בניית תוכנית חדשה</h3><p class="muted">פעולה זו תחליף את התוכנית הנוכחית. להמשיך?</p>'+
+        '<button class="btn" id="ppConfirmRestart">כן, בנה תוכנית חדשה</button>'+
+        '<button class="btn ghost" onclick="closeModal()" style="margin-top:8px">ביטול</button>');
+      document.getElementById('ppConfirmRestart').onclick = function(){
+        PLAYER_PLAN = null;
+        closeModal();
+        renderTab(2);
+      };
+    };
+    document.querySelectorAll('[data-wday]').forEach(function(dot){
+      dot.onclick = function(){
+        var idx = parseInt(dot.dataset.wday,10);
+        var wk = PLAYER_PLAN.weeks[PLAYER_PLAN.currentWeek-1];
+        wk[idx].done = !wk[idx].done;
+        renderTab(2);
+      };
+    });
+  }
+  if(i===3){
+    var sw = document.getElementById('switchCoach');
+    if(sw) sw.onclick = function(){
+      ME.mode = 'coach';
+      localStorage.setItem('ath_mode','coach');
+      refreshPlanBadge();
+      buildNav();
+      selectNav(3);
+    };
+    document.querySelectorAll('[data-coachplan]').forEach(function(btn){
+      btn.onclick = function(){
+        ME.coachPlan = btn.dataset.coachplan;
+        refreshPlanBadge();
+        renderTab(3);
+      };
+    });
+    var addP = document.getElementById('btnAddPlayer');
+    if(addP) addP.onclick = function(){ openAddPlayerModal({}); };
+    document.querySelectorAll('[data-del]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var idx = parseInt(btn.dataset.del,10);
+        var p = MOCK_PLAYERS[idx];
+        openModal('<h3>מחיקת שחקן</h3><p class="muted">למחוק את '+p.name+' מהקבוצה?</p>'+
+          '<button class="btn" id="delConfirm">כן, מחק</button>'+
+          '<button class="btn ghost" onclick="closeModal()" style="margin-top:8px">ביטול</button>');
+        document.getElementById('delConfirm').onclick = function(){
+          MOCK_PLAYERS.splice(idx,1);
+          closeModal();
+          renderTab(3);
+        };
+      };
+    });
+    var aiChat = document.getElementById('btnAiChat');
+    if(aiChat) aiChat.onclick = openAiChatModal;
+    var tpc = document.getElementById('teamPlanCard');
+    if(tpc) tpc.onclick = function(){
+      openModal('<h3>📋 תוכנית קבוצתית — שבוע 6</h3>'+
+        '<div class="muted" style="margin-bottom:10px">שלב בניית כוח בסיס · ⏱ '+TEAM_SETTINGS.duration+' דק\' לאימון · 💧 '+TEAM_SETTINGS.waterBreakMin+' דק\' הפסקות מים · 🔄 '+TEAM_SETTINGS.transitionSec+' שנ\' מעברים</div>'+
+        TEAM_PLAN.map(function(d){
+          var ex = (d.exerciseIdx!=null && CLUB_EXERCISES[d.exerciseIdx]) ? CLUB_EXERCISES[d.exerciseIdx] : null;
+          return '<div class="plan-day"><div style="flex:1"><b>'+d.d+'</b><div class="muted">'+d.t+'</div>'+
+            (d.t!=='מנוחה'?'<div class="muted" style="font-size:11px;margin-top:4px">'+sessionBreakdown(d.t, d.d)+'</div>':'')+
+            (ex ? '<div class="muted" style="margin-top:6px">🎬 תרגיל: '+ex.name+(ex.description?' — '+ex.description:'')+'</div>'+(ex.imageData?'<img src="'+ex.imageData+'" style="width:100%;border-radius:10px;margin-top:6px">':'')+(ex.sketchNote?'<div class="muted" style="margin-top:4px">✏️ '+ex.sketchNote+'</div>':'') : '')+
+          '</div></div>';
+        }).join('')+
+        shareButtonsHtml('teamShare')+
+        '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
+      wireShareButtons('teamShare', 'תוכנית אימון קבוצתית — שבוע 6', TEAM_PLAN);
+    };
+    var etp = document.getElementById('btnEditTeamPlan');
+    if(etp) etp.onclick = function(){
+      openModal('<h3>✏️ עריכת תוכנית קבוצתית</h3>'+
+        '<div class="section-title" style="font-size:14px;margin-top:0">⚙️ הגדרות אימון</div>'+
+        '<div class="grid3">'+
+          '<div class="field"><label>אורך אימון (דק\')</label><input id="tsDuration" type="number" min="0" value="'+TEAM_SETTINGS.duration+'"></div>'+
+          '<div class="field"><label>הפסקת מים (דק\')</label><input id="tsWater" type="number" min="0" value="'+TEAM_SETTINGS.waterBreakMin+'"></div>'+
+          '<div class="field"><label>מעברים (שנ\')</label><input id="tsTransition" type="number" min="0" value="'+TEAM_SETTINGS.transitionSec+'"></div>'+
+        '</div>'+
+        '<div class="section-title" style="font-size:14px">תוכנית שבועית</div>'+
+        '<div class="muted" style="margin-bottom:10px">התוכנית חלה על כל שחקני הקבוצה (אלא אם הוגדרה תוכנית אישית)</div>'+
+        TEAM_PLAN.map(function(d,i){
+          return '<div class="field"><label>'+d.d+'</label><input data-tpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>'+
+            (isClub() && CLUB_EXERCISES.length
+              ? '<div class="field"><label>תרגיל מצולם מהספרייה (אופציונלי)</label>'+
+                '<select data-tpex="'+i+'"><option value="">— ללא —</option>'+
+                CLUB_EXERCISES.map(function(ex,exi){ return '<option value="'+exi+'" '+(d.exerciseIdx===exi?'selected':'')+'>'+ex.name+'</option>'; }).join('')+
+                '</select></div>'
+              : '');
+        }).join('')+
+        '<button class="btn" id="tpSave">שמור תוכנית קבוצתית</button>');
+      document.getElementById('tpSave').onclick = function(){
+        document.querySelectorAll('[data-tpi]').forEach(function(inp){
+          TEAM_PLAN[parseInt(inp.dataset.tpi,10)].t = inp.value;
+        });
+        document.querySelectorAll('[data-tpex]').forEach(function(sel){
+          var v = sel.value;
+          TEAM_PLAN[parseInt(sel.dataset.tpex,10)].exerciseIdx = v===''? null : parseInt(v,10);
+        });
+        TEAM_SETTINGS.duration = parseInt(document.getElementById('tsDuration').value,10) || 0;
+        TEAM_SETTINGS.waterBreakMin = parseInt(document.getElementById('tsWater').value,10) || 0;
+        TEAM_SETTINGS.transitionSec = parseInt(document.getElementById('tsTransition').value,10) || 0;
+        markPlanUpdated();
+        closeModal();
+        renderTab(3);
+      };
+    };
+    var pl = document.getElementById('btnPlanLibrary');
+    if(pl) pl.onclick = openPlanLibraryModal;
+    document.querySelectorAll('.player-row').forEach(function(row){
+      row.onclick = function(){ openPlayerModal(parseInt(row.dataset.idx,10)); };
+    });
+  }
+  if(i===6){
+    var swc6 = document.getElementById('switchCoachClub');
+    if(swc6) swc6.onclick = function(){
+      ME.mode = 'coach';
+      localStorage.setItem('ath_mode','coach');
+      refreshPlanBadge();
+      buildNav();
+      selectNav(6);
+    };
+    document.querySelectorAll('[data-coachplan]').forEach(function(btn){
+      btn.onclick = function(){
+        ME.coachPlan = btn.dataset.coachplan;
+        refreshPlanBadge();
+        buildNav();
+        renderTab(TAB===9?9:6);
+      };
+    });
+    var goRoster = document.getElementById('btnGoRoster');
+    if(goRoster) goRoster.onclick = function(){ selectNav(3); };
+  }
+  if(i===7){
+    var addEx = document.getElementById('btnAddClubExercise');
+    if(addEx) addEx.onclick = openAddClubExerciseModal;
+    document.querySelectorAll('[data-delex]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        CLUB_EXERCISES.splice(parseInt(btn.dataset.delex,10),1);
+        renderTab(7);
+      };
+    });
+    document.querySelectorAll('[data-grp]').forEach(function(btn){
+      btn.onclick = function(){
+        CLUB_SELECTED_GROUP = btn.dataset.grp;
+        loadClubGroupPlan(CLUB_SELECTED_GROUP);
+        renderTab(7);
+      };
+    });
+    var editGrp = document.getElementById('btnEditGroupPlan');
+    if(editGrp) editGrp.onclick = function(){ openClubGroupPlanModal(CLUB_SELECTED_GROUP); };
+  }
+  if(i===8){
+    if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+    var addCoach = document.getElementById('btnAddCoach');
+    if(addCoach) addCoach.onclick = openAddClubCoachModal;
+    document.querySelectorAll('[data-delcoach]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var code = btn.dataset.delcoach;
+        db.collection(P+'clubcoaches').doc(code).delete();
+        CLUB_COACHES = CLUB_COACHES.filter(function(c){return c.code!==code;});
+        renderTab(8);
+      };
+    });
+  }
+  if(i===9){
+    if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
+    if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
+    if(isClub() && !CLUB_COACHES_LOADED){ loadClubCoaches(); }
+    document.querySelectorAll('[data-gsview]').forEach(function(btn){
+      btn.onclick = function(){
+        CLUB_GROUPS_VIEW = btn.dataset.gsview;
+        CLUB_GROUPS_WEEK_OFFSET = 0;
+        CLUB_GROUPS_MONTH_OFFSET = 0;
+        if(CLUB_GROUPS_VIEW==='daily') CLUB_DAILY_DAY = DAY_NAMES[new Date().getDay()];
+        renderTab(9);
+      };
+    });
+    document.querySelectorAll('[data-daytab]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_DAILY_DAY = btn.dataset.daytab; renderTab(9); };
+    });
+    document.querySelectorAll('[data-gsweeknav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_GROUPS_WEEK_OFFSET += parseInt(btn.dataset.gsweeknav,10); renderTab(9); };
+    });
+    document.querySelectorAll('[data-gsmonthnav]').forEach(function(btn){
+      btn.onclick = function(){ CLUB_GROUPS_MONTH_OFFSET += parseInt(btn.dataset.gsmonthnav,10); renderTab(9); };
+    });
+    var addSchG = document.getElementById('btnAddScheduleFromGroups');
+    if(addSchG) addSchG.onclick = openAddScheduleModal;
+    document.querySelectorAll('[data-groupdetail]').forEach(function(card){
+      card.onclick = function(){ openGroupDetailModal(card.dataset.groupdetail); };
+    });
+    document.querySelectorAll('#content [data-delsch]').forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var id = btn.dataset.delsch;
+        db.collection(P+'clubschedule').doc(id).delete();
+        CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
+        renderTab(9);
+      };
+    });
+  }
+  if(i===4){
+    document.querySelectorAll('[data-plan]').forEach(function(btn){
+      btn.onclick = function(){
+        var plan = btn.dataset.plan;
+        if(plan==='חינם') return;
+        ME.plan = 'premium';
+        openModal('<h3>🎉 שדרוג ל'+plan+'</h3><p class="muted">תהליך התשלום יושק בקרוב. לעת עתה זהו תצוגה מקדימה של חוויית השדרוג.</p><button class="btn" onclick="closeModal()">סגור</button>');
+      };
+    });
+  }
+  if(i===5){
+    if(ME.mode==='coach' && !COACH_TRAININGS_LOADED){ loadCoachTrainings(); }
+    var swLib = document.getElementById('switchCoachLib');
+    if(swLib) swLib.onclick = function(){
+      ME.mode = 'coach';
+      localStorage.setItem('ath_mode','coach');
+      refreshPlanBadge();
+      buildNav();
+      renderTab(5);
+    };
+    var addTrain = document.getElementById('btnAddCoachTraining');
+    if(addTrain) addTrain.onclick = openAddCoachTrainingModal;
+    document.querySelectorAll('[data-deltrain]').forEach(function(btn){
+      btn.onclick = function(){
+        var idx = parseInt(btn.dataset.deltrain,10);
+        var tr = COACH_TRAININGS[idx];
+        if(tr && tr.id) db.collection(P+'coachtrainings').doc(tr.id).delete();
+        COACH_TRAININGS.splice(idx,1);
+        renderTab(5);
+      };
+    });
+    var updOpt = document.getElementById('updatesOptIn');
+    if(updOpt) updOpt.onchange = function(){
+      COACH_UPDATES_OPT = updOpt.checked;
+      localStorage.setItem('ath_updatesopt', COACH_UPDATES_OPT ? '1' : '0');
+    };
+  }
+  if(i===0){
+    var cmp = document.getElementById('goCompare');
+    if(cmp) cmp.onclick = function(){
+      openModal('<h3>📊 השוואה לקבוצת השווים</h3>'+
+        '<div class="card"><div class="row"><span>מהירות</span><span class="muted">אתה: 78% · ממוצע קבוצה: 71%</span></div></div>'+
+        '<div class="card"><div class="row"><span>כוח</span><span class="muted">אתה: 65% · ממוצע קבוצה: 68%</span></div></div>'+
+        '<div class="card"><div class="row"><span>טכניקה</span><span class="muted">אתה: 84% · ממוצע קבוצה: 75%</span></div></div>'+
+        '<button class="btn" onclick="closeModal()">סגור</button>');
+    };
+  }
+}
+
+/* ---------------- Player detail modal (coach) ---------------- */
+/* ---------------- Add player modal (with on-field position picker) ---------------- */
+function openAddPlayerModal(draft){
+  draft = draft || {};
+  openModal('<h3>+ הוספת שחקן</h3>'+
+    '<div class="field"><label>שם השחקן</label><input id="npName" placeholder="שם מלא" value="'+(draft.name||'')+'"></div>'+
+    '<div class="field"><label>תפקיד</label><input id="npPos" placeholder="בחר תפקיד" readonly style="cursor:pointer" value="'+(draft.pos||'')+'"></div>'+
+    '<div class="field"><label>גיל</label><input id="npAge" type="number" placeholder="14" value="'+(draft.age||'')+'"></div>'+
+    '<div class="field"><label>מספר חולצה</label><input id="npJersey" type="number" placeholder="10" value="'+(draft.jersey||'')+'"></div>'+
+    '<div class="field"><label>קבוצת גיל</label><select id="npGroup">'+
+      AGE_GROUPS.map(function(g){ return '<option value="'+g+'" '+((draft.group||ME.ageGroups&&ME.ageGroups[0])===g?'selected':'')+'>'+g+'</option>'; }).join('')+
+    '</select></div>'+
+    '<button class="btn" id="npSave">שמור שחקן</button>');
+  document.getElementById('npPos').onclick = function(){ openPositionPicker(draft); };
+  document.getElementById('npSave').onclick = function(){
+    var n = document.getElementById('npName').value.trim();
+    if(!n) return;
+    MOCK_PLAYERS.push({
+      name:n, pos:document.getElementById('npPos').value||'שחקן',
+      age:parseInt(document.getElementById('npAge').value,10)||14,
+      jersey:parseInt(document.getElementById('npJersey').value,10)||(MOCK_PLAYERS.length+1),
+      group:document.getElementById('npGroup').value,
+      rating:70, trend:'flat', status:'healthy', note:'', plan:null, analysis:null, ratings:null, history:[], injuryStart:null, expectedReturn:'', rehabPlan:''
+    });
+    closeModal();
+    renderTab(3);
+  };
+}
+function openPositionPicker(draft){
+  draft.name = document.getElementById('npName').value;
+  draft.age = document.getElementById('npAge').value;
+  draft.jersey = document.getElementById('npJersey').value;
+  draft.group = document.getElementById('npGroup').value;
+  var selected = (draft.pos||'').split(' / ').filter(Boolean);
+  openModal('<h3>בחר תפקיד/ים על המגרש</h3>'+
+    '<div class="muted" style="margin-bottom:8px">אפשר לבחור כמה תפקידים</div>'+
+    '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
+      POSITIONS.map(function(pos){
+        var sel = selected.indexOf(pos)!==-1;
+        return '<div class="sport'+(sel?' sel':'')+'" data-pos="'+pos+'" style="font-size:13px;padding:12px 6px'+(sel?';outline:2px solid var(--accent)':'')+'">'+pos+'</div>';
+      }).join('')+
+    '</div>'+
+    '<button class="btn" id="posPickDone" style="margin-top:14px">אישור</button>');
+  document.querySelectorAll('[data-pos]').forEach(function(el){
+    el.onclick = function(){
+      var pos = el.dataset.pos;
+      var i = selected.indexOf(pos);
+      if(i===-1){ selected.push(pos); el.classList.add('sel'); el.style.outline = '2px solid var(--accent)'; }
+      else { selected.splice(i,1); el.classList.remove('sel'); el.style.outline = 'none'; }
+    };
+  });
+  document.getElementById('posPickDone').onclick = function(){
+    draft.pos = selected.join(' / ');
+    openAddPlayerModal(draft);
+  };
+}
+
+function openPlanLibraryModal(){
+  openModal('<h3>📚 ספריית תוכניות</h3>'+
+    '<div class="muted" style="margin-bottom:12px">תוכניות מתורגלות וקובצות מאמנים — ספרייה מוכנה מראש, ולא חיפוש או גריפה חיה מהאינטרנט</div>'+
+    PLAN_LIBRARY.map(function(plan){
+      return '<div class="plan-card">'+
+        '<div class="row"><b>'+plan.title+'</b><span class="pill">'+plan.weeks+' שבועות</span></div>'+
+        '<div class="muted" style="margin:6px 0">'+plan.author+' · מיקוד: '+plan.focus+'</div>'+
+        '<button class="btn ghost" data-applyplan="'+plan.id+'">החל על הקבוצה</button>'+
+      '</div>';
+    }).join('')+
+    '<button class="btn" onclick="closeModal()" style="margin-top:6px">סגור</button>');
+  document.querySelectorAll('[data-applyplan]').forEach(function(btn){
+    btn.onclick = function(){
+      var plan = PLAN_LIBRARY.filter(function(pl){return pl.id===parseInt(btn.dataset.applyplan,10);})[0];
+      if(plan){
+        TEAM_PLAN = plan.days.map(function(d){return {d:d.d,t:d.t};});
+        closeModal();
+        renderTab(3);
+      }
+    };
+  });
+}
+
+function openAddClubExerciseModal(){
+  openModal('<h3>+ הוספת תרגיל מועדון</h3>'+
+    '<div class="field"><label>שם התרגיל</label><input id="cexName" placeholder="לדוגמה: כדרור בין שערונים"></div>'+
+    '<div class="field"><label>תיאור התרגיל</label><textarea id="cexDesc" rows="3" placeholder="תיאור מהלך התרגיל..."></textarea></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="cexImg" type="file" accept="image/*"></div>'+
+    '<div id="cexImgPreview"></div>'+
+    '<div class="field"><label>תיאור סרטוט/תנועה</label><textarea id="cexSketch" rows="2" placeholder="תיאור טקסטואלי של הסרטוט/התנועה על המגרש"></textarea></div>'+
+    '<button class="btn" id="cexSave">שמור תרגיל</button>');
+  var imgData = '';
+  document.getElementById('cexImg').onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      imgData = ev.target.result;
+      document.getElementById('cexImgPreview').innerHTML = '<img src="'+imgData+'" style="width:100%;border-radius:10px;margin-top:8px">';
+    };
+    reader.readAsDataURL(file);
+  };
+  document.getElementById('cexSave').onclick = function(){
+    var n = document.getElementById('cexName').value.trim();
+    if(!n) return;
+    CLUB_EXERCISES.push({
+      name:n,
+      description:document.getElementById('cexDesc').value.trim(),
+      imageData:imgData,
+      sketchNote:document.getElementById('cexSketch').value.trim()
+    });
+    closeModal();
+    renderTab(7);
+  };
+}
+
+function loadClubCoaches(){
+  if(!ME.uid) return;
+  db.collection(P+'clubcoaches').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_COACHES = snap.docs.map(function(d){ return d.data(); });
+    CLUB_COACHES_LOADED = true;
+    if(TAB===8 || TAB===9) renderTab(TAB);
+  });
+}
+function loadClubFields(){
+  if(!ME.uid) return;
+  db.collection(P+'clubfields').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_FIELDS = snap.docs.map(function(d){ return d.data(); });
+    CLUB_FIELDS_LOADED = true;
+    if(TAB===6 || TAB===9) renderTab(TAB);
+  });
+}
+function loadClubSchedule(){
+  if(!ME.uid) return;
+  db.collection(P+'clubschedule').where('clubUid','==',ME.uid).get().then(function(snap){
+    CLUB_SCHEDULE = snap.docs.map(function(d){ return d.data(); });
+    CLUB_SCHEDULE_LOADED = true;
+    if(TAB===6 || TAB===9) renderTab(TAB);
+  });
+}
+function loadClubGroupPlan(group){
+  if(!ME.uid || CLUB_GROUP_PLANS_LOADED[group]) return;
+  db.collection(P+'clubgroupplans').doc(ME.uid+'_'+group).get().then(function(doc){
+    if(doc.exists) CLUB_GROUP_PLANS[group] = doc.data().plan;
+    CLUB_GROUP_PLANS_LOADED[group] = true;
+    if(TAB===7) renderTab(7);
+  });
+}
+function openAddFieldModal(){
+  openModal('<h3>+ הוספת מגרש</h3>'+
+    '<div class="field"><label>שם המגרש</label><input id="fldName" placeholder="לדוגמה: מגרש 1 - דשא"></div>'+
+    '<button class="btn" id="fldSave">שמור מגרש</button>');
+  document.getElementById('fldSave').onclick = function(){
+    var n = document.getElementById('fldName').value.trim();
+    if(!n) return;
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var field = {id:id, name:n, clubUid:ME.uid};
+    db.collection(P+'clubfields').doc(id).set(field).then(function(){
+      CLUB_FIELDS.push(field);
+      CLUB_SELECTED_FIELD = id;
+      if(!IN_FIELD_MODAL) closeModal();
+      refreshFieldsUI();
+    });
+  };
+}
+function openAddScheduleModal(presets){
+  presets = presets || {};
+  if(!CLUB_FIELDS.length){ openModal('<h3>אין מגרשים</h3><p class="muted">יש להוסיף מגרש לפני הוספת אימון ללוח</p><button class="btn" onclick="closeModal()">סגור</button>'); return; }
+  var presetField = presets.fieldId || CLUB_SELECTED_FIELD;
+  openModal('<h3>+ הוספת אימון ללוח השבועי</h3>'+
+    '<div class="field"><label>מגרש</label><select id="schField">'+
+      CLUB_FIELDS.map(function(f){ return '<option value="'+f.id+'" '+(f.id===presetField?'selected':'')+'>'+f.name+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>יום בשבוע</label><select id="schDay">'+
+      DAY_NAMES.map(function(d){ return '<option value="'+d+'" '+(d===presets.day?'selected':'')+'>'+d+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>שעת התחלה</label><select id="schStart">'+
+      TIME_SLOTS.map(function(t){ return '<option value="'+t+'" '+(t===presets.start?'selected':'')+'>'+t+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>אורך האימון</label><select id="schDuration">'+
+      [['30','30 דק\''],['60','שעה'],['90','שעה וחצי'],['120','שעתיים']].map(function(d){ return '<option value="'+d[0]+'" '+(d[0]==='60'?'selected':'')+'>'+d[1]+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>קבוצת גיל</label><select id="schGroup">'+
+      AGE_GROUPS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="muted" style="margin:8px 0">ניתן להוסיף כמה קבוצות לאותו יום ואפילו לאותה שעה באותו מגרש — המערכת תציג התראה על חפיפה</div>'+
+    '<button class="btn" id="schSave">שמור</button>');
+  document.getElementById('schSave').onclick = function(){
+    var id = genCode(8,'abcdefghijklmnopqrstuvwxyz0123456789');
+    var start = document.getElementById('schStart').value;
+    var duration = parseInt(document.getElementById('schDuration').value,10);
+    var sch = {id:id, fieldId:document.getElementById('schField').value, day:document.getElementById('schDay').value,
+      start:start, duration:duration, time:start+'-'+addMinutesToTime(start,duration),
+      group:document.getElementById('schGroup').value, clubUid:ME.uid};
+    sch.recurAllYear = confirm('הלוז נקבע על בסיס שבועי ביום '+sch.day+' — להחיל אותו לאורך כל השנה?');
+    db.collection(P+'clubschedule').doc(id).set(sch).then(function(){
+      CLUB_SCHEDULE.push(sch);
+      CLUB_SELECTED_FIELD = sch.fieldId;
+      if(!IN_FIELD_MODAL) closeModal();
+      refreshFieldsUI();
+    });
+  };
+}
+function openClubGroupPlanModal(group){
+  var gp = CLUB_GROUP_PLANS[group] || {daily:TRAINING_PLAN.daily.map(function(d){return {d:d.d,t:d.t};}), weekly:'', yearly:''};
+  openModal('<h3>✏️ תוכנית אימון — '+group+'</h3>'+
+    '<div class="field"><label>תקציר שבועי</label><input id="gpWeekly" value="'+(gp.weekly||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<div class="field"><label>תקציר שנתי</label><input id="gpYearly" value="'+(gp.yearly||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<div class="section-title" style="font-size:14px">תוכנית יומית</div>'+
+    gp.daily.map(function(d,i){
+      return '<div class="field"><label>'+d.d+'</label><input data-gpi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>';
+    }).join('')+
+    '<button class="btn" id="gpSave">שמור תוכנית קבוצה</button>');
+  document.getElementById('gpSave').onclick = function(){
+    document.querySelectorAll('[data-gpi]').forEach(function(inp){
+      gp.daily[parseInt(inp.dataset.gpi,10)].t = inp.value;
+    });
+    gp.weekly = document.getElementById('gpWeekly').value;
+    gp.yearly = document.getElementById('gpYearly').value;
+    CLUB_GROUP_PLANS[group] = gp;
+    db.collection(P+'clubgroupplans').doc(ME.uid+'_'+group).set({plan:gp, clubUid:ME.uid, group:group}, {merge:true});
+    markPlanUpdated();
+    closeModal();
+    renderTab(7);
+  };
+}
+function genCode(len, chars){
+  var s = '';
+  for(var i=0;i<len;i++) s += chars.charAt(Math.floor(Math.random()*chars.length));
+  return s;
+}
+function openAddClubCoachModal(){
+  openModal('<h3>+ הוספת איש צוות</h3>'+
+    '<div class="field"><label>שם מלא</label><input id="ccName" placeholder="שם מלא"></div>'+
+    '<div class="field"><label>תפקיד</label><select id="ccRole">'+
+      CLUB_ROLES.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>קבוצת/ות גיל (אפשר לבחור כמה — למאמן על שתי קבוצות או עוזר)</label>'+
+      '<div class="sportgrid" style="grid-template-columns:repeat(2,1fr);max-width:100%">'+
+        AGE_GROUPS.map(function(g){ return '<div class="sport" data-ccg="'+g+'" style="font-size:12px;padding:10px 6px">'+g+'</div>'; }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="muted" style="margin:10px 0">קוד וסיסמה ייוצרו אוטומטית — המאמן יוכל להתחבר איתם בעצמו ממסך הכניסה, ללא צורך בך</div>'+
+    '<button class="btn" id="ccSave">צור מאמן</button>');
+  var selGroups = [];
+  document.querySelectorAll('[data-ccg]').forEach(function(el){
+    el.onclick = function(){
+      var g = el.dataset.ccg;
+      var i = selGroups.indexOf(g);
+      if(i===-1){ selGroups.push(g); el.classList.add('sel'); el.style.outline = '2px solid var(--accent)'; }
+      else { selGroups.splice(i,1); el.classList.remove('sel'); el.style.outline = 'none'; }
+    };
+  });
+  document.getElementById('ccSave').onclick = function(){
+    var n = document.getElementById('ccName').value.trim();
+    if(!n) return;
+    var code = genCode(6,'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
+    var password = genCode(6,'abcdefghjkmnpqrstuvwxyz23456789');
+    var role = document.getElementById('ccRole').value;
+    var coach = {name:n, role:role, code:code, password:password, clubUid:ME.uid, ageGroups:selGroups.slice(), createdAt:Date.now(), lastPlanUpdate:null};
+    db.collection(P+'clubcoaches').doc(code).set(coach).then(function(){
+      CLUB_COACHES.push(coach);
+      openModal('<h3>✅ איש הצוות נוצר בהצלחה</h3>'+
+        '<div class="card" style="text-align:center;margin-bottom:14px">'+
+          '<div><b>'+n+'</b></div>'+
+          '<div class="muted" style="margin-top:4px">תפקיד: '+role+'</div>'+
+          (selGroups.length ? '<div class="muted" style="margin-top:6px">קבוצות: '+selGroups.join(' · ')+'</div>' : '')+
+          '<div class="muted" style="margin-top:8px">קוד</div><div style="font-size:22px;font-weight:800">'+code+'</div>'+
+          '<div class="muted" style="margin-top:8px">סיסמה</div><div style="font-size:22px;font-weight:800">'+password+'</div>'+
+        '</div>'+
+        '<div class="muted" style="margin-bottom:10px">שלח את הפרטים — הוא יזין אותם במסך הכניסה כדי לעבוד באופן עצמאי במערכת. בכניסה הוא יראה לאיזו קבוצת/ות גיל הוא מאמן</div>'+
+        shareButtonsHtml('ccShare')+
+        '<button class="btn" onclick="closeModal()" style="margin-top:10px">סגור</button>');
+      wireShareButtons('ccShare', 'פרטי כניסה למערכת AthleteIQ', [
+        {d:'קוד', t:code}, {d:'סיסמה', t:password}, {d:'תפקיד', t:role}, {d:'קבוצות', t:selGroups.join(', ')||'-'}
+      ]);
+      renderTab(8);
+    });
+  };
+}
+
+var WARMUP_LIBRARY = [
+  'ריצה קלה 5 דק\' + מתיחות דינמיות לרגליים',
+  'משחק תופסת/עוקץ לחימום כללי + הרמת דופק',
+  'חימום עם כדור: מסירות קצרות בזוגות + ריצת סלאלום בין קונוסים',
+  'חימום FIFA 11+ (מונע פציעות) — שיווי משקל, כוח ליבה וזריזות',
+  'דילוגי חבל + תרגילי קואורדינציה רגליים-ידיים',
+  'ריצות עליה/תאוצה קצרות (10 מ\') + מתיחות גמישות'
+];
+var COOLDOWN_LIBRARY = [
+  'הליכה קלה + מתיחות סטטיות לשרירי הרגליים',
+  'תרגילי נשימה והרפיה + מתיחות לגב התחתון',
+  'מתיחות זוגיות מודרכות + סיכום קצר עם הקבוצה'
+];
+function pickFromLibrary(lib, seed){
+  var h = 0;
+  for(var i=0;i<seed.length;i++) h += seed.charCodeAt(i);
+  return lib[h % lib.length];
+}
+function markPlanUpdated(){
+  if(!ME.subCoach) return;
+  var code = ME.uid.replace('coach_','');
+  db.collection(P+'clubcoaches').doc(code).set({lastPlanUpdate:Date.now()}, {merge:true});
+}
+function sessionBreakdown(focus, seed){
+  seed = seed || focus;
+  var total = TEAM_SETTINGS.duration || 60;
+  var warm = Math.max(Math.round(total*0.15),5);
+  var cool = Math.max(Math.round(total*0.1),5);
+  var main = Math.max(total - warm - cool, 10);
+  var warmupText = pickFromLibrary(WARMUP_LIBRARY, seed);
+  var cooldownText = pickFromLibrary(COOLDOWN_LIBRARY, seed+'_c');
+  return 'חימום ('+warm+' דק\'): '+warmupText+' ← '+focus+' ('+main+' דק\', הפסקת מים '+(TEAM_SETTINGS.waterBreakMin||0)+' דק\', מעברים '+(TEAM_SETTINGS.transitionSec||0)+' שנ\' בין תרגילים) ← שחרור ('+cool+' דק\'): '+cooldownText;
+}
+function planTextSummary(title, plan){
+  return title+'\n'+plan.map(function(d){return d.d+': '+d.t;}).join('\n');
+}
+function shareButtonsHtml(idPrefix){
+  return '<div class="grid2" style="margin-top:8px;margin-bottom:8px">'+
+    '<button class="btn ghost" id="'+idPrefix+'Wa">📲 שלח ב-WhatsApp</button>'+
+    '<button class="btn ghost" id="'+idPrefix+'Mail">✉️ שלח באימייל</button>'+
+  '</div>';
+}
+function wireShareText(idPrefix, title, text){
+  var waBtn = document.getElementById(idPrefix+'Wa');
+  if(waBtn) waBtn.onclick = function(){
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
+  var mailBtn = document.getElementById(idPrefix+'Mail');
+  if(mailBtn) mailBtn.onclick = function(){
+    window.location.href = 'mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(text);
+  };
+}
+function playerReportText(p){
+  var r = p.ratings;
+  var lines = [];
+  lines.push('דוח שחקן — '+p.name+' (#'+p.jersey+')');
+  lines.push(p.pos+' · גיל '+p.age+' · דירוג כללי '+p.rating);
+  lines.push('סטטוס רפואי: '+STATUS_INFO[p.status].t + (p.expectedReturn?' · חזרה משוערת '+p.expectedReturn:''));
+  if(p.rehabPlan) lines.push('תוכנית שיקום: '+p.rehabPlan);
+  if(r) lines.push('הערכת מאמן — מהירות:'+r.speed+' כוח:'+r.strength+' טכניקה:'+r.technique+' סיבולת:'+r.endurance+(r.goal?' · יעד לשיפור: '+r.goal:''));
+  if(p.history && p.history.length){
+    lines.push('היסטוריית פציעות:');
+    p.history.forEach(function(h){ lines.push('- '+STATUS_INFO[h.status].t+' ('+h.startDate+' — '+h.endDate+')'+(h.note?' '+h.note:'')); });
+  }
+  lines.push('תוכנית אימון נוכחית:');
+  (p.plan || TEAM_PLAN).forEach(function(d){ lines.push(d.d+': '+(d.t||'-')); });
+  return lines.join('\n');
+}
+function wireShareButtons(idPrefix, title, plan){
+  var waBtn = document.getElementById(idPrefix+'Wa');
+  if(waBtn) waBtn.onclick = function(){
+    var text = planTextSummary(title, plan);
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
+  var mailBtn = document.getElementById(idPrefix+'Mail');
+  if(mailBtn) mailBtn.onclick = function(){
+    var text = planTextSummary(title, plan);
+    window.location.href = 'mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(text);
+  };
+}
+function openPlayerModal(idx){
+  var p = MOCK_PLAYERS[idx];
+  var hasPlan = !!p.plan;
+  var plan = p.plan || DAY_NAMES.map(function(d){return {d:d, t:''};});
+  var src = hasPlan ? 'תוכנית אישית' : 'לא נבנתה תוכנית עדיין';
+  var r = p.ratings || {speed:0, strength:0, technique:0, endurance:0, goal:''};
+  openModal(''+
+    '<h3>'+p.name+'</h3>'+
+    '<div class="muted" style="margin-bottom:10px">'+p.pos+' · גיל '+p.age+' · דירוג '+p.rating+'</div>'+
+    '<div class="field"><label>סטטוס רפואי</label>'+
+      '<select id="pmStatus">'+
+        Object.keys(STATUS_INFO).map(function(k){
+          return '<option value="'+k+'" '+(p.status===k?'selected':'')+'>'+STATUS_INFO[k].ic+' '+STATUS_INFO[k].t+'</option>';
+        }).join('')+
+      '</select>'+
+    '</div>'+
+    '<div class="field"><label>הערה / פירוט (פציעה, שיקום, הגבלות)</label>'+
+      '<textarea id="pmNote" rows="3" placeholder="לדוגמה: נקע בקרסול, אסור ריצה למשך שבועיים">'+(p.note||'')+'</textarea>'+
+    '</div>'+
+    (p.status!=='healthy'
+      ? '<div class="field"><label>תאריך חזרה משוער</label><input id="pmReturn" placeholder="DD/MM/YYYY" value="'+(p.expectedReturn||'')+'"></div>'+
+        '<div class="field"><label>תוכנית שיקום</label><textarea id="pmRehab" rows="3" placeholder="לדוגמה: שבוע 1-2 תרגילי ניידות, שבוע 3-4 חזרה הדרגתית לריצה">'+(p.rehabPlan||'')+'</textarea></div>'
+      : '')+
+    '<button class="btn" id="pmSaveStatus" style="margin-bottom:16px">שמור סטטוס רפואי</button>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📜 היסטוריית פציעות</div>'+
+    (p.history && p.history.length
+      ? p.history.map(function(h){
+          var st = STATUS_INFO[h.status];
+          return '<div class="card" style="margin-bottom:8px"><div class="row"><b>'+st.ic+' '+st.t+'</b><span class="muted">'+h.startDate+' — '+h.endDate+'</span></div>'+
+            (h.note ? '<div class="muted" style="margin-top:6px">'+h.note+'</div>' : '')+
+            (h.rehabPlan ? '<div class="muted" style="margin-top:6px">🏥 תוכנית שיקום: '+h.rehabPlan+'</div>' : '')+
+          '</div>';
+        }).join('')
+      : '<div class="muted" style="margin-bottom:16px">אין היסטוריית פציעות</div>')+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📊 הערכת מאמן</div>'+
+    '<div class="muted" style="margin-bottom:8px">ההערכה נקבעת ונערכת על ידי המאמן בלבד</div>'+
+    '<div class="grid2">'+
+      '<div class="field"><label>מהירות (0-100)</label><input id="pmSpeed" type="number" min="0" max="100" value="'+r.speed+'"></div>'+
+      '<div class="field"><label>כוח (0-100)</label><input id="pmStrength" type="number" min="0" max="100" value="'+r.strength+'"></div>'+
+      '<div class="field"><label>טכניקה (0-100)</label><input id="pmTechnique" type="number" min="0" max="100" value="'+r.technique+'"></div>'+
+      '<div class="field"><label>סיבולת (0-100)</label><input id="pmEndurance" type="number" min="0" max="100" value="'+r.endurance+'"></div>'+
+    '</div>'+
+    '<div class="field"><label>יעד לשיפור</label><input id="pmGoal" placeholder="לדוגמה: שיפור דיוק מסירות" value="'+(r.goal||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<button class="btn" id="pmSaveRatings" style="margin-bottom:16px">שמור הערכה</button>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">🎥 ניתוח וידאו (לפי מספר חולצה #'+p.jersey+')</div>'+
+    (p.analysis ? renderAnalysis(p.analysis) : '<div class="muted" style="margin-bottom:8px">עדיין לא הועלה סרטון לשחקן זה</div>')+
+    '<button class="btn ghost" id="pmUploadVideo" style="margin-bottom:16px">📹 העלה סרטון משחק לניתוח</button>'+
+    '<div class="section-title" style="font-size:14px;margin-top:0">תוכנית אימון אישית</div>'+
+    '<div class="muted" style="margin-bottom:8px">כעת מוצג: '+src+'</div>'+
+    plan.map(function(d,i){
+      return '<div class="field"><label>'+d.d+'</label><input data-ppi="'+i+'" value="'+d.t.replace(/"/g,'&quot;')+'"></div>';
+    }).join('')+
+    '<button class="btn" id="pmSavePlan">שמור תוכנית אישית לשחקן</button>'+
+    (p.plan ? '<button class="btn ghost" id="pmResetPlan" style="margin-top:8px">חזרה לתוכנית הקבוצתית</button>' : '')+
+    shareButtonsHtml('pmShare')+
+    '<div class="section-title" style="font-size:14px;margin-top:0">📤 שיתוף דוח מלא</div>'+
+    '<div class="muted" style="margin-bottom:8px">שולח לשחקן את כל הנתונים: הערכות, סטטוס רפואי, היסטוריה ותוכנית נוכחית</div>'+
+    shareButtonsHtml('pmReport')+
+  '');
+  wireShareButtons('pmShare', 'תוכנית אימון אישית — '+p.name, plan);
+  wireShareText('pmReport', 'דוח שחקן — '+p.name, playerReportText(p));
+  document.getElementById('pmSaveStatus').onclick = function(){
+    var oldStatus = p.status;
+    var newStatus = document.getElementById('pmStatus').value;
+    var newNote = document.getElementById('pmNote').value;
+    var returnEl = document.getElementById('pmReturn');
+    var rehabEl = document.getElementById('pmRehab');
+    var newReturn = returnEl ? returnEl.value.trim() : '';
+    var newRehab = rehabEl ? rehabEl.value.trim() : '';
+    var today = new Date().toLocaleDateString('he-IL');
+    if(oldStatus==='healthy' && newStatus!=='healthy'){
+      p.injuryStart = today;
+    }
+    if(oldStatus!=='healthy' && newStatus==='healthy'){
+      p.history = p.history || [];
+      p.history.unshift({
+        status:oldStatus,
+        note:p.note,
+        rehabPlan:p.rehabPlan,
+        startDate:p.injuryStart || today,
+        endDate:today
+      });
+      p.injuryStart = null;
+      p.expectedReturn = '';
+      p.rehabPlan = '';
+    } else {
+      p.expectedReturn = newReturn;
+      p.rehabPlan = newRehab;
+    }
+    p.status = newStatus;
+    p.note = newNote;
+    closeModal();
+    renderTab(3);
+  };
+  document.getElementById('pmSaveRatings').onclick = function(){
+    p.ratings = {
+      speed: parseInt(document.getElementById('pmSpeed').value,10) || 0,
+      strength: parseInt(document.getElementById('pmStrength').value,10) || 0,
+      technique: parseInt(document.getElementById('pmTechnique').value,10) || 0,
+      endurance: parseInt(document.getElementById('pmEndurance').value,10) || 0,
+      goal: document.getElementById('pmGoal').value.trim()
+    };
+    openPlayerModal(idx);
+  };
+  document.getElementById('pmSavePlan').onclick = function(){
+    var base = plan.map(function(d){return {d:d.d,t:d.t};});
+    document.querySelectorAll('[data-ppi]').forEach(function(inp){
+      base[parseInt(inp.dataset.ppi,10)].t = inp.value;
+    });
+    p.plan = base;
+    markPlanUpdated();
+    closeModal();
+  };
+  var rp = document.getElementById('pmResetPlan');
+  if(rp) rp.onclick = function(){
+    p.plan = null;
+    closeModal();
+  };
+  document.getElementById('pmUploadVideo').onclick = function(){
+    openModal('<h3>📹 ניתוח סרטון — '+p.name+' (#'+p.jersey+')</h3>'+
+      '<div class="muted" style="margin-bottom:14px">בחר קובץ וידאו של המשחק מהמכשיר. המערכת תזהה את השחקן לפי מספר '+p.jersey+' ותפיק ניתוח אישי.</div>'+
+      '<input id="pmVideoFile" type="file" accept="video/*" style="margin-bottom:14px">'+
+      '<button class="btn" id="pmDoAnalyze">נתח סרטון</button>');
+    document.getElementById('pmDoAnalyze').onclick = function(){
+      var file = document.getElementById('pmVideoFile').files && document.getElementById('pmVideoFile').files[0];
+      if(!file){ return; }
+      document.getElementById('pmDoAnalyze').textContent = '🔄 מנתח את משחק שחקן #'+p.jersey+'...';
+      setTimeout(function(){
+        p.analysis = genAnalysis(p.jersey);
+        openPlayerModal(idx);
+      }, 900);
+    };
+  };
+}
+function genAnalysis(jersey){
+  function seeded(n, mod, base){ return base + ((jersey*7+n*13) % mod); }
+  return {
+    touches: seeded(1,40,60), passAcc: seeded(2,20,70), sprints: seeded(3,10,8),
+    distanceKm: (seeded(4,30,60)/10).toFixed(1), duels: seeded(5,15,40)
+  };
+}
+function renderAnalysis(a){
+  return '<div class="grid3" style="margin-bottom:12px">'+
+    '<div class="stat"><div class="v">'+a.touches+'</div><div class="l">מגעים בכדור</div></div>'+
+    '<div class="stat"><div class="v">'+a.passAcc+'%</div><div class="l">דיוק מסירות</div></div>'+
+    '<div class="stat"><div class="v">'+a.sprints+'</div><div class="l">ספרינטים</div></div>'+
+  '</div>'+
+  '<div class="grid2" style="margin-bottom:12px">'+
+    '<div class="stat"><div class="v">'+a.distanceKm+' ק"מ</div><div class="l">מרחק ריצה</div></div>'+
+    '<div class="stat"><div class="v">'+a.duels+'%</div><div class="l">הצלחה בדואלים</div></div>'+
+  '</div>';
+}
+
+/* ---------------- AI chat assistant — fixed-step wizard, no repeated questions ---------------- */
+var CHAT_QUESTIONS = [
+  {key:'target', q:'בשביל מי בונים את התוכנית? כתוב שם שחקן מהקבוצה, או "כל הקבוצה".'},
+  {key:'goal', q:'מה המטרה המרכזית? (מהירות / כוח / טכניקה / סיבולת)'},
+  {key:'freq', q:'כמה ימי אימון בשבוע רוצים?'},
+  {key:'injury', q:'יש מגבלה רפואית או פציעה שצריך להתחשב בה? אם לא — כתוב "לא".'}
+];
+var CHAT_STATE = {step:0, answers:{}, done:false};
+
+function openAiChatModal(){
+  if(CHAT_LOG.length===0){
+    CHAT_LOG.push({who:'bot', text:'בוא נבנה תוכנית מדויקת. אשאל אותך 4 שאלות קצרות ואז אכין תוכנית.'});
+    askNextQuestion();
+  }
+  renderChatModal();
+}
+function askNextQuestion(){
+  if(CHAT_STATE.step < CHAT_QUESTIONS.length){
+    CHAT_LOG.push({who:'bot', text:CHAT_QUESTIONS[CHAT_STATE.step].q});
+  }
+}
+function renderChatModal(){
+  var finished = CHAT_STATE.step >= CHAT_QUESTIONS.length;
+  openModal(''+
+    '<h3>🤖 בניית תוכנית עם AI</h3>'+
+    '<div class="chat-wrap" id="chatWrap">'+
+      CHAT_LOG.map(function(m){ return '<div class="msg '+(m.who==='me'?'me':'bot')+'">'+m.text+'</div>'; }).join('')+
+    '</div>'+
+    (finished
+      ? '<button class="btn" id="chatRestart">בנה תוכנית נוספת</button>'
+      : '<div class="chat-input-row"><input id="chatInput" placeholder="הקלד תשובה..."><button class="btn" id="chatSend" style="width:auto;padding:13px 18px">שלח</button></div>'
+    )
+  );
+  var send = document.getElementById('chatSend');
+  if(send) send.onclick = function(){
+    var v = document.getElementById('chatInput').value.trim();
+    if(!v) return;
+    answerChat(v);
+  };
+  var inp = document.getElementById('chatInput');
+  if(inp) inp.onkeydown = function(e){ if(e.key==='Enter') send.click(); };
+  var restart = document.getElementById('chatRestart');
+  if(restart) restart.onclick = function(){
+    CHAT_LOG = []; CHAT_STATE = {step:0, answers:{}, done:false};
+    openAiChatModal();
+  };
+  var wrap = document.getElementById('chatWrap');
+  if(wrap) wrap.scrollTop = wrap.scrollHeight;
+}
+function answerChat(text){
+  CHAT_LOG.push({who:'me', text:text});
+  CHAT_STATE.answers[CHAT_QUESTIONS[CHAT_STATE.step].key] = text;
+  CHAT_STATE.step++;
+  if(CHAT_STATE.step < CHAT_QUESTIONS.length){
+    askNextQuestion();
+  } else {
+    CHAT_LOG.push({who:'bot', text:buildPlanFromChat(CHAT_STATE.answers)});
+  }
+  renderChatModal();
+}
+function buildPlanFromChat(a){
+  var goalMap = {'מהירות':'speed','כוח':'strength','טכניקה':'technique','סיבולת':'endurance'};
+  var goalKey = goalMap[a.goal] || 'technique';
+  var freq = parseInt(a.freq,10) || 4;
+  var plan = genPlayerPlan(goalKey, freq, 'weekly');
+  var target = MOCK_PLAYERS.filter(function(p){return p.name===a.target.trim()})[0];
+  if(target){
+    target.plan = plan.weeks[0];
+    target.note = (target.note ? target.note+' | ' : '') + (a.injury && a.injury!=='לא' ? 'הערה מה-AI: '+a.injury : '');
+  } else {
+    TEAM_PLAN = plan.weeks[0];
+  }
+  var summary = (target ? 'תוכנית אישית ל'+target.name : 'תוכנית קבוצתית') + ' נבנתה בהצלחה ✅\n'+
+    'מטרה: '+a.goal+' · תדירות: '+freq+' בשבוע'+(a.injury && a.injury!=='לא' ? ' · בהתחשב ב: '+a.injury : '')+'.\n'+
+    plan.weeks[0].map(function(d){return d.d+': '+d.t;}).join(' | ');
+  return summary;
+}
+
+/* ---------------- Modal helpers ---------------- */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML =
+    '<button id="modalBackBtn" style="position:sticky;top:0;float:left;background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;margin-bottom:6px">←</button>'+
+    html;
+  document.getElementById('modalBg').classList.add('show');
+  document.getElementById('modalBackBtn').onclick = closeModal;
+}
+function closeModal(){
+  document.getElementById('modalBg').classList.remove('show');
+  IN_FIELD_MODAL = false;
+}
+document.getElementById('modalBg').onclick = function(e){
+  if(e.target === document.getElementById('modalBg')) closeModal();
+};
+
+/* ---------------- Header menu / settings / profile ---------------- */
+function openHeaderMenu(){
+  openModal('<h3>'+(ME.name||'שחקן')+'</h3>'+
+    '<button class="btn ghost" id="btnOpenProfile" style="margin-bottom:8px;width:100%">👤 פרופיל אישי</button>'+
+    '<button class="btn ghost" id="btnOpenSettings" style="margin-bottom:8px;width:100%">⚙️ הגדרות</button>'+
+    '<button class="btn ghost" id="btnHdrLogout" style="width:100%">🚪 התנתקות</button>');
+  document.getElementById('btnOpenProfile').onclick = openProfileModal;
+  document.getElementById('btnOpenSettings').onclick = openSettingsModal;
+  document.getElementById('btnHdrLogout').onclick = doLogout;
+}
+function openProfileModal(){
+  openModal('<h3>👤 פרופיל אישי</h3>'+
+    '<div class="field"><label>שם</label><input id="profName" value="'+(ME.name||'').replace(/"/g,'&quot;')+'"></div>'+
+    '<button class="btn" id="profSave">שמור</button>');
+  document.getElementById('profSave').onclick = function(){
+    var n = document.getElementById('profName').value.trim();
+    if(n){
+      ME.name = n;
+      localStorage.setItem('ath_name', n);
+      document.getElementById('hdrName').textContent = n;
+      document.getElementById('hdrAvatar').textContent = n.charAt(0);
+      syncProfile();
+    }
+    closeModal();
+  };
+}
+function openSettingsModal(){
+  openModal('<h3>⚙️ הגדרות</h3>'+
+    '<button class="btn ghost" id="btnOpenCalendarSettings" style="width:100%">📅 יומן</button>');
+  document.getElementById('btnOpenCalendarSettings').onclick = openCalendarSettingsModal;
+}
+function openCalendarSettingsModal(){
+  var locked = clubLockOrUpsell('יומן', 'ניהול מגרשים ולוח שעות אימונים');
+  if(locked!==null){
+    IN_FIELD_MODAL = false;
+    openModal(locked);
+    wireUpsellButtons();
+    return;
+  }
+  if(isClub() && !CLUB_FIELDS_LOADED){ loadClubFields(); }
+  if(isClub() && !CLUB_SCHEDULE_LOADED){ loadClubSchedule(); }
+  IN_FIELD_MODAL = true;
+  openModal('<h3>📅 יומן מגרשים</h3>'+clubFieldsBoard()+
+    '<button class="btn ghost" onclick="closeModal()" style="width:100%;margin-top:10px">סגור</button>');
+  wireFieldBoard();
+}
+function wireUpsellButtons(){
+  var sw = document.getElementById('switchCoachClub');
+  if(sw) sw.onclick = function(){
+    ME.mode = 'coach';
+    localStorage.setItem('ath_mode','coach');
+    refreshPlanBadge();
+    buildNav();
+    openCalendarSettingsModal();
+  };
+  document.querySelectorAll('[data-coachplan]').forEach(function(btn){
+    btn.onclick = function(){
+      ME.coachPlan = btn.dataset.coachplan;
+      refreshPlanBadge();
+      buildNav();
+      openCalendarSettingsModal();
+    };
+  });
+}
+function wireFieldBoard(){
+  var fieldPicker = document.getElementById('fieldPicker');
+  if(fieldPicker) fieldPicker.onchange = function(){ CLUB_SELECTED_FIELD = fieldPicker.value; refreshFieldsUI(); };
+  document.querySelectorAll('[data-fieldview]').forEach(function(btn){
+    btn.onclick = function(){
+      CLUB_FIELD_VIEW = btn.dataset.fieldview;
+      CLUB_FIELD_WEEK_OFFSET = 0;
+      CLUB_FIELD_MONTH_OFFSET = 0;
+      if(CLUB_FIELD_VIEW==='daily') CLUB_FIELD_DAY = DAY_NAMES[new Date().getDay()];
+      refreshFieldsUI();
+    };
+  });
+  document.querySelectorAll('[data-fielddaytab]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_DAY = btn.dataset.fielddaytab; refreshFieldsUI(); };
+  });
+  document.querySelectorAll('[data-fieldweeknav]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_WEEK_OFFSET += parseInt(btn.dataset.fieldweeknav,10); refreshFieldsUI(); };
+  });
+  document.querySelectorAll('[data-fieldmonthnav]').forEach(function(btn){
+    btn.onclick = function(){ CLUB_FIELD_MONTH_OFFSET += parseInt(btn.dataset.fieldmonthnav,10); refreshFieldsUI(); };
+  });
+  var addField = document.getElementById('btnAddField');
+  if(addField) addField.onclick = openAddFieldModal;
+  document.querySelectorAll('[data-delfield]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var id = btn.dataset.delfield;
+      db.collection(P+'clubfields').doc(id).delete();
+      CLUB_FIELDS = CLUB_FIELDS.filter(function(f){return f.id!==id;});
+      CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.fieldId!==id;});
+      refreshFieldsUI();
+    };
+  });
+  var addSch = document.getElementById('btnAddSchedule');
+  if(addSch) addSch.onclick = openAddScheduleModal;
+  document.querySelectorAll('[data-delsch]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var id = btn.dataset.delsch;
+      db.collection(P+'clubschedule').doc(id).delete();
+      CLUB_SCHEDULE = CLUB_SCHEDULE.filter(function(s){return s.id!==id;});
+      refreshFieldsUI();
+    };
+  });
+  document.querySelectorAll('[data-shiftday]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var parts = btn.dataset.shiftday.split(':');
+      shiftClubSchedule(parts[0], parseInt(parts[1],10), 0);
+    };
+  });
+  document.querySelectorAll('[data-shifttime]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var parts = btn.dataset.shifttime.split(':');
+      shiftClubSchedule(parts[0], 0, parseInt(parts[1],10)/SLOT_MIN);
+    };
+  });
+  document.querySelectorAll('[data-dragsch]').forEach(function(card){
+    card.addEventListener('dragstart', function(e){
+      e.dataTransfer.setData('text/plain', card.dataset.dragsch);
+    });
+  });
+  document.querySelectorAll('[data-droptime]').forEach(function(cell){
+    cell.addEventListener('dragover', function(e){ e.preventDefault(); });
+    cell.addEventListener('drop', function(e){
+      e.preventDefault();
+      var id = e.dataTransfer.getData('text/plain');
+      var s = CLUB_SCHEDULE.filter(function(x){return x.id===id;})[0];
+      if(!s) return;
+      s.day = cell.dataset.dropday;
+      s.start = cell.dataset.droptime;
+      s.time = s.start+'-'+addMinutesToTime(s.start, s.duration||30);
+      db.collection(P+'clubschedule').doc(id).set(s, {merge:true});
+      refreshFieldsUI();
+    });
+    var lpTimer = null;
+    var startLongPress = function(e){
+      if(e.target !== cell) return;
+      lpTimer = setTimeout(function(){
+        lpTimer = null;
+        openAddScheduleModal({fieldId: CLUB_SELECTED_FIELD, day: cell.dataset.dropday, start: cell.dataset.droptime});
+      }, 500);
+    };
+    var cancelLongPress = function(){ if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; } };
+    cell.addEventListener('mousedown', startLongPress);
+    cell.addEventListener('mouseup', cancelLongPress);
+    cell.addEventListener('mouseleave', cancelLongPress);
+    cell.addEventListener('touchstart', startLongPress, {passive:true});
+    cell.addEventListener('touchend', cancelLongPress);
+    cell.addEventListener('touchmove', cancelLongPress);
+  });
+}
+
+/* ---------------- Firestore (profile sync) ---------------- */
+function syncProfile(){
+  if(!ME.uid) return;
+  db.collection(P+'profiles').doc(ME.uid).set({
+    name:ME.name, sport:ME.sport, mode:ME.mode, plan:ME.plan, updatedAt:Date.now()
+  }, {merge:true});
+}
+</script>
+</body>
+</html>

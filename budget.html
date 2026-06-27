@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>תקציב משפחתי 💰</title>
+<style>
+:root{
+  --bg:#f1f5f9;--card:#fff;--hdr:#0f172a;
+  --green:#16a34a;--green-bg:#dcfce7;--red:#dc2626;--red-bg:#fee2e2;
+  --blue:#2563eb;--blue-bg:#dbeafe;--gold:#d97706;--gold-bg:#fef3c7;
+  --purple:#7c3aed;--purple-bg:#ede9fe;--teal:#0891b2;--teal-bg:#cffafe;
+  --orange:#ea580c;--orange-bg:#ffedd5;--pink:#db2777;--pink-bg:#fce7f3;
+  --text:#0f172a;--label2:#475569;--label3:#94a3b8;--sep:#e2e8f0;
+  --shadow:0 1px 8px rgba(0,0,0,.08);--radius:14px;--nav:62px;--sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%;height:-webkit-fill-available}
+body{height:100%;height:-webkit-fill-available;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow:hidden}
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--hdr);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+#splash .ico{font-size:4rem}
+#splash .ttl{color:#fff;font-size:1.5rem;font-weight:800}
+#splash .sub{color:#94a3b8;font-size:.9rem}
+.spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-top:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--hdr);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;z-index:900}
+.login-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:32px;width:100%;max-width:360px;text-align:center}
+.login-ico{font-size:3.5rem;margin-bottom:12px}
+.login-title{color:#fff;font-size:1.4rem;font-weight:800;margin-bottom:6px}
+.login-sub{color:#94a3b8;font-size:.88rem;margin-bottom:28px}
+.login-input{width:100%;padding:14px 16px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:12px;color:#fff;font-size:1rem;text-align:right;margin-bottom:12px}
+.login-input::placeholder{color:#94a3b8}
+.login-input:focus{outline:none;border-color:var(--blue)}
+.login-btn{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer}
+/* APP */
+#app{display:none;height:100vh;height:-webkit-fill-available;flex-direction:column}
+.app-hdr{background:var(--hdr);color:#fff;padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.app-hdr-title{font-size:1rem;font-weight:800}
+.app-hdr-sub{font-size:.72rem;color:#94a3b8;margin-top:1px}
+.app-hdr-right{display:flex;align-items:center;gap:8px}
+.user-dot{width:30px;height:30px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;cursor:pointer;color:#fff}
+.content{flex:1;overflow-y:auto;padding:14px 14px calc(var(--nav) + var(--sab) + 14px);-webkit-overflow-scrolling:touch}
+/* NAV */
+.nav{height:calc(var(--nav) + var(--sab));padding-bottom:var(--sab);background:var(--card);border-top:1px solid var(--sep);display:flex;flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.63rem;font-weight:600;color:var(--label3);background:none;border:none;cursor:pointer;transition:color .15s}
+.nav-btn.active{color:var(--blue)}
+.nav-btn.active .nav-ico{transform:scale(1.1)}
+.nav-ico{font-size:1.3rem;transition:transform .15s}
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-ttl{font-size:.82rem;font-weight:700;color:var(--label2);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+/* PERIOD BAR */
+.seg-bar{display:flex;background:var(--sep);border-radius:10px;padding:3px;margin-bottom:14px}
+.seg-btn{flex:1;padding:7px 4px;border:none;background:none;border-radius:8px;font-size:.8rem;font-weight:600;color:var(--label2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.seg-btn.active{background:#fff;color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+/* SUMMARY GRID */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.kpi.full{grid-column:1/-1}
+.kpi-ico{font-size:1.3rem;margin-bottom:5px}
+.kpi-val{font-size:1.45rem;font-weight:800;line-height:1}
+.kpi-lbl{font-size:.7rem;color:var(--label3);margin-top:3px;font-weight:600}
+.kpi.g{border-top:3px solid var(--green)}
+.kpi.r{border-top:3px solid var(--red)}
+.kpi.b{border-top:3px solid var(--blue)}
+/* MONTH NAV */
+.month-nav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.month-nav-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--blue);padding:4px 8px;border-radius:8px}
+.month-nav-btn:active{background:var(--blue-bg)}
+.month-nav-lbl{font-size:.95rem;font-weight:800;color:var(--text)}
+/* PERSON TABS */
+.person-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.person-tabs{display:flex;background:var(--sep);border-radius:10px;padding:3px;flex:1}
+.person-tab{flex:1;padding:7px 4px;border:none;background:none;border-radius:8px;font-size:.82rem;font-weight:600;color:var(--label2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.person-tab.active{background:#fff;color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.icon-btn{background:var(--sep);border:none;border-radius:8px;padding:8px 10px;font-size:.9rem;cursor:pointer;flex-shrink:0}
+/* FILTER CHIPS */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:4px;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--sep);font-size:.76rem;font-weight:600;cursor:pointer;background:#fff;color:var(--label2);white-space:nowrap;flex-shrink:0;transition:all .15s}
+.chip.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+/* SEC HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}
+.sec-ttl{font-size:.88rem;font-weight:700;color:var(--label2)}
+.add-btn{background:var(--blue);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer}
+.add-btn.red{background:var(--red)}
+/* ENTRY LIST */
+.elist{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:10px}
+.eitem{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--sep);cursor:pointer;transition:background .1s}
+.eitem:last-child{border-bottom:none}
+.eitem:active{background:#f8fafc}
+.eico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-left:10px;flex-shrink:0}
+.ebody{flex:1;min-width:0}
+.edesc{font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emeta{font-size:.7rem;color:var(--label3);margin-top:2px}
+.eamt{font-weight:700;font-size:.92rem;flex-shrink:0}
+.inc-c{color:var(--green)}
+.exp-c{color:var(--red)}
+/* GROUP HEADER */
+.grp-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 14px 4px;font-size:.78rem;font-weight:700;color:var(--label2)}
+/* INSTALLMENT */
+.inst-card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer}
+.prog-bar{height:6px;background:var(--sep);border-radius:3px;overflow:hidden;margin-top:8px}
+.prog-fill{height:100%;border-radius:3px}
+.prog-fill.act{background:var(--blue)}
+.prog-fill.done{background:var(--green)}
+/* FIXED ITEM */
+.fitem{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--sep)}
+.fitem:last-child{border-bottom:none}
+.fday{width:34px;height:34px;border-radius:8px;background:var(--gold-bg);color:var(--gold);font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin-left:10px;flex-shrink:0}
+.tog{width:44px;height:24px;background:var(--sep);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;margin-right:8px;flex-shrink:0}
+.tog.on{background:var(--green)}
+.tog::after{content:'';position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog.on::after{transform:translateX(-20px)}
+/* CHART */
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:90px;padding:0 4px;margin-bottom:4px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px}
+.bar{width:45%;border-radius:4px 4px 0 0;min-height:3px}
+.bar.gi{background:var(--green)}
+.bar.re{background:var(--red)}
+.bar-lbl{font-size:.56rem;color:var(--label3);font-weight:600}
+/* HBAR */
+.hbar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.hbar-ico{font-size:.95rem;width:22px;text-align:center;flex-shrink:0}
+.hbar-lbl{font-size:.74rem;font-weight:600;width:70px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar-bg{flex:1;height:8px;background:var(--sep);border-radius:4px;overflow:hidden}
+.hbar-fill{height:100%;border-radius:4px;transition:width .4s}
+.hbar-amt{font-size:.72rem;font-weight:700;width:62px;text-align:left;flex-shrink:0}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px;width:100%;max-height:92vh;overflow-y:auto}
+.modal-handle{width:40px;height:4px;background:var(--sep);border-radius:2px;margin:0 auto 20px}
+.modal-ttl{font-size:1.1rem;font-weight:800;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.mcls{font-size:1.2rem;color:var(--label3);background:none;border:none;cursor:pointer;padding:4px}
+.fg{margin-bottom:14px}
+.fl{font-size:.8rem;font-weight:700;color:var(--label2);margin-bottom:6px;display:block}
+.fi{width:100%;padding:12px 14px;border:1.5px solid var(--sep);border-radius:10px;font-size:.95rem;color:var(--text);background:#fff;direction:rtl;-webkit-appearance:none}
+.fi:focus{outline:none;border-color:var(--blue)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat-scroll{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.cpill{padding:6px 12px;border-radius:20px;border:1.5px solid var(--sep);font-size:.76rem;font-weight:600;cursor:pointer;background:#fff;color:var(--label2);white-space:nowrap;transition:all .15s}
+.cpill.sel{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.bp{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px}
+.bd{background:var(--red)}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.brow .bp{margin-top:0}
+/* EMPTY */
+.empty{text-align:center;padding:28px 16px;color:var(--label3)}
+.empty-ico{font-size:2.2rem;margin-bottom:6px}
+/* TOAST */
+#toast{position:fixed;bottom:calc(var(--nav)+16px);left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* CASHFLOW */
+.cf-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--sep)}
+.cf-row:last-child{border-bottom:none}
+.cf-lbl{font-size:.82rem;font-weight:600;color:var(--label2)}
+.cf-sub{font-size:.68rem;color:var(--label3)}
+.cf-amt{font-size:.9rem;font-weight:700}
+/* DESKTOP */
+@media(min-width:680px){
+  .content{max-width:640px;margin:0 auto}
+  .kpi-grid{grid-template-columns:1fr 1fr 1fr}
+  .modal-overlay{align-items:center}
+  .modal-sheet{border-radius:20px;max-width:460px;margin:0 auto;max-height:85vh}
+}
+</style>
+</head>
+<body>
+
+<div id="splash"><div class="ico">💰</div><div class="ttl">תקציב משפחתי</div><div class="sub">טוען...</div><div class="spinner"></div></div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-ico">💰</div>
+    <div class="login-title">תקציב משפחתי</div>
+    <div class="login-sub">הזן שם להתחלה</div>
+    <input type="text" id="loginName" class="login-input" placeholder="שם פרטי..." maxlength="20">
+    <button class="login-btn" onclick="doLogin()">כניסה →</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="app-hdr">
+    <div>
+      <div class="app-hdr-title">💰 תקציב משפחתי</div>
+      <div class="app-hdr-sub" id="hdrDate"></div>
+    </div>
+    <div class="app-hdr-right">
+      <span style="font-size:.8rem;color:#94a3b8" id="hdrUser"></span>
+      <div class="user-dot" id="hdrDot" onclick="openNamesModal()"></div>
+    </div>
+  </div>
+  <div class="content" id="mainContent"></div>
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="0"><span class="nav-ico">📊</span>דשבורד</button>
+    <button class="nav-btn" data-tab="1"><span class="nav-ico">💚</span>הכנסות</button>
+    <button class="nav-btn" data-tab="2"><span class="nav-ico">🛒</span>הוצאות</button>
+    <button class="nav-btn" data-tab="3"><span class="nav-ico">📈</span>גרפים</button>
+  </nav>
+</div>
+
+<!-- Income Modal -->
+<div class="modal-overlay" id="mInc">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl"><span id="mIncTtl">➕ הכנסה חדשה</span><button class="mcls" onclick="cm('mInc')">✕</button></div>
+    <div class="fg"><label class="fl">תיאור</label><input type="text" id="iDesc" class="fi" placeholder="לדוגמה: משכורת"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">סכום (₪)</label><input type="number" id="iAmt" class="fi" placeholder="0" min="0"></div>
+      <div class="fg"><label class="fl">תאריך</label><input type="date" id="iDate" class="fi"></div>
+    </div>
+    <div class="fg"><label class="fl">של מי</label><div class="cat-scroll" id="iWhoPills"></div></div>
+    <div class="fg"><label class="fl">אמצעי קבלה</label><div class="cat-scroll" id="iPayPills"></div></div>
+    <div class="fg"><label class="fl">קטגוריה</label><div class="cat-scroll" id="iCatPills"></div></div>
+    <div class="brow" id="iBtns"><button class="bp" onclick="saveInc()">שמור</button></div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay" id="mExp">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl"><span id="mExpTtl">➕ הוצאה חדשה</span><button class="mcls" onclick="cm('mExp')">✕</button></div>
+    <div class="fg"><label class="fl">חנות / תיאור</label><input type="text" id="eStore" class="fi" placeholder="לדוגמה: שופרסל, מכבי, קסטרו..." oninput="autoDetectCat(this.value)"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">סכום (₪)</label><input type="number" id="eAmt" class="fi" placeholder="0" min="0"></div>
+      <div class="fg"><label class="fl">תאריך</label><input type="date" id="eDate" class="fi"></div>
+    </div>
+    <div class="fg"><label class="fl">אמצעי תשלום</label><div class="cat-scroll" id="ePayPills"></div></div>
+    <div class="fg"><label class="fl">קטגוריה <span id="eCatHint" style="font-weight:400;color:var(--blue);font-size:.75rem"></span></label><div class="cat-scroll" id="eCatPills"></div></div>
+    <div class="brow" id="eBtns"><button class="bp bd" onclick="saveExp()">שמור</button></div>
+  </div>
+</div>
+
+<!-- Installment Modal -->
+<div class="modal-overlay" id="mInst">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl"><span id="mInstTtl">💳 תשלומים</span><button class="mcls" onclick="cm('mInst')">✕</button></div>
+    <div class="fg"><label class="fl">שם הרכישה</label><input type="text" id="inName" class="fi"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">סכום כולל (₪)</label><input type="number" id="inTotal" class="fi" oninput="calcPrev()"></div>
+      <div class="fg"><label class="fl">מספר תשלומים</label><input type="number" id="inN" class="fi" min="1" max="120" oninput="calcPrev()"></div>
+    </div>
+    <div class="fg"><label class="fl">חודש התחלה</label><input type="month" id="inStart" class="fi"></div>
+    <div id="inPrev" style="background:var(--blue-bg);border-radius:10px;padding:12px;margin-bottom:12px;display:none;text-align:center">
+      <span style="font-size:.82rem;color:var(--label2)">תשלום חודשי: </span>
+      <span id="inPrevAmt" style="font-size:1.1rem;font-weight:800;color:var(--blue)"></span>
+    </div>
+    <div class="brow" id="inBtns"><button class="bp" onclick="saveInst()">שמור</button></div>
+  </div>
+</div>
+
+<!-- Fixed Modal -->
+<div class="modal-overlay" id="mFixed">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl"><span id="mFixedTtl">📌 הוצאה קבועה</span><button class="mcls" onclick="cm('mFixed')">✕</button></div>
+    <div class="fg"><label class="fl">שם</label><input type="text" id="fxName" class="fi" placeholder="לדוגמה: שכר דירה"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">סכום חודשי (₪)</label><input type="number" id="fxAmt" class="fi" placeholder="0"></div>
+      <div class="fg"><label class="fl">יום בחודש</label><input type="number" id="fxDay" class="fi" min="1" max="31" placeholder="1"></div>
+    </div>
+    <div class="fg"><label class="fl">קטגוריה</label><div class="cat-scroll" id="fxCatPills"></div></div>
+    <div class="brow" id="fxBtns"><button class="bp bd" onclick="saveFixed()">שמור</button></div>
+  </div>
+</div>
+
+<!-- Names Modal -->
+<div class="modal-overlay" id="mNames">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl"><span>✏️ עריכת שמות</span><button class="mcls" onclick="cm('mNames')">✕</button></div>
+    <div class="fg"><label class="fl">שם אדם 1</label><input type="text" id="np1" class="fi" maxlength="20"></div>
+    <div class="fg"><label class="fl">שם אדם 2</label><input type="text" id="np2" class="fi" maxlength="20"></div>
+    <button class="bp" onclick="saveNames()">שמור</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+var db=null;
+try{
+  if(!firebase.apps.length)firebase.initializeApp({apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"});
+  db=firebase.firestore();
+}catch(e){console.error(e);}
+
+// ─── CATS ───
+var INC_CATS=[
+  {id:'salary',label:'משכורת',ico:'💼',c:'var(--blue)',bg:'var(--blue-bg)'},
+  {id:'bonus',label:'בונוס',ico:'🎁',c:'var(--purple)',bg:'var(--purple-bg)'},
+  {id:'rent_in',label:'שכירות',ico:'🏠',c:'var(--teal)',bg:'var(--teal-bg)'},
+  {id:'refund',label:'החזר',ico:'🔄',c:'var(--green)',bg:'var(--green-bg)'},
+  {id:'gift',label:'מתנה',ico:'💝',c:'var(--gold)',bg:'var(--gold-bg)'},
+  {id:'other_in',label:'אחר',ico:'➕',c:'var(--label2)',bg:'var(--sep)'}
+];
+var EXP_CATS=[
+  {id:'food',label:'מזון',ico:'🛒',c:'var(--green)',bg:'var(--green-bg)'},
+  {id:'pharma',label:'פארם',ico:'💊',c:'var(--pink)',bg:'var(--pink-bg)'},
+  {id:'insurance',label:'ביטוח',ico:'🛡️',c:'var(--teal)',bg:'var(--teal-bg)'},
+  {id:'sport',label:'ספורט',ico:'🏃',c:'var(--orange)',bg:'var(--orange-bg)'},
+  {id:'rent',label:'דיור',ico:'🏠',c:'var(--blue)',bg:'var(--blue-bg)'},
+  {id:'car',label:'תחבורה',ico:'🚗',c:'var(--gold)',bg:'var(--gold-bg)'},
+  {id:'fun',label:'בילוי',ico:'🎭',c:'var(--purple)',bg:'var(--purple-bg)'},
+  {id:'health',label:'בריאות',ico:'🏥',c:'var(--red)',bg:'var(--red-bg)'},
+  {id:'edu',label:'חינוך',ico:'📚',c:'var(--teal)',bg:'var(--teal-bg)'},
+  {id:'clothes',label:'ביגוד',ico:'👕',c:'var(--purple)',bg:'var(--purple-bg)'},
+  {id:'bills',label:'חשבונות',ico:'⚡',c:'var(--gold)',bg:'var(--gold-bg)'},
+  {id:'kids',label:'ילדים',ico:'🧒',c:'var(--teal)',bg:'var(--teal-bg)'},
+  {id:'other_ex',label:'אחר',ico:'📦',c:'var(--label2)',bg:'var(--sep)'}
+];
+
+// ─── STATE ───
+var ME={uid:'',name:''};
+var NAMES={p1:'ניר',p2:'דין'};
+var INCOME=[], EXPENSES=[], FIXED=[], INSTS=[];
+var TAB=0;
+var PERIOD='month'; // for dashboard
+var viewYM=thisMonth(); // income/expense month view
+var incPerson='all'; // all/p1/p2
+var expType='all'; // all/fixed/variable/installment
+var expCat='all';
+var editId=null;
+var selIncCat='salary', selExpCat='food', selFixCat='bills', selIncWho='p1';
+var selIncPay='cash', selExpPay='credit';
+var PAY_METHODS=[{id:'credit',label:'אשראי',ico:'💳'},{id:'cash',label:'מזומן',ico:'💵'},{id:'transfer',label:'העברה',ico:'🏦'}];
+var STORE_RULES=[
+  {cat:'food',words:['שופרסל','רמי לוי','ויקטורי','מגה','יינות ביתן','סופר','פרש מרקט','קארפור','אושר עד','יוחננוף','מחסני השוק','ספייס','הרשות','סיטי','מזון','סנטרל פארק','מסעדה','קפה','פיצה','מקדונלד','בורגר','שוורמה','פלאפל','סושי','חומוס']},
+  {cat:'pharma',words:['סופר-פארם','super-pharm','superpharma','נייר','פארם','בית מרקחת','רוקח','כללית','נשר פארם','good pharm']},
+  {cat:'insurance',words:['ביטוח','הפניקס','מגדל','כלל','הראל','מנורה','שלמה','איי.די.איי','AIG','menora','migdal']},
+  {cat:'health',words:['מכבי','קופת חולים','לאומית','כללית','שירותי בריאות','רופא','מרפאה','בית חולים','אסותא','הדסה','שניידר','מאיר']},
+  {cat:'sport',words:['ספורט','מכון כושר','גולמס','ספורטו','fitness','gym','adidas','nike','ריצה','שחייה','פוטבול','כדורגל','כדורסל','טניס','עממי']},
+  {cat:'car',words:['דלק','סונול','פז','elf','תדלוק','חניה','רכב','טסט','ביטוח רכב','כביש 6','מכולית','אוטו','פנצ']},
+  {cat:'clothes',words:['קסטרו','h&m','זארה','fox','גולף','קפיטל','שטראוס','ביגוד','נעליים','bershka','pull','mango','adika','terminal','כותנה']},
+  {cat:'edu',words:['גן','צהרון','חינוך','בית ספר','אוניברסיטה','מכללה','ספרים','קורס','לימוד','ulpan']},
+  {cat:'bills',words:['חשמל','מים','גז','ועד','ארנונה','בזק','hot','yes','012','cellcom','partner','orange','מנוי','בניין']},
+  {cat:'fun',words:['קולנוע','סינמה','בידור','אמאזון','netflix','spotify','disney','apple','google play','steam','בילוי','פארק','אטרקציה','קונצרט','תיאטרון']},
+  {cat:'rent',words:['שכירות','שכ"ד','משכנתא','שכד','דירה']},
+  {cat:'kids',words:['ילדים','צעצוע','toys','baby','תינוק','ממבו','ksp','kiddo']}
+];
+
+// ─── INIT ───
+setTimeout(function(){var s=document.getElementById('splash');if(s&&s.style.display!=='none'){s.style.display='none';document.getElementById('loginScreen').style.display='flex';}},3000);
+
+function doLogin(){
+  var n=document.getElementById('loginName').value.trim();
+  if(!n)return;
+  ME={uid:'user_'+n.replace(/\s+/g,'_').toLowerCase(),name:n};
+  localStorage.setItem('bud_uid',ME.uid);
+  localStorage.setItem('bud_name',n);
+  startApp();
+}
+document.getElementById('loginName').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('splash').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('hdrDot').textContent=ME.name.charAt(0).toUpperCase();
+  document.getElementById('hdrUser').textContent=ME.name;
+  var now=new Date();
+  var days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var mons=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  document.getElementById('hdrDate').textContent='יום '+days[now.getDay()]+', '+now.getDate()+' '+mons[now.getMonth()]+' '+now.getFullYear();
+  var p1=localStorage.getItem('bud_p1name'),p2=localStorage.getItem('bud_p2name');
+  if(p1)NAMES.p1=p1;if(p2)NAMES.p2=p2;
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){TAB=+this.dataset.tab;document.querySelectorAll('.nav-btn').forEach(function(x){x.classList.remove('active');});this.classList.add('active');render();});
+  });
+  subscribe();
+}
+
+(function(){
+  var uid=localStorage.getItem('bud_uid'),name=localStorage.getItem('bud_name');
+  if(uid&&name){ME={uid:uid,name:name};setTimeout(function(){document.getElementById('splash').style.display='none';startApp();},800);}
+  else{setTimeout(function(){document.getElementById('splash').style.display='none';document.getElementById('loginScreen').style.display='flex';},1200);}
+})();
+
+// ─── SUBSCRIBE ───
+function subscribe(){
+  if(!db){render();return;}
+  db.collection('bud_income').onSnapshot(function(s){INCOME=[];s.forEach(function(d){INCOME.push(Object.assign({id:d.id},d.data()));});INCOME.sort(function(a,b){return b.date.localeCompare(a.date);});render();});
+  db.collection('bud_expenses').onSnapshot(function(s){EXPENSES=[];s.forEach(function(d){EXPENSES.push(Object.assign({id:d.id},d.data()));});EXPENSES.sort(function(a,b){return b.date.localeCompare(a.date);});render();});
+  db.collection('bud_fixed').onSnapshot(function(s){FIXED=[];s.forEach(function(d){FIXED.push(Object.assign({id:d.id},d.data()));});FIXED.sort(function(a,b){return (a.day||1)-(b.day||1);});render();});
+  db.collection('bud_installments').onSnapshot(function(s){INSTS=[];s.forEach(function(d){INSTS.push(Object.assign({id:d.id},d.data()));});render();});
+  db.collection('bud_settings').doc('names').get().then(function(doc){if(doc.exists){var d=doc.data();if(d.p1){NAMES.p1=d.p1;localStorage.setItem('bud_p1name',d.p1);}if(d.p2){NAMES.p2=d.p2;localStorage.setItem('bud_p2name',d.p2);}render();}});
+}
+
+// ─── RENDER ───
+function render(){
+  var c=document.getElementById('mainContent');if(!c)return;
+  if(TAB===0)renderDash(c);
+  else if(TAB===1)renderIncome(c);
+  else if(TAB===2)renderExpenses(c);
+  else renderCharts(c);
+}
+
+// ─── HELPERS ───
+function today(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+function thisMonth(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1);}
+function thisYear(){return new Date().getFullYear()+'';}
+function p2(n){return n<10?'0'+n:''+n;}
+function fmtD(ds){var d=new Date(ds+'T12:00:00');var m=['ינו','פבר','מרץ','אפר','מאי','יונ','יול','אוג','ספט','אוק','נוב','דצמ'];return d.getDate()+' '+m[d.getMonth()];}
+function fmtM(ym){var p=ym.split('-');var m=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];return m[+p[1]-1]+' '+p[0];}
+function fmtA(n){return '₪'+Math.abs(n).toLocaleString('he-IL',{maximumFractionDigits:0});}
+function ymDiff(a,b){var x=a.split('-'),y=b.split('-');return (+y[0]-+x[0])*12+(+y[1]-+x[1]);}
+function addM(ym,n){var p=ym.split('-');var d=new Date(+p[0],+p[1]-1+n,1);return d.getFullYear()+'-'+p2(d.getMonth()+1);}
+function inPeriod(ds,period){if(period==='day')return ds===today();if(period==='month')return ds.startsWith(thisMonth());if(period==='year')return ds.startsWith(thisYear());return true;}
+function matchWho(e,pf){if(pf==='all')return true;var w=e.who||'';if(pf==='p1')return w===NAMES.p1||w==='p1';if(pf==='p2')return w===NAMES.p2||w==='p2';return true;}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ─── CALC P&L ───
+function calcPL(period){
+  var inc=INCOME.filter(function(x){return inPeriod(x.date,period);}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  var exp=EXPENSES.filter(function(x){return inPeriod(x.date,period);}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  var fx=0,curYM=thisMonth();
+  var actFx=FIXED.filter(function(f){return f.active!==false;});
+  if(period==='month')actFx.forEach(function(f){fx+=(+f.amount||0);});
+  else if(period==='year')actFx.forEach(function(f){fx+=(+f.amount||0)*12;});
+  var ins=0;
+  INSTS.forEach(function(inst){
+    if(!inst.startYM||!inst.n)return;
+    var d=ymDiff(inst.startYM,curYM);
+    if(d<0||d>=inst.n)return;
+    var ma=+(inst.amountPer)||0;
+    if(period==='month')ins+=ma;
+    else if(period==='year'){var yr=+thisYear(),ac=0;for(var m=1;m<=12;m++){var ym2=yr+'-'+p2(m);var dd=ymDiff(inst.startYM,ym2);if(dd>=0&&dd<inst.n)ac++;}ins+=ma*ac;}
+  });
+  var totExp=exp+fx+ins;
+  return {inc:inc,exp:exp,fx:fx,ins:ins,totExp:totExp,bal:inc-totExp};
+}
+
+// ─── DASHBOARD ───
+function renderDash(c){
+  var pl=calcPL(PERIOD);
+  var balCls=pl.bal>=0?'var(--green)':'var(--red)';
+  var html='';
+  html+='<div class="seg-bar"><button class="seg-btn'+(PERIOD==='day'?' active':'')+'" onclick="setPeriod(\'day\')">היום</button><button class="seg-btn'+(PERIOD==='month'?' active':'')+'" onclick="setPeriod(\'month\')">חודש</button><button class="seg-btn'+(PERIOD==='year'?' active':'')+'" onclick="setPeriod(\'year\')">שנה</button></div>';
+  html+='<div style="font-size:.76rem;color:var(--label3);font-weight:600;margin-bottom:10px;text-align:center">'+getPLabel(PERIOD)+'</div>';
+  // KPIs
+  html+='<div class="kpi-grid">';
+  html+='<div class="kpi g"><div class="kpi-ico">📈</div><div class="kpi-val" style="color:var(--green)">'+fmtA(pl.inc)+'</div><div class="kpi-lbl">הכנסות</div></div>';
+  html+='<div class="kpi r"><div class="kpi-ico">📉</div><div class="kpi-val" style="color:var(--red)">'+fmtA(pl.totExp)+'</div><div class="kpi-lbl">הוצאות</div></div>';
+  html+='<div class="kpi b full"><div style="display:flex;align-items:center;justify-content:space-between">';
+  html+='<div><div class="kpi-ico">'+(pl.bal>=0?'✅':'⚠️')+'</div><div class="kpi-val" style="color:'+balCls+'">'+fmtA(pl.bal)+'</div><div class="kpi-lbl">'+(pl.bal>=0?'עודף 🎉':'גירעון — שים לב')+'</div></div>';
+  html+='<div style="font-size:.74rem;color:var(--label3);text-align:left;line-height:1.8">';
+  if(pl.fx>0&&PERIOD!=='day')html+='קבועות: '+fmtA(pl.fx)+'<br>';
+  if(pl.ins>0&&PERIOD!=='day')html+='תשלומים: '+fmtA(pl.ins)+'<br>';
+  if(pl.exp>0)html+='שוטפות: '+fmtA(pl.exp);
+  html+='</div></div></div>';
+  html+='</div>';
+
+  // Person split
+  var p1i=INCOME.filter(function(x){return inPeriod(x.date,PERIOD)&&matchWho(x,'p1');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  var p2i=INCOME.filter(function(x){return inPeriod(x.date,PERIOD)&&matchWho(x,'p2');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  if(p1i+p2i>0){
+    html+='<div class="card"><div class="card-ttl">הכנסות לפי אדם</div><div style="display:flex;gap:10px">';
+    html+='<div style="flex:1;background:var(--green-bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:.76rem;font-weight:700;color:var(--label2);margin-bottom:4px">'+esc(NAMES.p1)+'</div><div style="font-size:1.1rem;font-weight:800;color:var(--green)">'+fmtA(p1i)+'</div></div>';
+    html+='<div style="flex:1;background:var(--blue-bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:.76rem;font-weight:700;color:var(--label2);margin-bottom:4px">'+esc(NAMES.p2)+'</div><div style="font-size:1.1rem;font-weight:800;color:var(--blue)">'+fmtA(p2i)+'</div></div>';
+    html+='</div></div>';
+  }
+
+  // Expense category breakdown
+  var expF=EXPENSES.filter(function(x){return inPeriod(x.date,PERIOD);});
+  if(expF.length>0){
+    var byCat={};
+    expF.forEach(function(x){var k=x.cat||'other_ex';byCat[k]=(byCat[k]||0)+(+x.amount||0);});
+    var mx=Math.max.apply(null,Object.values(byCat));
+    var sorted=Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a];});
+    html+='<div class="card"><div class="card-ttl">פירוט הוצאות</div>';
+    sorted.forEach(function(cid){
+      var cat=EXP_CATS.find(function(c){return c.id===cid;})||EXP_CATS[EXP_CATS.length-1];
+      var pct=mx>0?Math.round((byCat[cid]/mx)*100):0;
+      html+='<div class="hbar-row"><div class="hbar-ico">'+cat.ico+'</div><div class="hbar-lbl">'+cat.label+'</div><div class="hbar-bg"><div class="hbar-fill" style="width:'+pct+'%;background:'+cat.c+'"></div></div><div class="hbar-amt exp-c">'+fmtA(byCat[cid])+'</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // Recent transactions
+  var all=[];
+  INCOME.filter(function(x){return inPeriod(x.date,PERIOD);}).forEach(function(x){all.push({t:'i',d:x});});
+  EXPENSES.filter(function(x){return inPeriod(x.date,PERIOD);}).forEach(function(x){all.push({t:'e',d:x});});
+  all.sort(function(a,b){return b.d.date.localeCompare(a.d.date)||(b.d.createdAt||0)-(a.d.createdAt||0);});
+  if(all.length>0){
+    html+='<div class="sec-hdr"><span class="sec-ttl">תנועות אחרונות</span><span style="font-size:.74rem;color:var(--label3)">'+all.length+' פעולות</span></div>';
+    html+='<div class="elist">';
+    all.slice(0,15).forEach(function(e){
+      var cats=e.t==='i'?INC_CATS:EXP_CATS;
+      var cat=cats.find(function(c){return c.id===e.d.cat;})||cats[cats.length-1];
+      html+='<div class="eitem" onclick="openEditEntry(\''+e.t+'\',\''+e.d.id+'\')">'+
+        '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
+        '<div class="ebody"><div class="edesc">'+esc(e.d.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.d.date)+' · '+cat.label+' · '+esc(e.d.who||'')+payBadge(e.d.payMethod)+'</div></div>'+
+        '<div class="eamt '+(e.t==='i'?'inc-c':'exp-c')+'">'+(e.t==='i'?'+':'-')+fmtA(e.d.amount)+'</div></div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="empty"><div class="empty-ico">📋</div><div style="font-size:.86rem">אין תנועות ב'+getPLabel(PERIOD)+'</div></div>';
+  }
+  c.innerHTML=html;
+}
+function setPeriod(p){PERIOD=p;render();}
+function getPLabel(p){if(p==='day')return 'היום, '+fmtD(today());if(p==='month')return fmtM(thisMonth());return 'שנת '+thisYear();}
+
+// ─── INCOME TAB ───
+function renderIncome(c){
+  var html='';
+  // Month navigator
+  html+='<div class="month-nav">'+
+    '<button class="month-nav-btn" onclick="prevMonth()">›</button>'+
+    '<span class="month-nav-lbl">'+fmtM(viewYM)+'</span>'+
+    '<button class="month-nav-btn" onclick="nextMonth()">‹</button>'+
+  '</div>';
+  // Person tabs
+  html+='<div class="person-bar">'+
+    '<div class="person-tabs">'+
+      '<button class="person-tab'+(incPerson==='all'?' active':'')+'" onclick="setIncPerson(\'all\')">הכולם</button>'+
+      '<button class="person-tab'+(incPerson==='p1'?' active':'')+'" onclick="setIncPerson(\'p1\')">'+esc(NAMES.p1)+'</button>'+
+      '<button class="person-tab'+(incPerson==='p2'?' active':'')+'" onclick="setIncPerson(\'p2\')">'+esc(NAMES.p2)+'</button>'+
+    '</div>'+
+    '<button class="icon-btn" onclick="openNamesModal()">✏️</button>'+
+  '</div>';
+
+  // Filter by period entries
+  var inMonth=INCOME.filter(function(x){return x.date.startsWith(viewYM)&&matchWho(x,incPerson);});
+  var total=inMonth.reduce(function(s,x){return s+(+x.amount||0);},0);
+
+  // Per-person totals for this month
+  var t1=INCOME.filter(function(x){return x.date.startsWith(viewYM)&&matchWho(x,'p1');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  var t2=INCOME.filter(function(x){return x.date.startsWith(viewYM)&&matchWho(x,'p2');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+
+  if(incPerson==='all'&&(t1>0||t2>0)){
+    html+='<div style="display:flex;gap:8px;margin-bottom:12px">';
+    html+='<div style="flex:1;background:var(--green-bg);border-radius:10px;padding:10px;text-align:center;cursor:pointer" onclick="setIncPerson(\'p1\')"><div style="font-size:.74rem;font-weight:700;color:var(--label2)">'+esc(NAMES.p1)+'</div><div style="font-size:1rem;font-weight:800;color:var(--green);margin-top:3px">'+fmtA(t1)+'</div></div>';
+    html+='<div style="flex:1;background:var(--blue-bg);border-radius:10px;padding:10px;text-align:center;cursor:pointer" onclick="setIncPerson(\'p2\')"><div style="font-size:.74rem;font-weight:700;color:var(--label2)">'+esc(NAMES.p2)+'</div><div style="font-size:1rem;font-weight:800;color:var(--blue);margin-top:3px">'+fmtA(t2)+'</div></div>';
+    html+='</div>';
+  }
+
+  html+='<div class="sec-hdr"><span class="sec-ttl">💚 '+(incPerson==='all'?'כל ההכנסות':incPerson==='p1'?NAMES.p1:NAMES.p2)+' — '+fmtM(viewYM)+'</span>';
+  if(total>0)html+='<span style="color:var(--green);font-weight:700">+'+fmtA(total)+'</span>';
+  html+='</div>';
+  html+='<button class="add-btn" style="width:100%;padding:10px;justify-content:center;margin-bottom:12px;display:flex" onclick="openAddInc()">+ הוסף הכנסה</button>';
+
+  if(inMonth.length===0){
+    html+='<div class="empty"><div class="empty-ico">💚</div><div style="font-size:.86rem">אין הכנסות ב'+fmtM(viewYM)+'</div></div>';
+  } else {
+    html+='<div class="elist">';
+    inMonth.forEach(function(e){
+      var cat=INC_CATS.find(function(c){return c.id===e.cat;})||INC_CATS[INC_CATS.length-1];
+      html+='<div class="eitem" onclick="openEditEntry(\'i\',\''+e.id+'\')">'+
+        '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
+        '<div class="ebody"><div class="edesc">'+esc(e.desc||cat.label)+'</div><div class="emeta">'+fmtD(e.date)+' · '+cat.label+' · '+esc(e.who||'')+payBadge(e.payMethod)+'</div></div>'+
+        '<div class="eamt inc-c">+'+fmtA(e.amount)+'</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // Show history button: last 3 months summary
+  html+='<div class="card" style="margin-top:8px"><div class="card-ttl">היסטוריה — חודשים קודמים</div>';
+  var shown=0;
+  for(var i=1;i<=6&&shown<4;i++){
+    var ym=addM(thisMonth(),-i);
+    var ytotal=INCOME.filter(function(x){return x.date.startsWith(ym)&&matchWho(x,incPerson);}).reduce(function(s,x){return s+(+x.amount||0);},0);
+    if(ytotal>0||i<=2){
+      html+='<div class="cf-row" style="cursor:pointer" onclick="viewYM=\''+ym+'\';render()">'+
+        '<div><div class="cf-lbl">'+fmtM(ym)+'</div></div>'+
+        '<div class="cf-amt inc-c">+'+fmtA(ytotal)+'</div></div>';
+      shown++;
+    }
+  }
+  html+='</div>';
+  c.innerHTML=html;
+}
+function setIncPerson(v){incPerson=v;render();}
+function prevMonth(){viewYM=addM(viewYM,-1);render();}
+function nextMonth(){var n=addM(viewYM,1);if(n<=thisMonth()){viewYM=n;render();}}
+
+// ─── EXPENSES TAB ───
+function renderExpenses(c){
+  var curYM2=thisMonth();
+  // Summary bar for this month
+  var monthExp=EXPENSES.filter(function(x){return x.date.startsWith(viewYM);});
+  var monthTotal=monthExp.reduce(function(s,x){return s+(+x.amount||0);},0);
+  var fxTotal=FIXED.filter(function(f){return f.active!==false;}).reduce(function(s,f){return s+(+f.amount||0);},0);
+  var insTotal=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=0&&d<x.n;}).reduce(function(s,x){return s+(+x.amountPer||0);},0);
+
+  var html='';
+
+  // Top action bar
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<button class="month-nav-btn" style="background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:8px 12px" onclick="prevMonth()">›</button>'+
+    '<div style="flex:1;text-align:center;font-weight:800;font-size:.95rem">'+fmtM(viewYM)+'</div>'+
+    '<button class="month-nav-btn" style="background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:8px 12px" onclick="nextMonth()">‹</button>'+
+  '</div>';
+
+  // Summary strip
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--red)" onclick="setExpCat(\'all\');setExpType(\'variable\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">משתנות</div><div style="font-weight:800;color:var(--red);font-size:.95rem">'+fmtA(monthTotal)+'</div></div>';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--gold)" onclick="setExpType(\'fixed\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">קבועות</div><div style="font-weight:800;color:var(--gold);font-size:.95rem">'+fmtA(fxTotal)+'</div></div>';
+  html+='<div style="background:var(--card);border-radius:12px;padding:10px;text-align:center;box-shadow:var(--shadow);cursor:pointer;border-top:3px solid var(--blue)" onclick="setExpType(\'installment\')"><div style="font-size:.68rem;color:var(--label3);font-weight:600">תשלומים</div><div style="font-weight:800;color:var(--blue);font-size:.95rem">'+fmtA(insTotal)+'</div></div>';
+  html+='</div>';
+
+  // Add expense button
+  html+='<button class="add-btn" style="width:100%;padding:12px;justify-content:center;display:flex;font-size:.88rem;background:var(--red);margin-bottom:14px;border-radius:12px" onclick="openAddExp()">＋ הוסף הוצאה</button>';
+
+  // Type tabs
+  html+='<div class="seg-bar" style="margin-bottom:10px">'+
+    '<button class="seg-btn'+(expType==='variable'||expType==='all'?' active':'')+'" onclick="setExpType(\'variable\')">🛒 שוטפות</button>'+
+    '<button class="seg-btn'+(expType==='fixed'?' active':'')+'" onclick="setExpType(\'fixed\')">📌 קבועות</button>'+
+    '<button class="seg-btn'+(expType==='installment'?' active':'')+'" onclick="setExpType(\'installment\')">💳 תשלומים</button>'+
+  '</div>';
+
+  // ── VARIABLE ──
+  if(expType==='variable'||expType==='all'){
+    // Category chips
+    var usedCats=Array.from(new Set(EXPENSES.filter(function(x){return x.date.startsWith(viewYM);}).map(function(x){return x.cat||'other_ex';})));
+    if(usedCats.length>1){
+      html+='<div class="chips">';
+      html+='<div class="chip'+(expCat==='all'?' on':'')+'" onclick="setExpCat(\'all\')">הכול</div>';
+      EXP_CATS.filter(function(c){return usedCats.indexOf(c.id)>=0;}).forEach(function(cat){
+        html+='<div class="chip'+(expCat===cat.id?' on':'')+'" onclick="setExpCat(\''+cat.id+'\')">'+cat.ico+' '+cat.label+'</div>';
+      });
+      html+='</div>';
+    }
+
+    var varExp=EXPENSES.filter(function(x){return x.date.startsWith(viewYM)&&(expCat==='all'||x.cat===expCat);});
+    if(varExp.length===0){
+      html+='<div class="empty"><div class="empty-ico">🛒</div><div style="font-size:.84rem">אין הוצאות'+(expCat!=='all'?' בקטגוריה זו':'')+' ב'+fmtM(viewYM)+'</div></div>';
+    } else {
+      // Group by date
+      var byDate={};
+      varExp.forEach(function(x){var d=x.date;if(!byDate[d])byDate[d]=[];byDate[d].push(x);});
+      Object.keys(byDate).sort().reverse().forEach(function(dt){
+        var dayTotal=byDate[dt].reduce(function(s,x){return s+(+x.amount||0);},0);
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px 4px;margin-top:6px"><span style="font-size:.78rem;font-weight:700;color:var(--label2)">'+fmtD(dt)+'</span><span style="font-size:.76rem;color:var(--red);font-weight:600">-'+fmtA(dayTotal)+'</span></div>';
+        html+='<div class="elist">';
+        byDate[dt].forEach(function(e){
+          var cat=EXP_CATS.find(function(c){return c.id===e.cat;})||EXP_CATS[EXP_CATS.length-1];
+          var pay=PAY_METHODS.find(function(p){return p.id===e.payMethod;});
+          var storeName=e.store||e.desc||cat.label;
+          html+='<div class="eitem" onclick="openEditEntry(\'e\',\''+e.id+'\')">'+
+            '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
+            '<div class="ebody">'+
+              '<div class="edesc">'+esc(storeName)+'</div>'+
+              '<div class="emeta">'+cat.label+(pay?' · '+pay.ico+' '+pay.label:'')+'</div>'+
+            '</div>'+
+            '<div class="eamt exp-c">-'+fmtA(e.amount)+'</div>'+
+          '</div>';
+        });
+        html+='</div>';
+      });
+    }
+  }
+
+  // ── FIXED ──
+  if(expType==='fixed'){
+    html+='<div class="sec-hdr"><span class="sec-ttl">📌 הוצאות קבועות</span><button class="add-btn red" onclick="openAddFixed()">+ הוסף</button></div>';
+    if(FIXED.length===0){
+      html+='<div class="empty"><div class="empty-ico">📌</div><div style="font-size:.84rem">אין הוצאות קבועות</div></div>';
+    } else {
+      html+='<div class="elist">';
+      FIXED.forEach(function(f){
+        var cat=EXP_CATS.find(function(c){return c.id===f.cat;})||EXP_CATS[EXP_CATS.length-1];
+        var isOn=f.active!==false;
+        html+='<div class="fitem" onclick="openEditFixed(\''+f.id+'\')">'+
+          '<div class="fday">'+p2(f.day||1)+'</div>'+
+          '<div class="eico" style="background:'+cat.bg+';color:'+cat.c+'">'+cat.ico+'</div>'+
+          '<div class="ebody"><div class="edesc">'+esc(f.name||'')+'</div><div class="emeta">'+cat.label+' · יום '+p2(f.day||1)+' לחודש</div></div>'+
+          '<div style="font-weight:700;font-size:.92rem;margin-left:8px;color:'+(isOn?'var(--red)':'var(--label3)')+'">'+fmtA(f.amount)+'</div>'+
+          '<div class="tog'+(isOn?' on':'')+'" onclick="event.stopPropagation();togFixed(\''+f.id+'\','+isOn+')"></div>'+
+        '</div>';
+      });
+      html+='</div>';
+    }
+  }
+
+  // ── INSTALLMENTS ──
+  if(expType==='installment'){
+    html+='<div class="sec-hdr"><span class="sec-ttl">💳 תשלומים</span><button class="add-btn" onclick="openAddInst()">+ הוסף</button></div>';
+    if(INSTS.length===0){
+      html+='<div class="empty"><div class="empty-ico">💳</div><div style="font-size:.84rem">אין תשלומים</div></div>';
+    } else {
+      var activeInsts=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=0&&d<x.n;});
+      var doneInsts=INSTS.filter(function(x){var d=ymDiff(x.startYM,curYM2);return d>=x.n;});
+      if(activeInsts.length>0){
+        activeInsts.forEach(function(inst){html+=renderInstCard(inst,curYM2);});
+      }
+      if(doneInsts.length>0){
+        html+='<div style="font-size:.8rem;font-weight:700;color:var(--label3);margin:12px 0 6px">הסתיים</div>';
+        doneInsts.forEach(function(inst){html+=renderInstCard(inst,curYM2);});
+      }
+    }
+  }
+
+  c.innerHTML=html;
+}
+function renderInstCard(inst,curYM2){
+  var d=ymDiff(inst.startYM,curYM2);
+  var paid=Math.min(Math.max(0,d),inst.n);
+  var isDone=paid>=inst.n;
+  var pct=Math.round((paid/inst.n)*100);
+  return '<div class="inst-card" onclick="openEditInst(\''+inst.id+'\')">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+      '<div><div style="font-weight:700;font-size:.9rem">'+esc(inst.name||'')+'</div>'+
+      '<div style="font-size:.7rem;color:var(--label3);margin-top:2px">'+fmtM(inst.startYM)+' — '+fmtM(addM(inst.startYM,inst.n-1))+'</div></div>'+
+      '<div style="text-align:left"><div style="font-weight:700;color:'+(isDone?'var(--green)':'var(--blue)')+'">'+fmtA(inst.amountPer)+'/חודש</div>'+
+      '<div style="font-size:.68rem;color:var(--label3)">'+paid+'/'+inst.n+' שולם · '+pct+'%</div></div>'+
+    '</div>'+
+    '<div class="prog-bar"><div class="prog-fill '+(isDone?'done':'act')+'" style="width:'+pct+'%"></div></div>'+
+    '<div style="font-size:.68rem;color:var(--label3);margin-top:4px;text-align:left">נשאר '+fmtA((inst.n-paid)*(+inst.amountPer||0))+'</div>'+
+  '</div>';
+}
+function setExpType(v){expType=v;render();}
+function setExpCat(v){expCat=v;render();}
+function togFixed(id,cur){if(!db)return;db.collection('bud_fixed').doc(id).update({active:!cur});}
+
+// ─── CHARTS TAB ───
+function renderCharts(c){
+  var html='';
+  html+='<div class="seg-bar"><button class="seg-btn'+(PERIOD==='month'?' active':'')+'" onclick="setPeriod(\'month\')">חודש</button><button class="seg-btn'+(PERIOD==='year'?' active':'')+'" onclick="setPeriod(\'year\')">שנה</button></div>';
+
+  // Cash flow table
+  var pl=calcPL(PERIOD);
+  html+='<div class="card"><div class="card-ttl">תזרים — '+getPLabel(PERIOD)+'</div>';
+  html+='<div class="cf-row"><div><div class="cf-lbl">💚 הכנסות</div></div><div class="cf-amt inc-c">+'+fmtA(pl.inc)+'</div></div>';
+  html+='<div class="cf-row"><div><div class="cf-lbl">🛒 הוצאות שוטפות</div></div><div class="cf-amt exp-c">-'+fmtA(pl.exp)+'</div></div>';
+  if(pl.fx>0)html+='<div class="cf-row"><div><div class="cf-lbl">📌 קבועות</div></div><div class="cf-amt exp-c">-'+fmtA(pl.fx)+'</div></div>';
+  if(pl.ins>0)html+='<div class="cf-row"><div><div class="cf-lbl">💳 תשלומים</div></div><div class="cf-amt exp-c">-'+fmtA(pl.ins)+'</div></div>';
+  html+='<div class="cf-row" style="border-top:2px solid var(--sep);margin-top:4px;padding-top:12px"><div><div class="cf-lbl" style="font-size:.9rem;font-weight:800">'+(pl.bal>=0?'✅ עודף':'⚠️ גירעון')+'</div></div><div class="cf-amt" style="font-size:1.05rem;color:'+(pl.bal>=0?'var(--green)':'var(--red)')+'">'+fmtA(pl.bal)+'</div></div>';
+  html+='</div>';
+
+  // Expense category breakdown
+  var expF=EXPENSES.filter(function(x){return inPeriod(x.date,PERIOD);});
+  if(expF.length>0){
+    var byCat={};
+    expF.forEach(function(x){var k=x.cat||'other_ex';byCat[k]=(byCat[k]||0)+(+x.amount||0);});
+    var mx=Math.max.apply(null,Object.values(byCat));
+    var sorted=Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a];});
+    html+='<div class="card"><div class="card-ttl">הוצאות לפי קטגוריה</div>';
+    sorted.forEach(function(cid){
+      var cat=EXP_CATS.find(function(c){return c.id===cid;})||EXP_CATS[EXP_CATS.length-1];
+      var pct=mx>0?Math.round((byCat[cid]/mx)*100):0;
+      html+='<div class="hbar-row"><div class="hbar-ico">'+cat.ico+'</div><div class="hbar-lbl">'+cat.label+'</div><div class="hbar-bg"><div class="hbar-fill" style="width:'+pct+'%;background:'+cat.c+'"></div></div><div class="hbar-amt exp-c">'+fmtA(byCat[cid])+'</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // Income category breakdown
+  var incF=INCOME.filter(function(x){return inPeriod(x.date,PERIOD);});
+  if(incF.length>0){
+    var byCatI={};
+    incF.forEach(function(x){var k=x.cat||'other_in';byCatI[k]=(byCatI[k]||0)+(+x.amount||0);});
+    var mxI=Math.max.apply(null,Object.values(byCatI));
+    var sortedI=Object.keys(byCatI).sort(function(a,b){return byCatI[b]-byCatI[a];});
+    html+='<div class="card"><div class="card-ttl">הכנסות לפי קטגוריה</div>';
+    sortedI.forEach(function(cid){
+      var cat=INC_CATS.find(function(c){return c.id===cid;})||INC_CATS[INC_CATS.length-1];
+      var pct=mxI>0?Math.round((byCatI[cid]/mxI)*100):0;
+      html+='<div class="hbar-row"><div class="hbar-ico">'+cat.ico+'</div><div class="hbar-lbl">'+cat.label+'</div><div class="hbar-bg"><div class="hbar-fill" style="width:'+pct+'%;background:'+cat.c+'"></div></div><div class="hbar-amt inc-c">'+fmtA(byCatI[cid])+'</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // Person comparison
+  var p1i=INCOME.filter(function(x){return inPeriod(x.date,PERIOD)&&matchWho(x,'p1');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  var p2i=INCOME.filter(function(x){return inPeriod(x.date,PERIOD)&&matchWho(x,'p2');}).reduce(function(s,x){return s+(+x.amount||0);},0);
+  if(p1i+p2i>0){
+    html+='<div class="card"><div class="card-ttl">השוואת הכנסות</div>';
+    var pmx=Math.max(p1i,p2i);
+    html+='<div class="hbar-row"><div class="hbar-ico">👤</div><div class="hbar-lbl">'+esc(NAMES.p1)+'</div><div class="hbar-bg"><div class="hbar-fill" style="width:'+Math.round((p1i/pmx)*100)+'%;background:var(--green)"></div></div><div class="hbar-amt inc-c">'+fmtA(p1i)+'</div></div>';
+    html+='<div class="hbar-row"><div class="hbar-ico">👤</div><div class="hbar-lbl">'+esc(NAMES.p2)+'</div><div class="hbar-bg"><div class="hbar-fill" style="width:'+Math.round((p2i/pmx)*100)+'%;background:var(--blue)"></div></div><div class="hbar-amt" style="color:var(--blue)">'+fmtA(p2i)+'</div></div>';
+    html+='</div>';
+  }
+
+  // Year bar chart
+  if(PERIOD==='year'){html+=renderYearChart();}
+
+  c.innerHTML=html;
+}
+
+function renderYearChart(){
+  var months=['ינו','פבר','מרץ','אפר','מאי','יונ','יול','אוג','ספט','אוק','נוב','דצמ'];
+  var yr=+thisYear(),mx=0;
+  var data=months.map(function(_,i){
+    var ym=yr+'-'+p2(i+1);
+    var inc=INCOME.filter(function(x){return x.date.startsWith(ym);}).reduce(function(s,x){return s+(+x.amount||0);},0);
+    var exp=EXPENSES.filter(function(x){return x.date.startsWith(ym);}).reduce(function(s,x){return s+(+x.amount||0);},0);
+    var fx=FIXED.filter(function(f){return f.active!==false;}).reduce(function(s,f){return s+(+f.amount||0);},0);
+    var ins=0;INSTS.forEach(function(inst){if(!inst.startYM||!inst.n)return;var d=ymDiff(inst.startYM,ym);if(d>=0&&d<inst.n)ins+=(+inst.amountPer||0);});
+    var te=exp+fx+ins;mx=Math.max(mx,inc,te);
+    return {inc:inc,exp:te,lbl:months[i]};
+  });
+  if(!mx)return '';
+  var html='<div class="card"><div class="card-ttl">גרף שנתי</div><div class="bar-chart">';
+  data.forEach(function(d){
+    html+='<div class="bar-col"><div class="bar-wrap"><div class="bar gi" style="height:'+Math.round((d.inc/mx)*80)+'px"></div><div class="bar re" style="height:'+Math.round((d.exp/mx)*80)+'px"></div></div><div class="bar-lbl">'+d.lbl+'</div></div>';
+  });
+  html+='</div><div style="display:flex;gap:12px;margin-top:8px;font-size:.72rem;font-weight:600"><span style="color:var(--green)">■ הכנסות</span><span style="color:var(--red)">■ הוצאות</span></div></div>';
+  return html;
+}
+
+// ─── NAMES MODAL ───
+function openNamesModal(){document.getElementById('np1').value=NAMES.p1;document.getElementById('np2').value=NAMES.p2;om('mNames');}
+function saveNames(){
+  var p1=document.getElementById('np1').value.trim()||'ניר';
+  var p2=document.getElementById('np2').value.trim()||'דין';
+  NAMES={p1:p1,p2:p2};
+  localStorage.setItem('bud_p1name',p1);localStorage.setItem('bud_p2name',p2);
+  if(db)db.collection('bud_settings').doc('names').set({p1:p1,p2:p2});
+  cm('mNames');toast('שמות עודכנו ✓');render();
+}
+
+// ─── CAT PILLS ───
+function buildPills(cid,cats,sel,onsel){
+  var el=document.getElementById(cid);if(!el)return;el.innerHTML='';
+  cats.forEach(function(cat){
+    var p=document.createElement('div');p.className='cpill'+(cat.id===sel?' sel':'');
+    p.innerHTML=(cat.ico||'')+' '+(cat.label||cat.id);
+    p.onclick=function(){onsel(cat.id);el.querySelectorAll('.cpill').forEach(function(x){x.classList.remove('sel');});p.classList.add('sel');};
+    el.appendChild(p);
+  });
+}
+function buildWhoPills(cid,sel,onsel){
+  buildPills(cid,[{id:'p1',label:NAMES.p1,ico:'👤'},{id:'p2',label:NAMES.p2,ico:'👤'}],sel,onsel);
+}
+function buildPayPills(cid,sel,onsel){buildPills(cid,PAY_METHODS,sel,onsel);}
+function autoDetectCat(val){
+  if(!val){return;}
+  var lower=val.toLowerCase();
+  for(var i=0;i<STORE_RULES.length;i++){
+    var rule=STORE_RULES[i];
+    for(var j=0;j<rule.words.length;j++){
+      if(lower.indexOf(rule.words[j].toLowerCase())>=0){
+        selExpCat=rule.cat;
+        buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+        var cat=EXP_CATS.find(function(c){return c.id===rule.cat;});
+        var hint=document.getElementById('eCatHint');
+        if(hint&&cat)hint.textContent='— זוהה אוטומטית: '+cat.ico+' '+cat.label;
+        return;
+      }
+    }
+  }
+  var hint=document.getElementById('eCatHint');
+  if(hint)hint.textContent='';
+}
+
+// ─── OPEN MODALS ───
+function openAddInc(){
+  editId=null;
+  document.getElementById('mIncTtl').textContent='➕ הכנסה חדשה';
+  document.getElementById('iDesc').value='';document.getElementById('iAmt').value='';document.getElementById('iDate').value=today();
+  selIncCat='salary';selIncWho=incPerson==='p2'?'p2':'p1';selIncPay='cash';
+  buildWhoPills('iWhoPills',selIncWho,function(v){selIncWho=v;});
+  buildPayPills('iPayPills',selIncPay,function(v){selIncPay=v;});
+  buildPills('iCatPills',INC_CATS,selIncCat,function(v){selIncCat=v;});
+  document.getElementById('iBtns').innerHTML='<button class="bp" onclick="saveInc()">שמור</button>';
+  om('mInc');
+}
+function openAddExp(){
+  editId=null;
+  document.getElementById('mExpTtl').textContent='➕ הוצאה חדשה';
+  document.getElementById('eStore').value='';document.getElementById('eAmt').value='';document.getElementById('eDate').value=today();document.getElementById('eCatHint').textContent='';
+  selExpCat='food';selExpPay='credit';
+  buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+  buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
+  document.getElementById('eBtns').innerHTML='<button class="bp bd" onclick="saveExp()">שמור</button>';
+  om('mExp');
+}
+function openAddInst(){
+  editId=null;
+  document.getElementById('mInstTtl').textContent='💳 רכישה בתשלומים';
+  document.getElementById('inName').value='';document.getElementById('inTotal').value='';document.getElementById('inN').value='';document.getElementById('inStart').value=thisMonth();
+  document.getElementById('inPrev').style.display='none';
+  document.getElementById('inBtns').innerHTML='<button class="bp" onclick="saveInst()">שמור</button>';
+  om('mInst');
+}
+function openAddFixed(){
+  editId=null;
+  document.getElementById('mFixedTtl').textContent='📌 הוצאה קבועה חדשה';
+  document.getElementById('fxName').value='';document.getElementById('fxAmt').value='';document.getElementById('fxDay').value='1';
+  selFixCat='bills';
+  buildPills('fxCatPills',EXP_CATS,selFixCat,function(v){selFixCat=v;});
+  document.getElementById('fxBtns').innerHTML='<button class="bp bd" onclick="saveFixed()">שמור</button>';
+  om('mFixed');
+}
+function openEditEntry(type,id){
+  if(type==='i'){
+    var e=INCOME.find(function(x){return x.id===id;});if(!e)return;
+    editId=id;
+    document.getElementById('mIncTtl').textContent='✏️ עריכת הכנסה';
+    document.getElementById('iDesc').value=e.desc||'';document.getElementById('iAmt').value=e.amount||'';document.getElementById('iDate').value=e.date||today();
+    selIncCat=e.cat||'salary';selIncWho=(e.who===NAMES.p2||e.who==='p2')?'p2':'p1';selIncPay=e.payMethod||'cash';
+    buildWhoPills('iWhoPills',selIncWho,function(v){selIncWho=v;});
+    buildPayPills('iPayPills',selIncPay,function(v){selIncPay=v;});
+    buildPills('iCatPills',INC_CATS,selIncCat,function(v){selIncCat=v;});
+    document.getElementById('iBtns').innerHTML='<button class="bp bd" onclick="delEntry(\'i\',\''+id+'\')">מחק</button><button class="bp" onclick="saveInc()">עדכן</button>';
+    om('mInc');
+  } else {
+    var e=EXPENSES.find(function(x){return x.id===id;});if(!e)return;
+    editId=id;
+    document.getElementById('mExpTtl').textContent='✏️ עריכת הוצאה';
+    document.getElementById('eStore').value=e.store||e.desc||'';document.getElementById('eAmt').value=e.amount||'';document.getElementById('eDate').value=e.date||today();
+    selExpCat=e.cat||'food';selExpPay=e.payMethod||'credit';
+    buildPills('eCatPills',EXP_CATS,selExpCat,function(v){selExpCat=v;});
+    buildPayPills('ePayPills',selExpPay,function(v){selExpPay=v;});
+    document.getElementById('eBtns').innerHTML='<button class="bp bd" onclick="delEntry(\'e\',\''+id+'\')">מחק</button><button class="bp bd" onclick="saveExp()">עדכן</button>';
+    om('mExp');
+  }
+}
+function openEditInst(id){
+  var inst=INSTS.find(function(x){return x.id===id;});if(!inst)return;
+  editId=id;
+  document.getElementById('mInstTtl').textContent='✏️ עריכת תשלום';
+  document.getElementById('inName').value=inst.name||'';document.getElementById('inTotal').value=inst.total||'';document.getElementById('inN').value=inst.n||'';document.getElementById('inStart').value=inst.startYM||thisMonth();
+  calcPrev();
+  document.getElementById('inBtns').innerHTML='<button class="bp bd" onclick="delInst(\''+id+'\')">מחק</button><button class="bp" onclick="saveInst()">עדכן</button>';
+  om('mInst');
+}
+function openEditFixed(id){
+  var f=FIXED.find(function(x){return x.id===id;});if(!f)return;
+  editId=id;
+  document.getElementById('mFixedTtl').textContent='✏️ עריכת קבועה';
+  document.getElementById('fxName').value=f.name||'';document.getElementById('fxAmt').value=f.amount||'';document.getElementById('fxDay').value=f.day||1;
+  selFixCat=f.cat||'bills';
+  buildPills('fxCatPills',EXP_CATS,selFixCat,function(v){selFixCat=v;});
+  document.getElementById('fxBtns').innerHTML='<button class="bp bd" onclick="delFixed(\''+id+'\')">מחק</button><button class="bp bd" onclick="saveFixed()">עדכן</button>';
+  om('mFixed');
+}
+function calcPrev(){
+  var t=+document.getElementById('inTotal').value||0,n=+document.getElementById('inN').value||0;
+  var pv=document.getElementById('inPrev');
+  if(t>0&&n>0){document.getElementById('inPrevAmt').textContent=fmtA(Math.round(t/n))+' × '+n;pv.style.display='block';}
+  else pv.style.display='none';
+}
+
+// ─── MODAL HELPERS ───
+function om(id){document.getElementById(id).classList.add('open');}
+function cm(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(function(el){el.addEventListener('click',function(e){if(e.target===el)el.classList.remove('open');});});
+
+// ─── SAVE ───
+function saveInc(){
+  var desc=document.getElementById('iDesc').value.trim();
+  var amt=+document.getElementById('iAmt').value;
+  var date=document.getElementById('iDate').value;
+  if(!amt||!date){toast('נא למלא סכום ותאריך');return;}
+  var who=selIncWho==='p2'?NAMES.p2:NAMES.p1;
+  var data={desc:desc,amount:amt,date:date,cat:selIncCat,who:who,payMethod:selIncPay,uid:ME.uid,createdAt:Date.now()};
+  if(!db){toast('אין חיבור לשרת');return;}
+  if(editId)db.collection('bud_income').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mInc');});
+  else db.collection('bud_income').add(data).then(function(){toast('נשמר ✓');cm('mInc');});
+}
+function saveExp(){
+  var store=document.getElementById('eStore').value.trim();
+  var amt=+document.getElementById('eAmt').value;
+  var date=document.getElementById('eDate').value;
+  if(!amt||!date){toast('נא למלא סכום ותאריך');return;}
+  var data={store:store,desc:store,amount:amt,date:date,cat:selExpCat,who:ME.name,payMethod:selExpPay,uid:ME.uid,createdAt:Date.now()};
+  if(!db){toast('אין חיבור לשרת');return;}
+  if(editId)db.collection('bud_expenses').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mExp');});
+  else db.collection('bud_expenses').add(data).then(function(){toast('נשמר ✓');cm('mExp');});
+}
+function saveInst(){
+  var name=document.getElementById('inName').value.trim();
+  var total=+document.getElementById('inTotal').value;
+  var n=+document.getElementById('inN').value;
+  var startYM=document.getElementById('inStart').value;
+  if(!name||!total||!n||!startYM){toast('נא למלא את כל השדות');return;}
+  var data={name:name,total:total,n:n,amountPer:Math.round(total/n),startYM:startYM,uid:ME.uid,createdAt:Date.now()};
+  if(!db){toast('אין חיבור לשרת');return;}
+  if(editId)db.collection('bud_installments').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mInst');});
+  else db.collection('bud_installments').add(data).then(function(){toast('נשמר ✓');cm('mInst');});
+}
+function saveFixed(){
+  var name=document.getElementById('fxName').value.trim();
+  var amt=+document.getElementById('fxAmt').value;
+  var day=+document.getElementById('fxDay').value||1;
+  if(!name||!amt){toast('נא למלא שם וסכום');return;}
+  var data={name:name,amount:amt,day:Math.max(1,Math.min(31,day)),cat:selFixCat,active:true};
+  if(!db){toast('אין חיבור לשרת');return;}
+  if(editId)db.collection('bud_fixed').doc(editId).update(data).then(function(){toast('עודכן ✓');cm('mFixed');});
+  else db.collection('bud_fixed').add(data).then(function(){toast('נשמר ✓');cm('mFixed');});
+}
+
+// ─── DELETE ───
+function delEntry(type,id){
+  if(!confirm('למחוק?'))return;
+  var col=type==='i'?'bud_income':'bud_expenses';
+  db.collection(col).doc(id).delete().then(function(){toast('נמחק');cm(type==='i'?'mInc':'mExp');});
+}
+function delInst(id){if(!confirm('למחוק?'))return;db.collection('bud_installments').doc(id).delete().then(function(){toast('נמחק');cm('mInst');});}
+function delFixed(id){if(!confirm('למחוק?'))return;db.collection('bud_fixed').doc(id).delete().then(function(){toast('נמחק');cm('mFixed');});}
+
+// ─── TOAST ───
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2000);}
+function payBadge(method){if(!method)return '';var m=PAY_METHODS.find(function(p){return p.id===method;});return m?' · '+m.ico+' '+m.label:'';}
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
