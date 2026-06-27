@@ -203,6 +203,14 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
   <div class="builder-body" id="drillLibBody"></div>
 </div>
 
+<div class="builder-screen" id="coachTrainingLibScreen" style="display:none">
+  <div class="builder-header">
+    <button class="icon-btn" id="btnCloseCoachTrainingLib" title="סגור">→</button>
+    <b style="flex:1">📑 ספריית אימונים שלי</b>
+  </div>
+  <div class="builder-body" id="coachTrainingLibBody"></div>
+</div>
+
 <script>
 var firebaseConfig = {apiKey:"AIzaSyBKOCyFdiy95SxddD_Iy6Gkq4aBsqkrFdE",authDomain:"soccer-26e99.firebaseapp.com",projectId:"soccer-26e99",storageBucket:"soccer-26e99.firebasestorage.app",messagingSenderId:"870862038298",appId:"1:870862038298:web:a58fde35acf1e79b9738a3"};
 firebase.initializeApp(firebaseConfig);
@@ -264,6 +272,16 @@ var AGE_GROUPS = ['נוער','נערים א\'','נערים ב\'','נערים ג\
 var CLUB_TEAMS = {};
 var CLUB_TEAMS_LOADED = false;
 var currentTeamCategory = null;
+
+/* ---------------- Group training plans (per age-group, club-scoped) ---------------- */
+var GROUP_PLANS_CACHE = {};
+var currentGroupPlan = null;
+
+/* ---------------- Coach reusable training-session template library ---------------- */
+var COACH_TRAININGS = [];
+var COACH_TRAININGS_LOADED = false;
+var editingCoachTraining = null;
+var coachTrainingPickerCallback = null;
 
 /* ---------------- Player video clips library ---------------- */
 var PLAYER_CLIPS = [];
@@ -626,6 +644,7 @@ function tplPlans(){
   '<div class="action-row" style="margin-bottom:14px">'+
     '<button class="btn" id="btnNewPlan">+ תוכנית אימון חדשה</button>'+
     '<button class="btn ghost" id="btnOpenDrillLib">🗂 בנק תרגילים</button>'+
+    '<button class="btn ghost" id="btnOpenCoachTrainingLib">📑 ספריית אימונים שלי</button>'+
   '</div>'+
   '<button class="btn ghost" id="btnAiWizard" style="margin-bottom:14px">🤖 בנה תוכנית עם עוזר חכם</button>'+
   (TRAINING_PLANS.length===0
@@ -797,6 +816,125 @@ function openFixedLibraryPickerModal(onPick){
   });
 }
 
+/* ---------------- Coach reusable training-session template library (ספריית אימונים שלי) ---------------- */
+function loadCoachTrainings(cb){
+  if(!ME.uid) return;
+  db.collection(P+'coachtrainings').where('coachUid','==',ME.uid).get().then(function(snap){
+    COACH_TRAININGS = snap.docs.map(function(d){ return d.data(); });
+    COACH_TRAININGS_LOADED = true;
+    if(cb) cb();
+    var lib = document.getElementById('coachTrainingLibScreen');
+    if(lib && lib.style.display!=='none') renderCoachTrainingLibScreen();
+  });
+}
+function saveCoachTraining(tr){
+  db.collection(P+'coachtrainings').doc(tr.id).set(tr);
+}
+function deleteCoachTraining(id){
+  db.collection(P+'coachtrainings').doc(id).delete();
+}
+function openCoachTrainingLib(){
+  document.getElementById('coachTrainingLibScreen').style.display = 'flex';
+  if(!COACH_TRAININGS_LOADED){
+    document.getElementById('coachTrainingLibBody').innerHTML = '<div class="muted" style="text-align:center">טוען...</div>';
+    loadCoachTrainings(function(){ renderCoachTrainingLibScreen(); });
+  } else {
+    renderCoachTrainingLibScreen();
+  }
+}
+function closeCoachTrainingLib(){
+  document.getElementById('coachTrainingLibScreen').style.display = 'none';
+}
+function coachTrainingCardHtml(tr, idx, pickMode){
+  var preview = tr.notes ? (tr.notes.length>80 ? tr.notes.slice(0,80)+'…' : tr.notes) : '';
+  var actions = pickMode
+    ? '<button class="btn ghost sm" data-pickcoachtraining="'+idx+'">בחר</button>'
+    : '<button class="logout-btn" data-editcoachtraining="'+idx+'" title="עריכה">✏️</button><button class="logout-btn" data-delcoachtraining="'+idx+'" title="מחק">🗑</button>';
+  return '<div class="card">'+
+    '<div class="row"><b>'+tr.title+'</b><div>'+actions+'</div></div>'+
+    (tr.category ? '<div class="row" style="margin-top:6px"><span class="badge">'+tr.category+'</span></div>' : '')+
+    (preview ? '<div class="muted" style="margin-top:6px">'+preview+'</div>' : '')+
+  '</div>';
+}
+function renderCoachTrainingLibScreen(){
+  var body = document.getElementById('coachTrainingLibBody');
+  body.innerHTML =
+    '<div class="muted" style="margin-bottom:10px">בנה/י ספריית תבניות אימון לשימוש חוזר — תבנית אישית ושלמה לאימון, ולא תרגיל בודד</div>'+
+    '<button class="btn" id="btnAddCoachTraining" style="margin-bottom:14px">+ הוסף תבנית</button>'+
+    (COACH_TRAININGS.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו תבניות לספרייה</div>'
+      : COACH_TRAININGS.map(function(tr,i){ return coachTrainingCardHtml(tr, i, false); }).join('')
+    );
+  document.getElementById('btnAddCoachTraining').onclick = function(){ openCoachTrainingFormModal(null); };
+  document.querySelectorAll('[data-editcoachtraining]').forEach(function(btn){
+    btn.onclick = function(){ openCoachTrainingFormModal(parseInt(btn.dataset.editcoachtraining,10)); };
+  });
+  document.querySelectorAll('[data-delcoachtraining]').forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.dataset.delcoachtraining,10);
+      var tr = COACH_TRAININGS[idx];
+      if(!confirm('למחוק את התבנית "'+tr.title+'"?')) return;
+      deleteCoachTraining(tr.id);
+      COACH_TRAININGS.splice(idx,1);
+      renderCoachTrainingLibScreen();
+    };
+  });
+}
+function openCoachTrainingFormModal(idx){
+  var isEdit = (idx!==undefined && idx!==null);
+  var tr = isEdit ? COACH_TRAININGS[idx] : null;
+  var html = '<h3 style="margin-bottom:14px">'+(isEdit?'עריכת תבנית אימון':'הוספת תבנית אימון')+'</h3>'+
+    '<div class="field"><label>כותרת</label><input id="ctTitleInput" placeholder="שם התבנית" value="'+(tr?tr.title:'')+'"></div>'+
+    '<div class="field"><label>קבוצת גיל (אופציונלי)</label><select id="ctCategoryInput">'+
+      '<option value="">—</option>'+
+      AGE_GROUPS.map(function(c){ return '<option value="'+c+'"'+(tr&&tr.category===c?' selected':'')+'>'+c+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>הערות / מבנה האימון</label><textarea id="ctNotesInput" rows="5" placeholder="תיאור מהלך האימון, סרטוטים בטקסט וכו׳">'+(tr?(tr.notes||''):'')+'</textarea></div>'+
+    '<button class="btn" id="btnSaveCoachTraining">'+(isEdit?'שמור שינויים':'הוסף')+'</button>';
+  openModal(html);
+  document.getElementById('btnSaveCoachTraining').onclick = function(){
+    var title = document.getElementById('ctTitleInput').value.trim();
+    if(!title) return;
+    var cat = document.getElementById('ctCategoryInput').value;
+    var notes = document.getElementById('ctNotesInput').value.trim();
+    if(isEdit){
+      tr.title = title; tr.category = cat; tr.notes = notes;
+      saveCoachTraining(tr);
+    } else {
+      var ntr = {id:genCode(8), coachUid:ME.uid, title:title, category:cat, notes:notes, createdFrom:null};
+      COACH_TRAININGS.push(ntr);
+      saveCoachTraining(ntr);
+    }
+    closeModal();
+    renderCoachTrainingLibScreen();
+  };
+}
+function openCoachTrainingPickerModal(onPick){
+  coachTrainingPickerCallback = onPick;
+  if(!COACH_TRAININGS_LOADED){
+    openModal('<div class="muted" style="text-align:center">טוען...</div>');
+    loadCoachTrainings(function(){ renderCoachTrainingPickerModal(); });
+    return;
+  }
+  renderCoachTrainingPickerModal();
+}
+function renderCoachTrainingPickerModal(){
+  var html = '<h3 style="margin-bottom:14px">📑 שכפל מתבנית</h3>'+
+    (COACH_TRAININGS.length===0
+      ? '<div class="muted" style="margin-bottom:10px">הספרייה ריקה — ניתן להוסיף תבניות מתוך "📑 ספריית אימונים שלי"</div>'
+      : COACH_TRAININGS.map(function(tr,i){ return coachTrainingCardHtml(tr, i, true); }).join('')
+    );
+  openModal(html);
+  document.querySelectorAll('[data-pickcoachtraining]').forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.dataset.pickcoachtraining,10);
+      var tr = COACH_TRAININGS[idx];
+      closeModal();
+      if(coachTrainingPickerCallback) coachTrainingPickerCallback(tr);
+    };
+  });
+}
+
 /* ---------------- Tab 1: Club teams by age group ---------------- */
 function tplTeams(){
   if(!CLUB_TEAMS_LOADED){
@@ -827,6 +965,49 @@ function loadClubTeams(){
 function saveClubTeams(){
   db.collection(P+'clubteams').doc(clubScopeId()).set({categories:CLUB_TEAMS});
 }
+function groupPlanDocId(cat){
+  return clubScopeId()+'_'+cat;
+}
+function openGroupPlanModal(){
+  var cat = currentTeamCategory;
+  if(!cat) return;
+  openModal('<h3 style="margin-bottom:14px">📋 תוכנית קבוצתית — '+cat+'</h3><div class="muted" style="text-align:center">טוען...</div>');
+  var docId = groupPlanDocId(cat);
+  if(GROUP_PLANS_CACHE[docId]){
+    renderGroupPlanModal(cat, GROUP_PLANS_CACHE[docId]);
+    return;
+  }
+  db.collection(P+'groupplans').doc(docId).get().then(function(doc){
+    var data = doc.exists ? doc.data() : {category:cat, daily_notes:'', weekly_notes:'', yearly_notes:''};
+    GROUP_PLANS_CACHE[docId] = data;
+    renderGroupPlanModal(cat, data);
+  }).catch(function(){
+    var data = {category:cat, daily_notes:'', weekly_notes:'', yearly_notes:''};
+    GROUP_PLANS_CACHE[docId] = data;
+    renderGroupPlanModal(cat, data);
+  });
+}
+function renderGroupPlanModal(cat, data){
+  var html = '<h3 style="margin-bottom:14px">📋 תוכנית קבוצתית — '+cat+'</h3>'+
+    '<div class="field"><label>תוכנית יומית</label><textarea id="gpDailyInput" rows="3" placeholder="מה התוכנית היומית...">'+(data.daily_notes||'')+'</textarea></div>'+
+    '<div class="field"><label>תוכנית שבועית</label><textarea id="gpWeeklyInput" rows="3" placeholder="מה התוכנית השבועית...">'+(data.weekly_notes||'')+'</textarea></div>'+
+    '<div class="field"><label>תוכנית שנתית</label><textarea id="gpYearlyInput" rows="3" placeholder="מה התוכנית השנתית...">'+(data.yearly_notes||'')+'</textarea></div>'+
+    '<button class="btn" id="btnSaveGroupPlan">💾 שמור תוכנית</button>';
+  openModal(html);
+  document.getElementById('btnSaveGroupPlan').onclick = function(){
+    var docId = groupPlanDocId(cat);
+    var updated = {
+      category: cat,
+      daily_notes: document.getElementById('gpDailyInput').value.trim(),
+      weekly_notes: document.getElementById('gpWeeklyInput').value.trim(),
+      yearly_notes: document.getElementById('gpYearlyInput').value.trim()
+    };
+    db.collection(P+'groupplans').doc(docId).set(updated).then(function(){
+      GROUP_PLANS_CACHE[docId] = updated;
+      closeModal();
+    });
+  };
+}
 function openTeamDetail(cat){
   currentTeamCategory = cat;
   document.getElementById('teamScreen').style.display = 'flex';
@@ -841,6 +1022,7 @@ function renderTeamDetail(){
   document.getElementById('teamScreenTitle').textContent = currentTeamCategory;
   var body = document.getElementById('teamScreenBody');
   body.innerHTML =
+    '<button class="btn ghost" id="btnOpenGroupPlan" style="margin-bottom:14px">📋 תוכנית קבוצתית</button>'+
     '<div class="section-title" style="font-size:16px">צוות מקצועי</div>'+
     (t.staff.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין אנשי צוות</div>' :
       t.staff.map(function(s,i){
@@ -894,6 +1076,7 @@ function renderTeamDetail(){
       }).join('')
     )+
     '<button class="btn" id="btnAddPlayer">+ הוסף שחקן</button>';
+  document.getElementById('btnOpenGroupPlan').onclick = function(){ openGroupPlanModal(); };
   document.getElementById('btnAddStaff').onclick = function(){ openAddStaffModal(); };
   document.getElementById('btnAddPlayer').onclick = function(){ openAddPlayerModal(); };
   document.querySelectorAll('[data-editplayer]').forEach(function(el){
@@ -1644,6 +1827,8 @@ function wireTab(i){
     if(nb) nb.onclick = function(){ openPlanBuilder(null); };
     var ndl = document.getElementById('btnOpenDrillLib');
     if(ndl) ndl.onclick = function(){ openDrillLib(); };
+    var nctl = document.getElementById('btnOpenCoachTrainingLib');
+    if(nctl) nctl.onclick = function(){ openCoachTrainingLib(); };
     var nwz = document.getElementById('btnAiWizard');
     if(nwz) nwz.onclick = function(){ openWizardModal(); };
     document.querySelectorAll('[data-viewplan]').forEach(function(btn){
@@ -1951,6 +2136,7 @@ function nextPlayerNum(){
 function renderPlanBuilderModal(){
   var frameLabel = editingDrillIndex!==null ? ('פריים '+(editingDrillIndex+1)+' מתוך '+editingDrills.length) : ('פריים חדש #'+(editingDrills.length+1));
   var body = ''+
+  '<button class="btn ghost sm" id="btnCloneFromCoachTraining" style="margin-bottom:10px">📑 שכפל מתבנית</button>'+
   '<div class="frame-status">'+frameLabel+(addMode?' · לחץ/י על המגרש למיקום ה'+(TOOLBOX_ITEMS.filter(function(t){return t.type===addMode;})[0]||{}).label:'')+'</div>'+
   '<div class="pitch-stage">'+
     '<div class="pitch-wrap">'+pitchSvgMarkup(boardState.elements, false, boardState.orientation, 'pitchSvg', boardState.bgStyle)+'</div>'+
@@ -2315,9 +2501,19 @@ function wirePhasesSection(){
     };
   });
 }
+function cloneFromCoachTraining(tr){
+  if(!tr) return;
+  if(!editingPlan.name) editingPlan.name = tr.title;
+  if(!editingPlan.phases) editingPlan.phases = [];
+  editingPlan.phases.push({name: tr.title, items:[{drillId:null, title:tr.title, category:tr.category||'', duration_min:0, notes:tr.notes||''}]});
+  editingPlan.createdFrom = tr.id;
+  renderPlanBuilderModal();
+}
 function wirePlanBuilderModal(){
   document.getElementById('btnCloseBuilder').onclick = function(){ closeBuilder(); goHome(); };
   document.getElementById('btnSavePlan').onclick = function(){ savePlan(); };
+  var cloneBtn = document.getElementById('btnCloneFromCoachTraining');
+  if(cloneBtn) cloneBtn.onclick = function(){ openCoachTrainingPickerModal(function(tr){ cloneFromCoachTraining(tr); }); };
   document.querySelectorAll('[data-tool]').forEach(function(btn){
     btn.onclick = function(){
       var t = btn.dataset.tool;
@@ -2627,6 +2823,7 @@ function goHome(){
 document.getElementById('btnCloseTeamScreen').onclick = function(){ closeTeamDetail(); goHome(); };
 document.getElementById('btnClosePitchScreen').onclick = function(){ closePitchDetail(); goHome(); };
 document.getElementById('btnCloseDrillLib').onclick = function(){ closeDrillLib(); };
+document.getElementById('btnCloseCoachTrainingLib').onclick = function(){ closeCoachTrainingLib(); };
 </script>
 </body>
 </html>
