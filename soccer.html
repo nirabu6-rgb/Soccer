@@ -401,21 +401,27 @@ function renderTeamDetail(){
     '<div class="section-title" style="font-size:16px">צוות מקצועי</div>'+
     (t.staff.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין אנשי צוות</div>' :
       t.staff.map(function(s,i){
-        return '<div class="card"><div class="row"><div><b>'+s.name+'</b><div class="muted">'+(s.role||'')+'</div></div>'+
+        return '<div class="card"><div class="row">'+
+          '<div class="row" style="gap:10px;justify-content:flex-start">'+
+            (s.photo ? '<img src="'+s.photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">' : '<span style="font-size:22px">🧑‍💼</span>')+
+            '<div><b>'+s.name+'</b><div class="muted">'+(s.role||'')+'</div></div>'+
+          '</div>'+
           '<button class="logout-btn" data-delstaff="'+i+'" title="מחק">🗑</button></div></div>';
       }).join('')
     )+
     '<button class="btn ghost sm" id="btnAddStaff" style="margin-bottom:18px">+ הוסף איש צוות</button>'+
     '<div class="section-title" style="font-size:16px">סגל שחקנים</div>'+
-    '<div class="muted" style="margin-bottom:10px">הוספה ידנית — שם, ותמונה (קישור) אם יש</div>'+
     (t.players.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין שחקנים</div>' :
       t.players.map(function(p,i){
         return '<div class="card"><div class="row">'+
           '<div class="row" style="gap:10px;justify-content:flex-start">'+
             (p.photo ? '<img src="'+p.photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">' : '<span style="font-size:22px">👤</span>')+
-            '<b>'+p.name+'</b>'+
+            '<div><b>'+p.name+'</b><div class="muted">דירוג: '+'⭐'.repeat(p.rating||0)+'</div></div>'+
           '</div>'+
           '<button class="logout-btn" data-delplayer="'+i+'" title="מחק">🗑</button>'+
+        '</div>'+
+        '<div class="muted" style="margin-top:6px;font-size:11px;display:flex;flex-wrap:wrap;gap:6px">'+
+          SKILL_ATTRS.map(function(sk){ return sk.l+': '+((p.skills&&p.skills[sk.k])||0); }).join(' · ')+
         '</div></div>';
       }).join('')
     )+
@@ -435,36 +441,74 @@ function renderTeamDetail(){
     };
   });
 }
+function readPhotoFile(inputEl, cb){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file){ cb(''); return; }
+  var reader = new FileReader();
+  reader.onload = function(){ cb(reader.result); };
+  reader.readAsDataURL(file);
+}
 function openAddStaffModal(){
   var html = '<h3 style="margin-bottom:14px">הוספת איש צוות</h3>'+
     '<div class="field"><label>שם</label><input id="staffNameInput" placeholder="שם מלא"></div>'+
     '<div class="field"><label>תפקיד</label><input id="staffRoleInput" placeholder="מאמן ראשי / מאמן כושר / וכו׳"></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="staffPhotoInput" type="file" accept="image/*"></div>'+
     '<button class="btn" id="btnSaveStaff">הוסף</button>';
   openModal(html);
   document.getElementById('btnSaveStaff').onclick = function(){
     var name = document.getElementById('staffNameInput').value.trim();
     if(!name) return;
     var role = document.getElementById('staffRoleInput').value.trim();
-    CLUB_TEAMS[currentTeamCategory].staff.push({name:name, role:role});
-    saveClubTeams();
-    closeModal();
-    renderTeamDetail();
+    readPhotoFile(document.getElementById('staffPhotoInput'), function(photo){
+      CLUB_TEAMS[currentTeamCategory].staff.push({name:name, role:role, photo:photo});
+      saveClubTeams();
+      closeModal();
+      renderTeamDetail();
+    });
   };
+}
+var SKILL_ATTRS = [
+  {k:'power', l:'כוח'},
+  {k:'technique', l:'טכניקה'},
+  {k:'coordination', l:'קואורדינציה'},
+  {k:'dribbling', l:'כדרור'},
+  {k:'speed', l:'מהירות'},
+  {k:'passing', l:'מסירות'},
+  {k:'shooting', l:'בעיטה לשער'},
+  {k:'stamina', l:'סבולת'},
+  {k:'defense', l:'הגנה'},
+  {k:'vision', l:'חזון משחק'}
+];
+function ratingSelect(id, selected){
+  var opts = '';
+  for(var i=1;i<=5;i++) opts += '<option value="'+i+'"'+(i===selected?' selected':'')+'>'+i+'</option>';
+  return '<select id="'+id+'">'+opts+'</select>';
 }
 function openAddPlayerModal(){
   var html = '<h3 style="margin-bottom:14px">הוספת שחקן</h3>'+
     '<div class="field"><label>שם</label><input id="playerNameInput" placeholder="שם מלא"></div>'+
-    '<div class="field"><label>קישור לתמונה (אופציונלי)</label><input id="playerPhotoInput" placeholder="https://..."></div>'+
+    '<div class="field"><label>תמונה (אופציונלי)</label><input id="playerPhotoInput" type="file" accept="image/*"></div>'+
+    '<div class="field"><label>דירוג כללי (1-5)</label>'+ratingSelect('playerRatingInput',3)+'</div>'+
+    '<div class="section-title" style="font-size:14px;margin-top:6px">יכולות (1-5)</div>'+
+    SKILL_ATTRS.map(function(sk){
+      return '<div class="field" style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+        '<label style="margin:0">'+sk.l+'</label>'+ratingSelect('skill_'+sk.k, 3)+
+      '</div>';
+    }).join('')+
     '<button class="btn" id="btnSavePlayer">הוסף</button>';
   openModal(html);
   document.getElementById('btnSavePlayer').onclick = function(){
     var name = document.getElementById('playerNameInput').value.trim();
     if(!name) return;
-    var photo = document.getElementById('playerPhotoInput').value.trim();
-    CLUB_TEAMS[currentTeamCategory].players.push({name:name, photo:photo});
-    saveClubTeams();
-    closeModal();
-    renderTeamDetail();
+    var rating = parseInt(document.getElementById('playerRatingInput').value,10);
+    var skills = {};
+    SKILL_ATTRS.forEach(function(sk){ skills[sk.k] = parseInt(document.getElementById('skill_'+sk.k).value,10); });
+    readPhotoFile(document.getElementById('playerPhotoInput'), function(photo){
+      CLUB_TEAMS[currentTeamCategory].players.push({name:name, photo:photo, rating:rating, skills:skills});
+      saveClubTeams();
+      closeModal();
+      renderTeamDetail();
+    });
   };
 }
 
@@ -1026,7 +1070,7 @@ function savePlan(){
   });
 }
 function wirePlanBuilderModal(){
-  document.getElementById('btnCloseBuilder').onclick = function(){ closeBuilder(); renderTab(0); };
+  document.getElementById('btnCloseBuilder').onclick = function(){ closeBuilder(); goHome(); };
   document.getElementById('btnSavePlan').onclick = function(){ savePlan(); };
   document.querySelectorAll('[data-tool]').forEach(function(btn){
     btn.onclick = function(){
@@ -1330,8 +1374,12 @@ function closeModal(){
 document.getElementById('modalBg').onclick = function(e){
   if(e.target === document.getElementById('modalBg')) closeModal();
 };
-document.getElementById('btnCloseTeamScreen').onclick = function(){ closeTeamDetail(); };
-document.getElementById('btnClosePitchScreen').onclick = function(){ closePitchDetail(); };
+function goHome(){
+  document.querySelectorAll('.nav-btn').forEach(function(b,i){ b.classList.toggle('sel', i===0); });
+  renderTab(0);
+}
+document.getElementById('btnCloseTeamScreen').onclick = function(){ closeTeamDetail(); goHome(); };
+document.getElementById('btnClosePitchScreen').onclick = function(){ closePitchDetail(); goHome(); };
 </script>
 </body>
 </html>
