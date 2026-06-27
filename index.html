@@ -26,10 +26,16 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 .err{color:var(--bad);font-size:13px;margin-top:8px;display:none}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--card);border-bottom:1px solid #e3e6ec}
 .topbar b{font-size:16px}
-.content{flex:1;padding:14px 16px 90px;overflow-y:auto}
-.navbar{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid #e3e6ec}
-.nav-btn{flex:1;border:none;background:none;padding:10px 0;font-size:11px;color:var(--sub);cursor:pointer}
-.nav-btn .ic{font-size:20px;margin-bottom:2px}
+.content{flex:1;padding:14px 16px 20px;overflow-y:auto}
+.hamburger-btn{border:none;background:var(--card2);font-size:20px;border-radius:10px;width:40px;height:40px;cursor:pointer;flex:none}
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:80;display:none;opacity:0;transition:opacity .2s}
+.drawer-overlay.show{display:block;opacity:1}
+.navbar{position:fixed;top:0;bottom:0;right:0;width:260px;max-width:80vw;display:flex;flex-direction:column;background:var(--card);border-left:1px solid #e3e6ec;box-shadow:-4px 0 18px rgba(0,0,0,.12);z-index:90;transform:translateX(100%);transition:transform .25s ease;padding:14px 0}
+.navbar.show{transform:translateX(0)}
+.navbar-head{display:flex;align-items:center;justify-content:space-between;padding:0 16px 14px;border-bottom:1px solid #e3e6ec;margin-bottom:8px}
+.navbar-head b{font-size:15px}
+.nav-btn{display:flex;align-items:center;gap:10px;justify-content:flex-start;flex:none;border:none;background:none;padding:13px 18px;font-size:14px;color:var(--sub);cursor:pointer;text-align:right;width:100%}
+.nav-btn .ic{font-size:20px;margin-bottom:0}
 .nav-btn.sel{color:var(--accent2);font-weight:700}
 .section-title{font-size:18px;font-weight:700;margin:6px 0 12px}
 .card{background:var(--card);border:1px solid #e3e6ec;border-radius:14px;padding:14px;margin-bottom:12px}
@@ -95,12 +101,8 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 @media (min-width:880px){
   body{display:flex;justify-content:center}
   #loginScreen .center,#loginScreen.center{min-height:100vh}
-  #appScreen{display:grid !important;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;grid-template-areas:"nav top" "nav content";min-height:100vh;width:100%;max-width:1200px}
-  #appScreen .topbar{grid-area:top}
-  #appScreen .content{grid-area:content;padding:20px 28px 28px;max-width:900px}
-  #appScreen .navbar{grid-area:nav;position:static;flex-direction:column;border-top:none;border-left:1px solid #e3e6ec;padding:14px 0;height:auto}
-  #appScreen .nav-btn{flex:none;display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 18px;font-size:13px;justify-content:flex-start}
-  #appScreen .nav-btn .ic{margin-bottom:0;font-size:18px}
+  #appScreen{min-height:100vh;width:100%;max-width:1200px}
+  #appScreen .content{padding:20px 28px 28px;max-width:900px;margin:0 auto}
   .builder-screen,.modal-bg{justify-content:center}
   .builder-screen{align-items:center}
   .builder-screen > .builder-header,.builder-screen > .builder-body{width:100%;max-width:760px}
@@ -142,11 +144,15 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
 
 <div class="screen" id="appScreen" style="display:none">
   <div class="topbar">
+    <button class="hamburger-btn" id="btnHamburger" title="תפריט">☰</button>
     <div><b id="hdrName">-</b><div class="muted" id="hdrRole" style="font-size:12px"></div></div>
     <button class="logout-btn" id="btnLogout" title="התנתקות">🚪</button>
   </div>
   <div class="content" id="content"></div>
-  <div class="navbar" id="navBar"></div>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <div class="navbar" id="navBar">
+    <div class="navbar-head"><b>תפריט</b><button class="logout-btn" id="btnCloseDrawer" title="סגור">✕</button></div>
+  </div>
 </div>
 
 <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
@@ -346,17 +352,34 @@ function enterApp(){
 }
 function buildNav(){
   var bar = document.getElementById('navBar');
-  bar.innerHTML = NAV_TABS.map(function(tb,i){
-    return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+tb.id+'"><div class="ic">'+tb.ic+'</div>'+tb.t+'</button>';
-  }).join('');
+  bar.innerHTML = '<div class="navbar-head"><b>תפריט</b><button class="logout-btn" id="btnCloseDrawer" title="סגור">✕</button></div>' +
+    NAV_TABS.map(function(tb,i){
+      return '<button class="nav-btn'+(i===0?' sel':'')+'" data-tab="'+tb.id+'"><div class="ic">'+tb.ic+'</div>'+tb.t+'</button>';
+    }).join('');
   document.querySelectorAll('.nav-btn').forEach(function(btn){
     btn.onclick = function(){
       document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('sel');});
       btn.classList.add('sel');
       renderTab(parseInt(btn.dataset.tab,10));
+      closeDrawer();
     };
   });
+  document.getElementById('btnCloseDrawer').onclick = closeDrawer;
 }
+function openDrawer(){
+  document.getElementById('navBar').classList.add('show');
+  document.getElementById('drawerOverlay').classList.add('show');
+}
+function closeDrawer(){
+  document.getElementById('navBar').classList.remove('show');
+  document.getElementById('drawerOverlay').classList.remove('show');
+}
+function toggleDrawer(){
+  var isOpen = document.getElementById('navBar').classList.contains('show');
+  if(isOpen) closeDrawer(); else openDrawer();
+}
+document.getElementById('btnHamburger').onclick = toggleDrawer;
+document.getElementById('drawerOverlay').onclick = closeDrawer;
 function renderTab(i){
   TAB = i;
   var c = document.getElementById('content');
