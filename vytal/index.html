@@ -68,6 +68,28 @@
   .toggle-opt.active{background:#7c3aed;font-weight:bold;}
   .slider-row{margin-bottom:10px;}
   .slider-row input[type=range]{width:100%;}
+  .streak-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .streak-box{text-align:center;}
+  .streak-num{font-size:1.6rem;font-weight:bold;}
+  .streak-label{font-size:.7rem;color:#94a3b8;}
+  .mission-cat{font-size:.75rem;color:#a78bfa;margin:10px 0 4px;}
+  .progress-track{height:8px;background:#334155;border-radius:4px;overflow:hidden;margin-bottom:14px;}
+  .progress-fill{height:100%;background:#22c55e;border-radius:4px;transition:width .3s;}
+  .confetti{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:3rem;z-index:50;animation:fadeOut 1.5s forwards;}
+  @keyframes fadeOut{0%{opacity:1;}80%{opacity:1;}100%{opacity:0;}}
+  .chat-bubble{max-width:85%;padding:10px 14px;border-radius:14px;margin-bottom:8px;font-size:.9rem;line-height:1.4;}
+  .chat-bubble.user{background:#7c3aed;margin-right:0;margin-left:auto;}
+  .chat-bubble.coach{background:#1e293b;}
+  .chat-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .chat-chip{padding:6px 10px;border-radius:14px;background:#1e293b;border:1px solid #334155;font-size:.75rem;cursor:pointer;}
+  .bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:10px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar-fill{width:100%;background:#7c3aed;border-radius:4px 4px 0 0;}
+  .bar-label{font-size:.65rem;color:#64748b;margin-top:4px;}
+  .insight-card{border-right:3px solid #7c3aed;}
+  .fab{position:fixed;bottom:80px;left:16px;width:54px;height:54px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:40;}
+  .fab-menu{position:fixed;bottom:140px;left:16px;background:#1e293b;border-radius:12px;padding:8px;z-index:40;}
+  .fab-menu-item{padding:10px 14px;font-size:.85rem;cursor:pointer;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -103,7 +125,15 @@ function loadState(){
     diaryDate:null,
     foodSearchMeal:null,
     foodSearchQuery:"",
-    pendingFood:null
+    pendingFood:null,
+    xp:0,
+    streak:0,
+    lastMissionFullDate:null,
+    streakFreezeUntil:null,
+    chatHistory:[],
+    showConfetti:false,
+    fabOpen:false,
+    weeklyOffset:0
   };
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -114,6 +144,14 @@ if(state.diaryDate===undefined) state.diaryDate=null;
 if(state.foodSearchMeal===undefined) state.foodSearchMeal=null;
 if(state.foodSearchQuery===undefined) state.foodSearchQuery="";
 if(state.pendingFood===undefined) state.pendingFood=null;
+if(state.xp===undefined) state.xp=0;
+if(state.streak===undefined) state.streak=0;
+if(state.lastMissionFullDate===undefined) state.lastMissionFullDate=null;
+if(state.streakFreezeUntil===undefined) state.streakFreezeUntil=null;
+if(state.chatHistory===undefined) state.chatHistory=[];
+if(state.showConfetti===undefined) state.showConfetti=false;
+if(state.fabOpen===undefined) state.fabOpen=false;
+if(state.weeklyOffset===undefined) state.weeklyOffset=0;
 
 // ---------- Local food database (per 100g) ----------
 var FOOD_DB=[
@@ -297,15 +335,27 @@ function ensureMissions(){
   if(state.missionDate!==today){
     var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
     var missions=[];
-    if(sleepAvg<7) missions.push({text:"לישון הלילה 30 דקות מוקדם יותר", done:false});
-    else missions.push({text:"לשמור על שעת שינה קבועה הלילה", done:false});
+    if(sleepAvg<7) missions.push({text:"לישון הלילה 30 דקות מוקדם יותר", cat:"מיינדפולנס", xp:15, done:false});
+    else missions.push({text:"לשמור על שעת שינה קבועה הלילה", cat:"מיינדפולנס", xp:10, done:false});
     var loggedToday=["breakfast","lunch","dinner","snacks"].reduce(function(n,m){ return n+(todayDiary()[m]||[]).length; },0);
-    if(loggedToday<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", done:false});
-    else missions.push({text:"לשתות לפחות 2 ליטר מים היום", done:false});
-    missions.push({text:"5 דקות נשימות / מדיטציה", done:false});
+    if(loggedToday<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", cat:"תזונה", xp:15, done:false});
+    else missions.push({text:"לשתות לפחות 2 ליטר מים היום", cat:"תזונה", xp:10, done:false});
+    missions.push({text:"5 דקות נשימות / מדיטציה", cat:"מיינדפולנס", xp:10, done:false});
+    missions.push({text:"לצאת ל-20 דקות הליכה", cat:"תנועה", xp:15, done:false});
     state.missions=missions;
     state.missionDate=today;
     saveState();
+  }
+}
+function streakMultiplier(){
+  return 1 + Math.min(0.5, state.streak*0.02);
+}
+function onMissionsCompleted(){
+  if(missionCompletionRate()===100 && state.lastMissionFullDate!==todayStr()){
+    var frozen=state.streakFreezeUntil && state.streakFreezeUntil>=todayStr();
+    state.streak = frozen ? state.streak : state.streak+1;
+    state.lastMissionFullDate=todayStr();
+    state.showConfetti=true;
   }
 }
 
@@ -323,13 +373,27 @@ function renderDashboard(){
   html+='</div>';
 
   html+='<div class="card">';
+  html+='<div class="streak-bar">';
+  html+='<div class="streak-box"><div class="streak-num">🔥'+state.streak+'</div><div class="streak-label">ימי רצף</div></div>';
+  html+='<div class="streak-box"><div class="streak-num">⭐'+state.xp+'</div><div class="streak-label">XP (רמה '+(Math.floor(state.xp/100)+1)+')</div></div>';
+  html+='</div>';
   html+='<h2 style="margin-top:0;">🎯 Daily Mission</h2>';
+  var byCategory={};
   state.missions.forEach(function(m,i){
-    html+='<div class="mission-item'+(m.done?' done':'')+'">';
-    html+='<div class="check'+(m.done?' done':'')+'" data-mission="'+i+'">'+(m.done?'✓':'')+'</div>';
-    html+='<span>'+m.text+'</span>';
-    html+='</div>';
+    if(!byCategory[m.cat]) byCategory[m.cat]=[];
+    byCategory[m.cat].push({m:m,i:i});
   });
+  Object.keys(byCategory).forEach(function(cat){
+    html+='<div class="mission-cat">'+cat+'</div>';
+    byCategory[cat].forEach(function(item){
+      var m=item.m, i=item.i;
+      html+='<div class="mission-item'+(m.done?' done':'')+'">';
+      html+='<div class="check'+(m.done?' done':'')+'" data-mission="'+i+'">'+(m.done?'✓':'')+'</div>';
+      html+='<span>'+m.text+' (+'+m.xp+' XP)</span>';
+      html+='</div>';
+    });
+  });
+  html+='<div class="progress-track" style="margin-top:10px;"><div class="progress-fill" style="width:'+score.missionRate+'%;"></div></div>';
   html+='</div>';
 
   html+='<div class="grid2">';
@@ -337,8 +401,24 @@ function renderDashboard(){
   html+='<button data-go="foodlog">🍽 Nutrition AI</button>';
   html+='</div>';
   html+='<div style="height:10px;"></div>';
-  html+='<button data-go="vision" class="secondary">📸 Vision AI - נתח צלחת</button>';
+  html+='<div class="grid2">';
+  html+='<button data-go="vision" class="secondary">📸 Vision AI</button>';
+  html+='<button data-go="coach" class="secondary">🧠 AI Coach</button>';
   html+='</div>';
+  html+='<div style="height:10px;"></div>';
+  html+='<button data-go="weekly" class="secondary">📊 סיכום שבועי</button>';
+  html+='</div>';
+  html+='<div class="fab" id="fab-btn">+</div>';
+  if(state.fabOpen){
+    html+='<div class="fab-menu">';
+    html+='<div class="fab-menu-item" data-go="vision">📸 צילום ארוחה</div>';
+    html+='<div class="fab-menu-item" data-go="sleep">😴 הזנת שינה</div>';
+    html+='<div class="fab-menu-item" data-go="foodlog">🍽 הזנת ארוחה</div>';
+    html+='</div>';
+  }
+  if(state.showConfetti){
+    html+='<div class="confetti">🎉🎊🎉</div>';
+  }
   return html;
 }
 
@@ -596,6 +676,126 @@ function renderVision(){
   return html;
 }
 
+// ---------- AI Coach (rule-based local "coach", no server LLM) ----------
+var EMERGENCY_KEYWORDS=["קוצר נשימה","כאב חזק בחזה","כאב חזק ביד","אובדנות","להתאבד","דם בצואה","התעלפתי","התעלפות"];
+var COACH_CHIPS=["איך לשפר את השינה הלילה?","תבנה לי תפריט לפי הקלוריות שנשארו לי","איך אני מתקדם השבוע?","טיפ לאנרגיה"];
+function coachReply(text){
+  var lower=text.toLowerCase();
+  for(var i=0;i<EMERGENCY_KEYWORDS.length;i++){
+    if(lower.indexOf(EMERGENCY_KEYWORDS[i])>=0){
+      return {emergency:true, text:"Vytal OS זיהתה תיאור של מצב חירום רפואי. המערכת אינה מחליפה רופא. אנא פנה מיד לגורמי ההצלה או לחדר המיון הקרוב."};
+    }
+  }
+  var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7);
+  var diary=todayDiary();
+  var consumed=diaryTotalCal(diary);
+  var remaining=state.nutrition.calories-consumed;
+
+  if(lower.indexOf("שינה")>=0){
+    if(sleepAvg===null) return {text:"עדיין אין מספיק נתוני שינה. תתחיל לתעד ב-Sleep AI ואחזור עם תובנה מדויקת."};
+    return {text: sleepAvg<7 ? "בשבוע האחרון ישנת בממוצע "+sleepAvg.toFixed(1)+" שעות. נסה לקבוע שעת כיבוי מסך 30 דקות לפני השינה ולשמור על שעה קבועה." : "ממוצע השינה שלך ("+sleepAvg.toFixed(1)+" שעות) תקין. המשך לשמור על שעות קבועות."};
+  }
+  if(lower.indexOf("תפריט")>=0 || lower.indexOf("קלוריות")>=0){
+    if(remaining<=0) return {text:"כבר עברת את היעד הקלורי היומי שלך ("+consumed+"/"+state.nutrition.calories+"). מומלץ לדלג על נשנושים נוספים היום."};
+    return {text:"נשארו לך "+remaining+" קלוריות היום. דוגמה למנה שמתאימה: חזה עוף 150 גרם + אורז 100 גרם + ירקות - בערך "+Math.round(165*1.5+130)+" קלוריות."};
+  }
+  if(lower.indexOf("מתקדם")>=0 || lower.indexOf("שבוע")>=0){
+    var score=calcLifeScore();
+    return {text:"ה-Life Score שלך היום הוא "+score.total+" (שינה "+score.sleepScore+", תזונה "+score.nutriScore+", משימות "+score.missionRate+"%). לפירוט מלא תעבור למסך הסיכום השבועי."};
+  }
+  if(lower.indexOf("אנרגיה")>=0){
+    return {text:"רמת האנרגיה מושפעת ישירות משינה ותזונה. ודא שאתה שותה מים, אוכל ארוחת בוקר עם חלבון, ולא מדלג על ארוחות."};
+  }
+  return {text:"קיבלתי. כרגע אני יכול לעזור בעיקר עם שאלות על שינה, תזונה והתקדמות שבועית - מבוסס על הנתונים שתיעדת באפליקציה."};
+}
+function renderCoach(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>🧠 AI Coach</h1>';
+  html+='<p>מאמן מבוסס חוקים על הנתונים המקומיים שלך (לא מודל שפה מבוסס שרת) - מנתח שינה, תזונה ומשימות ומשיב בהתאם.</p>';
+  html+='<div class="card" id="chat-feed">';
+  if(!state.chatHistory.length) html+='<p class="empty">שאל אותי משהו על השינה, התזונה או ההתקדמות שלך</p>';
+  state.chatHistory.forEach(function(m){
+    html+='<div class="chat-bubble '+(m.role==="user"?"user":"coach")+'">'+escapeHtml(m.text)+'</div>';
+  });
+  html+='</div>';
+  html+='<div class="chat-chip-row">';
+  COACH_CHIPS.forEach(function(c){ html+='<div class="chat-chip" data-chat-chip="'+escapeHtml(c)+'">'+c+'</div>'; });
+  html+='</div>';
+  html+='<input id="chat-input" placeholder="כתוב הודעה...">';
+  html+='<button id="btn-chat-send">שלח</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Weekly Report ----------
+function dailyScoreForDate(dateStr){
+  var diary=state.nutrition.diary[dateStr];
+  var consumed=diary?diaryTotalCal(diary):0;
+  var goal=state.nutrition.calories||2000;
+  var nutriScore = consumed===0 ? 0 : Math.max(0, Math.min(100, 100-Math.max(0, Math.abs(consumed-goal)/goal*100-10)*2));
+  var sleepLog=state.sleepLogs.filter(function(l){return l.date===dateStr;})[0];
+  var sleepScore = sleepLog ? Math.max(0, Math.min(100, 100-Math.abs(8-sleepLog.hours)*18)) : null;
+  if(sleepScore===null && consumed===0) return null;
+  return Math.round((sleepScore||50)*0.5 + nutriScore*0.5);
+}
+function renderWeekly(){
+  var today=todayStr();
+  var days=[];
+  for(var i=6;i>=0;i--) days.push(addDays(today, -i - state.weeklyOffset*7));
+  var scores=days.map(dailyScoreForDate);
+  var validScores=scores.filter(function(s){return s!==null;});
+  var avgThis = validScores.length ? validScores.reduce(function(a,b){return a+b;},0)/validScores.length : null;
+
+  var prevDays=[];
+  for(var j=6;j>=0;j--) prevDays.push(addDays(today, -j-7 - state.weeklyOffset*7));
+  var prevScores=prevDays.map(dailyScoreForDate).filter(function(s){return s!==null;});
+  var avgPrev = prevScores.length ? prevScores.reduce(function(a,b){return a+b;},0)/prevScores.length : null;
+
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>📊 סיכום שבועי</h1>';
+  html+='<div class="day-nav"><span data-week="1">›</span><b>שבוע</b><span data-week="-1">‹</span></div>';
+
+  html+='<div class="card center">';
+  if(avgThis===null){
+    html+='<p class="empty">אין מספיק נתונים לשבוע הזה</p>';
+  } else {
+    html+='<div class="score-num">'+Math.round(avgThis)+'</div><div class="score-label">ממוצע Life Score שבועי</div>';
+    if(avgPrev===null){
+      html+='<p style="margin-top:8px;"><span class="badge low">🎉 ברוך הבא! זהו השבוע הראשון שלך</span></p>';
+    } else {
+      var deltaPct=Math.round((avgThis-avgPrev)/avgPrev*100);
+      html+='<p style="margin-top:8px;color:'+(deltaPct>=0?'#86efac':'#fca5a5')+';">'+(deltaPct>=0?'▲':'▼')+' '+Math.abs(deltaPct)+'% לעומת שבוע שעבר</p>';
+    }
+  }
+  html+='</div>';
+
+  html+='<div class="card"><div class="bar-chart">';
+  var maxScore=Math.max(20, validScores.length?Math.max.apply(null,validScores):20);
+  days.forEach(function(d,i){
+    var s=scores[i];
+    var h=s===null?2:Math.max(4, Math.round(s/100*100));
+    html+='<div class="bar-col"><div class="bar-fill" style="height:'+h+'%;"></div><div class="bar-label">'+d.slice(8)+'</div></div>';
+  });
+  html+='</div></div>';
+
+  html+='<div class="card insight-card">';
+  if(validScores.length<4){
+    html+='<p>כדי שנוכל להעניק לך תובנות מדויקות בשבוע הבא, נסה לתעד שינה ותזונה בתדירות גבוהה יותר.</p>';
+  } else {
+    var sleepHigh=state.sleepLogs.filter(function(l){ return days.indexOf(l.date)>=0 && l.hours>=7.5; });
+    if(sleepHigh.length>=2){
+      html+='<p>💡 בימים שבהם ישנת מעל 7.5 שעות, מדד ה-Life Score היומי שלך היה גבוה יותר בממוצע. שינה היא המרכיב המשמעותי ביותר באלגוריתם הציון שלך.</p>';
+    } else {
+      html+='<p>💡 לא נמצא קשר מובהק השבוע. המשך לתעד כדי שנזהה מגמות עם יותר נתונים.</p>';
+    }
+  }
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
 // ---------- Settings ----------
 function renderSettings(){
   var html='<div class="screen">';
@@ -606,6 +806,7 @@ function renderSettings(){
   html+='<div class="stat-row"><span>מטרות</span><span>'+state.goals.join(", ")+'</span></div>';
   html+='</div>';
   html+='<button data-go="goals" style="margin-bottom:10px;">🎯 יעדי תזונה</button>';
+  html+='<button class="secondary" id="btn-streak-freeze" style="margin-bottom:10px;">❄️ סמן שאני חולה/פצוע (הקפאת רצף ל-48 שעות)</button>';
   html+='<button class="secondary" id="btn-reset">איפוס כל הנתונים</button>';
   html+='</div>';
   return html;
@@ -647,6 +848,8 @@ function render(){
     case "foodcreate": html=renderFoodCreate(); break;
     case "goals": html=renderGoals(); break;
     case "vision": html=renderVision(); break;
+    case "coach": html=renderCoach(); break;
+    case "weekly": html=renderWeekly(); break;
     case "settings": html=renderSettings(); showTabbar=true; break;
     default: html=renderDashboard(); showTabbar=true;
   }
@@ -710,10 +913,17 @@ function bindEvents(){
   document.querySelectorAll("[data-mission]").forEach(function(el){
     el.onclick=function(){
       var i=Number(el.getAttribute("data-mission"));
-      state.missions[i].done=!state.missions[i].done;
+      var m=state.missions[i];
+      m.done=!m.done;
+      if(m.done) state.xp+=Math.round(m.xp*streakMultiplier());
+      else state.xp=Math.max(0, state.xp-Math.round(m.xp*streakMultiplier()));
+      onMissionsCompleted();
       saveState(); render();
+      if(state.showConfetti) setTimeout(function(){ state.showConfetti=false; saveState(); render(); }, 1500);
     };
   });
+  var fabBtn=document.getElementById("fab-btn");
+  if(fabBtn) fabBtn.onclick=function(){ state.fabOpen=!state.fabOpen; saveState(); render(); };
 
   var btnSleepSave=document.getElementById("btn-sleep-save");
   if(btnSleepSave) btnSleepSave.onclick=function(){
@@ -851,6 +1061,44 @@ function bindEvents(){
       render();
     }
   };
+
+  var btnStreakFreeze=document.getElementById("btn-streak-freeze");
+  if(btnStreakFreeze) btnStreakFreeze.onclick=function(){
+    state.streakFreezeUntil=addDays(todayStr(),2);
+    saveState();
+    alert("רצף הימים הוקפא ל-48 שעות הקרובות");
+    render();
+  };
+
+  function sendChat(text){
+    if(!text.trim()) return;
+    state.chatHistory.push({role:"user", text:text});
+    var reply=coachReply(text);
+    state.chatHistory.push({role:"coach", text:reply.text});
+    saveState(); render();
+    var feed=document.getElementById("chat-feed");
+    if(feed) feed.scrollTop=feed.scrollHeight;
+  }
+  var btnChatSend=document.getElementById("btn-chat-send");
+  var chatInput=document.getElementById("chat-input");
+  if(btnChatSend) btnChatSend.onclick=function(){
+    sendChat(chatInput.value);
+    chatInput.value="";
+  };
+  if(chatInput) chatInput.addEventListener("keypress", function(e){
+    if(e.key==="Enter"){ sendChat(chatInput.value); chatInput.value=""; }
+  });
+  document.querySelectorAll("[data-chat-chip]").forEach(function(el){
+    el.onclick=function(){ sendChat(el.getAttribute("data-chat-chip")); };
+  });
+
+  document.querySelectorAll("[data-week]").forEach(function(el){
+    el.onclick=function(){
+      state.weeklyOffset+=Number(el.getAttribute("data-week"));
+      if(state.weeklyOffset<0) state.weeklyOffset=0;
+      saveState(); render();
+    };
+  });
 }
 
 render();
