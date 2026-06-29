@@ -147,9 +147,9 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
   <div class="row">
     <div>
-      <label>גיל</label>
-      <input id="reg-age" type="number" placeholder="13-120">
-      <div class="err" id="err-age">הגיל חייב להיות בין 13 ל-120</div>
+      <label>תאריך לידה</label>
+      <input id="reg-birthdate" type="date">
+      <div class="err" id="err-age">התאריך חייב לשקף גיל בין 13 ל-120</div>
     </div>
     <div>
       <label>מין</label>
@@ -580,13 +580,24 @@ function showErr(id, show){
   var el = document.getElementById(id);
   if(el) el.classList[show?'add':'remove']('show');
 }
+function calcAgeFromBirthdate(birthdate){
+  if(!birthdate) return null;
+  var bd = new Date(birthdate);
+  if(isNaN(bd.getTime())) return null;
+  var today = new Date();
+  var age = today.getFullYear() - bd.getFullYear();
+  var hasNotHadBirthdayYet = (today.getMonth() < bd.getMonth()) || (today.getMonth()===bd.getMonth() && today.getDate() < bd.getDate());
+  if(hasNotHadBirthdayYet) age--;
+  return age;
+}
 function validateRegister(){
   var ok = true;
   var name = document.getElementById('reg-name').value.trim();
   if(name.length < 2){ showErr('err-name', true); ok=false; } else showErr('err-name', false);
 
-  var age = parseInt(document.getElementById('reg-age').value, 10);
-  if(isNaN(age) || age < 13 || age > 120){ showErr('err-age', true); ok=false; } else showErr('err-age', false);
+  var birthdate = document.getElementById('reg-birthdate').value;
+  var age = calcAgeFromBirthdate(birthdate);
+  if(!birthdate || age===null || age < 13 || age > 120){ showErr('err-age', true); ok=false; } else showErr('err-age', false);
 
   var height = parseFloat(document.getElementById('reg-height').value);
   if(isNaN(height) || height < 50 || height > 250){ showErr('err-height', true); ok=false; } else showErr('err-height', false);
@@ -606,7 +617,7 @@ function validateRegister(){
   var passOk = pass.length >= 8 && /[A-Za-z]/.test(pass) && /\d/.test(pass);
   if(!passOk){ showErr('err-pass', true); ok=false; } else showErr('err-pass', false);
 
-  return ok ? {name:name, age:age, height:height, weight:weight,
+  return ok ? {name:name, birthdate:birthdate, age:age, height:height, weight:weight,
     sex:document.getElementById('reg-sex').value,
     country:document.getElementById('reg-country').value,
     lang:document.getElementById('reg-lang').value,
