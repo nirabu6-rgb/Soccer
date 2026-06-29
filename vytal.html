@@ -247,6 +247,8 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <button onclick="goTo('screen-vision');initVision();">&#128247; סקאן ארוחה</button>
   <button onclick="goTo('screen-workouts');renderWorkouts();">&#127939; יומן אימונים</button>
   <button onclick="goTo('screen-coach');initCoach();">&#129302; מאמן AI</button>
+  <button onclick="goTo('screen-planner');renderPlanner();">&#128197; מתכנן שבועי</button>
+  <button onclick="goTo('screen-sleep');renderSleepScreen();">&#128564; שינה והתאוששות</button>
 </div>
 
 <!-- 7. AI COACH -->
@@ -305,6 +307,9 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div class="row" style="justify-content:space-between;"><b>התקדמות יומית<button class="info-btn" type="button" onclick="showInfo('dailyProgress')">?</button></b><span id="daily-progress-pct">0%</span></div>
     <div class="progress-bar"><div class="progress-fill" id="daily-progress-fill" style="width:0%"></div></div>
   </div>
+  <button class="card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:none;width:100%;text-align:right;" onclick="goTo('screen-vytalage');renderVytalAge();">
+    <span>&#8987; מדד אריכות ימים - Vytal Age</span><span class="muted">&#8592;</span>
+  </button>
   <h3>משימות</h3>
   <div id="mission-categories"></div>
 </div>
@@ -331,6 +336,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div class="screen" id="screen-workouts">
   <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>יומן אימונים</h3></div>
   <div class="card" id="workouts-watch-status"></div>
+  <button class="btn" onclick="startActiveWorkout()">&#9654; התחל אימון פעיל (מעקב סטים)</button>
   <button class="btn secondary" onclick="openManualWorkoutForm()">+ הוסף אימון ידנית</button>
   <div id="manual-workout-form" style="display:none;margin-top:10px;" class="card">
     <label>סוג אימון</label>
@@ -465,6 +471,109 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   </div>
 </div>
 
+<!-- 15. VYTAL AGE -->
+<div class="screen" id="screen-vytalage">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-gamify')">&#8594;</button><h3>מדד אריכות ימים</h3></div>
+  <div class="card center">
+    <div class="muted">הגיל הביולוגי שלך (Vytal Age)<button class="info-btn" type="button" onclick="showInfo('vytalAge')">?</button></div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:18px;margin-top:10px;">
+      <div><div style="font-size:13px;color:var(--muted);">גיל כרונולוגי</div><div style="font-size:30px;font-weight:800;" id="va-chrono">--</div></div>
+      <div style="font-size:24px;color:var(--muted);">&#8594;</div>
+      <div><div style="font-size:13px;color:var(--accent);">Vytal Age</div><div style="font-size:36px;font-weight:800;color:var(--accent);" id="va-bio">--</div></div>
+    </div>
+    <div id="va-delta-msg" style="margin-top:10px;font-weight:700;"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">המדדים שמשפיעים על הגיל הביולוגי</h3>
+    <label>VO2 Max (כושר אירובי מירבי, ml/kg/min)</label>
+    <input id="va-vo2max" type="number" placeholder="לדוגמה: 42">
+    <label>דופק מנוחה (Resting Heart Rate, פעימות לדקה)</label>
+    <input id="va-rhr" type="number" placeholder="לדוגמה: 62">
+    <div class="muted" style="margin-top:10px;font-size:12px;">מבחני כוח/יציבות עצמיים (פעם בחודש)</div>
+    <label>עמידה על רגל אחת בעיניים עצומות (שניות)</label>
+    <input id="va-balance" type="number" placeholder="לדוגמה: 25">
+    <label>זמן תלייה על מתח (שניות)</label>
+    <input id="va-hang" type="number" placeholder="לדוגמה: 40">
+    <button class="btn" style="margin-top:14px;" onclick="saveVytalAgeMetrics()">חשב Vytal Age</button>
+    <div class="muted" id="va-last-updated" style="margin-top:8px;font-size:12px;"></div>
+  </div>
+  <div class="card" id="va-tip-card"></div>
+</div>
+
+<!-- 16. WEEKLY PLANNER -->
+<div class="screen" id="screen-planner">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>מתכנן שבועי</h3></div>
+  <div class="muted" id="planner-sync-banner" style="display:none;background:var(--card2);padding:8px;border-radius:10px;margin-bottom:8px;"></div>
+  <div class="row" style="justify-content:space-between;align-items:center;">
+    <button class="icon-btn" onclick="plannerShiftWeek(-1)">&#8592;</button>
+    <div><b id="planner-week-label">שבוע</b> <span id="planner-sync-icon" class="muted" style="font-size:12px;">&#128260; מסונכרן (מדומה)</span></div>
+    <button class="icon-btn" onclick="plannerShiftWeek(1)">&#8594;</button>
+  </div>
+  <div id="planner-grid" style="margin-top:10px;"></div>
+  <div class="muted" style="font-size:11px;margin-top:6px;">לחיצה ארוכה על בלוק ירוק/כחול מאפשרת להזיז אותו לשעה אחרת. בלוקים אפורים הם פגישות חיצוניות מדומות וחסומים לעריכה.</div>
+  <button class="fab" style="position:fixed;" onclick="goTo('screen-coach');initCoach();">&#129302;</button>
+</div>
+
+<!-- 17. ACTIVE WORKOUT TRACKER -->
+<div class="screen" id="screen-activeworkout">
+  <div class="top-nav"><button class="back-btn" onclick="endActiveWorkoutPrompt()">&#8594;</button><h3>אימון פעיל</h3></div>
+  <div class="card center">
+    <div class="muted">משך האימון</div>
+    <div style="font-size:34px;font-weight:800;" id="aw-timer">00:00</div>
+  </div>
+  <div id="aw-exercise-list"></div>
+  <button class="btn secondary" onclick="addCustomExercise()">+ הוסף תרגיל</button>
+  <button class="btn" style="margin-top:10px;" onclick="openFinishWorkoutModal()">סיום אימון</button>
+  <div id="aw-rest-overlay" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--card2);padding:14px;z-index:50;">
+    <div class="center"><div class="muted">מנוחה</div><div style="font-size:28px;font-weight:800;" id="aw-rest-timer">90</div>
+      <div class="row" style="justify-content:center;gap:8px;margin-top:8px;">
+        <button class="btn secondary" onclick="adjustRestTimer(-30)">-30 שנ'</button>
+        <button class="btn secondary" onclick="adjustRestTimer(30)">+30 שנ'</button>
+        <button class="btn secondary" onclick="skipRestTimer()">דלג על מנוחה</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="finish-workout-modal">
+    <div class="modal-box info-box">
+      <button class="modal-close" onclick="document.getElementById('finish-workout-modal').classList.remove('show')">&#10005;</button>
+      <h3>כמה היה קשה האימון?</h3>
+      <div class="muted">RPE - דירוג קושי סובייקטיבי (1=קל מאוד, 10=מקסימלי)</div>
+      <input type="range" id="aw-rpe" min="1" max="10" value="7" oninput="document.getElementById('aw-rpe-val').textContent=this.value">
+      <div class="center"><b id="aw-rpe-val">7</b></div>
+      <button class="btn" style="margin-top:10px;" onclick="finishActiveWorkout()">שמור וסיים</button>
+    </div>
+  </div>
+</div>
+
+<!-- 18. SLEEP & RECOVERY -->
+<div class="screen" id="screen-sleep">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>שינה והתאוששות</h3></div>
+  <div class="card center">
+    <div class="score-ring">
+      <svg width="150" height="150">
+        <circle cx="75" cy="75" r="64" stroke="#232a36" stroke-width="13" fill="none"/>
+        <circle id="recovery-circle" cx="75" cy="75" r="64" stroke="#3ddc97" stroke-width="13" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="score-num"><div class="n" id="recovery-num">0</div><div class="muted">מוכנות<button class="info-btn" type="button" onclick="showInfo('recovery')">?</button></div></div>
+    </div>
+  </div>
+  <div class="card" id="sleep-illness-banner" style="display:none;"></div>
+  <div class="card">
+    <h3 style="margin-top:0;">ארכיטקטורת שינה (שעות)</h3>
+    <div class="row">
+      <div><label>שינה עמוקה</label><input id="sl-deep" type="number" step="0.1" value="1.5" oninput="renderSleepScreen()"></div>
+      <div><label>REM</label><input id="sl-rem" type="number" step="0.1" value="1.3" oninput="renderSleepScreen()"></div>
+    </div>
+    <div class="row">
+      <div><label>שינה קלה</label><input id="sl-light" type="number" step="0.1" value="4" oninput="renderSleepScreen()"></div>
+      <div><label>ערות</label><input id="sl-awake" type="number" step="0.1" value="0.3" oninput="renderSleepScreen()"></div>
+    </div>
+  </div>
+  <div class="grid2" id="recovery-metrics-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+  <div class="card" id="sleep-ai-insight"></div>
+  <button class="btn secondary" onclick="openFeelingPrompt()">איך אתה מרגיש?</button>
+</div>
+
 <div class="bottomnav" id="bottomnav">
   <button class="navbtn active" onclick="navTo('screen-dashboard')"><span class="ic">&#127968;</span>בית</button>
   <button class="navbtn" onclick="navTo('screen-fooddiary')"><span class="ic">&#127869;</span>יומן</button>
@@ -542,7 +651,9 @@ var INFO_DICT = {
   dailyProgress: {title:'התקדמות יומית', text:'אחוז המשימות וההיעדים שהשלמת היום מתוך כל מה שהוגדר לך להיום (תזונה, פעילות ושינה).'},
   bmr: {title:'BMR - קצב מטבולי בסיסי', text:'כמות הקלוריות שהגוף שלך שורף במנוחה מוחלטת, רק כדי לתפקד (נשימה, חימום הגוף וכו׳), לפני כל פעילות. משמש בסיס לחישוב היעד הקלורי היומי שלך.'},
   vytalScore: {title:'Vytal Score', text:'ציון יומי שמשקלל את התזונה, הפעילות והשינה שלך לציון אחד פשוט, כדי שתוכל לראות במהירות איך היה היום שלך בסך הכול.'},
-  streakFreeze: {title:'הקפאת רצף', text:'מאפשרת לשמור על הרצף הנוכחי שלך אפילו ביום שבו לא עמדת ביעדים, למשל בזמן מחלה או פציעה.'}
+  streakFreeze: {title:'הקפאת רצף', text:'מאפשרת לשמור על הרצף הנוכחי שלך אפילו ביום שבו לא עמדת ביעדים, למשל בזמן מחלה או פציעה.'},
+  vytalAge: {title:'Vytal Age - גיל ביולוגי', text:'הערכה של גיל הגוף שלך בפועל, בהתבסס על VO2 Max, דופק מנוחה, שיווי משקל וכוח אחיזה - מדדים שמחקרים מקשרים לאריכות ימים. ככל שתשפר את המדדים, ה-Vytal Age שלך יורד, גם אם הגיל הכרונולוגי שלך לא משתנה.'},
+  recovery: {title:'ציון מוכנות (Recovery Score)', text:'מדד שמשקלל את איכות השינה שלך מול שונות הדופק (HRV) ודופק המנוחה (RHR) של הלילה האחרון, כדי להעריך כמה הגוף שלך מוכן ליום מאמץ.'}
 };
 function infoBtn(key){
   return '<button class="info-btn" type="button" onclick="event.stopPropagation();showInfo(\''+key+'\')">?</button>';
@@ -2255,6 +2366,300 @@ window.onSliderChange = onSliderChange; window.renderGoalsManual = renderGoalsMa
 window.trySaveGoals = trySaveGoals; window.applyGoalsChange = applyGoalsChange;
 
 window.__vytal_part6_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var goTo = window.__vytalGoTo;
+var todayKey = window.__VYTAL_todayKey;
+
+/* ===================== VYTAL AGE (BIOLOGICAL AGE) ===================== */
+function calcVytalAge(){
+  var profile = LS.get('profile', {});
+  var chrono = profile.age || 30;
+  var m = LS.get('vytalMetrics', {});
+  var hasData = !!(m.vo2max || m.rhr || m.balance || m.hang);
+  if(!hasData) return {chrono:chrono, bio:chrono, hasData:false};
+  var deltaYears = 0;
+  if(m.vo2max){
+    var expectedVO2 = 48 - (chrono-25)*0.35;
+    deltaYears += (m.vo2max - expectedVO2)*0.3;
+  }
+  if(m.rhr){
+    deltaYears += (60 - m.rhr)*0.15;
+  }
+  if(m.balance){
+    var expectedBalance = Math.max(5, 30 - (chrono-20)*0.3);
+    deltaYears += (m.balance - expectedBalance)*0.1;
+  }
+  if(m.hang){
+    var expectedHang = Math.max(5, 45 - (chrono-20)*0.4);
+    deltaYears += (m.hang - expectedHang)*0.08;
+  }
+  var bio = chrono - deltaYears;
+  var minBio = Math.max(16, chrono-20), maxBio = chrono+20;
+  bio = Math.max(minBio, Math.min(maxBio, bio));
+  return {chrono:chrono, bio:Math.round(bio), hasData:true};
+}
+function renderVytalAge(){
+  var result = calcVytalAge();
+  var m = LS.get('vytalMetrics', {});
+  document.getElementById('va-chrono').textContent = result.chrono;
+  document.getElementById('va-bio').textContent = result.hasData ? result.bio : '--';
+  var msgEl = document.getElementById('va-delta-msg');
+  if(!result.hasData){
+    msgEl.innerHTML = '<span class="muted">הזן את המדדים למטה כדי לחשב את ה-Vytal Age שלך</span>';
+  } else {
+    var diff = result.chrono - result.bio;
+    if(diff > 0){ msgEl.innerHTML = '<span style="color:#3ddc97;">&#127881; הגוף שלך צעיר ב-'+diff+' שנים מהגיל הכרונולוגי!</span>'; }
+    else if(diff < 0){ msgEl.innerHTML = '<span style="color:#ff6b6b;">הגוף שלך מבוגר ב-'+(-diff)+' שנים מהגיל הכרונולוגי. אפשר לשנות את זה!</span>'; }
+    else { msgEl.innerHTML = '<span class="muted">הגיל הביולוגי שלך תואם את הגיל הכרונולוגי.</span>'; }
+  }
+  document.getElementById('va-vo2max').value = m.vo2max || '';
+  document.getElementById('va-rhr').value = m.rhr || '';
+  document.getElementById('va-balance').value = m.balance || '';
+  document.getElementById('va-hang').value = m.hang || '';
+  document.getElementById('va-last-updated').textContent = m.updated ? ('עודכן לאחרונה: '+new Date(m.updated).toLocaleDateString('he-IL')) : 'עדיין לא הוזנו מדדים.';
+  document.getElementById('va-tip-card').innerHTML = '<b>איך להוריד את ה-Vytal Age?</b><div class="muted" style="margin-top:6px;">שיפור VO2 Max באמצעות אימוני Zone 2 ואינטרוולים, הורדת דופק המנוחה עם אימון אירובי עקבי, ותרגול שיווי משקל וכוח אחיזה - כל אלו מנבאים אריכות ימים מוכחת ומשפרים את התוצאה כאן.</div>';
+}
+function saveVytalAgeMetrics(){
+  var m = {
+    vo2max: parseFloat(document.getElementById('va-vo2max').value)||0,
+    rhr: parseFloat(document.getElementById('va-rhr').value)||0,
+    balance: parseFloat(document.getElementById('va-balance').value)||0,
+    hang: parseFloat(document.getElementById('va-hang').value)||0,
+    updated: Date.now()
+  };
+  LS.set('vytalMetrics', m);
+  renderVytalAge();
+}
+window.calcVytalAge = calcVytalAge; window.renderVytalAge = renderVytalAge; window.saveVytalAgeMetrics = saveVytalAgeMetrics;
+
+/* ===================== WEEKLY PLANNER (mocked calendar sync) ===================== */
+var plannerWeekOffset = 0;
+var MOCK_EXTERNAL_EVENTS = ['ישיבת צוות בעבודה','שיחת לקוח','פגישת רופא','איסוף ילדים'];
+function plannerShiftWeek(dir){ plannerWeekOffset += dir; renderPlanner(); }
+function plannerWeekStart(){
+  var d = new Date();
+  d.setDate(d.getDate() - d.getDay() + (plannerWeekOffset*7));
+  d.setHours(0,0,0,0);
+  return d;
+}
+function renderPlanner(){
+  var calendarConnected = LS.get('calendarConnected', true);
+  var banner = document.getElementById('planner-sync-banner');
+  var icon = document.getElementById('planner-sync-icon');
+  if(!calendarConnected){
+    banner.style.display='block';
+    banner.innerHTML = '&#9888; סנכרון היומן הופסק. כדי למנוע התנגשויות עם פגישות העבודה שלך, אנא אשר גישה ליומן בהגדרות המכשיר. <button class="btn secondary" style="margin-top:6px;" onclick="goTo(\'screen-integrations\')">פתח הגדרות</button>';
+    icon.style.display='none';
+  } else {
+    banner.style.display='none';
+    icon.style.display='inline';
+  }
+  var start = plannerWeekStart();
+  var end = new Date(start); end.setDate(end.getDate()+6);
+  document.getElementById('planner-week-label').textContent = start.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' - '+end.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
+
+  var workoutLog = LS.get('workoutLog', {});
+  var days = ['א','ב','ג','ד','ה','ו','שבת'];
+  var html = '';
+  for(var i=0;i<7;i++){
+    var d = new Date(start); d.setDate(d.getDate()+i);
+    var dk = todayKey(d);
+    var blocks = [];
+    blocks.push({color:'#3ddc97', label:'ארוחת צהריים - לפי התוכנית', type:'meal'});
+    var wEntries = workoutLog[dk] || [];
+    if(wEntries.length){
+      wEntries.forEach(function(e){ blocks.push({color:'#4a90e2', label:e.type+' - '+e.duration+' דק׳', type:'workout'}); });
+    }
+    if(calendarConnected && (i===1 || i===3)){
+      blocks.push({color:'#7d8597', label:MOCK_EXTERNAL_EVENTS[i % MOCK_EXTERNAL_EVENTS.length], type:'external'});
+    }
+    html += '<div class="card" style="padding:10px;"><b>'+days[i]+' &middot; '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+'</b>';
+    blocks.forEach(function(b){
+      html += '<div onmousedown="this.setAttribute(\'data-press\',Date.now())" oncontextmenu="return false;" style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;'+(b.type==='external'?'opacity:0.75;':'cursor:grab;')+'">'+b.label+(b.type==='external'?' <span class="muted">(חסום לעריכה)</span>':'')+'</div>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('planner-grid').innerHTML = html;
+}
+window.plannerShiftWeek = plannerShiftWeek; window.renderPlanner = renderPlanner;
+
+/* ===================== ACTIVE WORKOUT TRACKER ===================== */
+var activeWorkout = null;
+var activeWorkoutTimerHandle = null;
+var restTimerHandle = null;
+var restSecondsLeft = 90;
+var EXERCISE_PRESETS = ['סקוואט','דדליפט','לחיצת חזה','משיכה לחזה','לחיצת כתפיים','כפיפת מרפק'];
+function epley1RM(weight, reps){ return weight * (1 + reps/30); }
+function startActiveWorkout(){
+  activeWorkout = { startedAt: Date.now(), exercises: EXERCISE_PRESETS.slice(0,3).map(function(name){
+    return { name:name, sets:[{target_w:0,target_r:8,w:0,r:0,done:false},{target_w:0,target_r:8,w:0,r:0,done:false},{target_w:0,target_r:8,w:0,r:0,done:false}] };
+  })};
+  LS.set('activeWorkoutDraft', activeWorkout);
+  goTo('screen-activeworkout');
+  renderActiveWorkout();
+  if(activeWorkoutTimerHandle) clearInterval(activeWorkoutTimerHandle);
+  activeWorkoutTimerHandle = setInterval(updateActiveWorkoutTimer, 1000);
+}
+function updateActiveWorkoutTimer(){
+  if(!activeWorkout) return;
+  var secs = Math.floor((Date.now()-activeWorkout.startedAt)/1000);
+  var mm = String(Math.floor(secs/60)).padStart(2,'0');
+  var ss = String(secs%60).padStart(2,'0');
+  var el = document.getElementById('aw-timer');
+  if(el) el.textContent = mm+':'+ss;
+}
+function renderActiveWorkout(){
+  if(!activeWorkout) return;
+  var html = '';
+  activeWorkout.exercises.forEach(function(ex, ei){
+    html += '<div class="card"><div class="row" style="justify-content:space-between;"><b>'+ex.name+'</b><button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="swapExercise('+ei+')">החלף תרגיל</button></div>';
+    ex.sets.forEach(function(s, si){
+      html += '<div class="row" style="align-items:center;gap:6px;background:'+(s.done?'rgba(61,220,151,0.12)':'transparent')+';border-radius:8px;padding:4px;">'+
+        '<span style="flex:0 0 30px;">סט '+(si+1)+'</span>'+
+        '<input type="number" placeholder="ק"ג" value="'+(s.w||'')+'" oninput="updateSetField('+ei+','+si+',\'w\',this.value)" style="flex:1;">'+
+        '<input type="number" placeholder="חזרות" value="'+(s.r||'')+'" oninput="updateSetField('+ei+','+si+',\'r\',this.value)" style="flex:1;">'+
+        '<button class="icon-btn" onclick="toggleSetDone('+ei+','+si+')">'+(s.done?'&#9989;':'&#9744;')+'</button>'+
+        '</div>';
+    });
+    var est1rm = ex.sets.reduce(function(max,s){ return s.w&&s.r ? Math.max(max, epley1RM(s.w,s.r)) : max; }, 0);
+    if(est1rm) html += '<div class="muted" style="font-size:12px;margin-top:4px;">1RM משוער: '+Math.round(est1rm)+' ק"ג</div>';
+    html += '</div>';
+  });
+  document.getElementById('aw-exercise-list').innerHTML = html;
+}
+function updateSetField(ei, si, field, val){
+  activeWorkout.exercises[ei].sets[si][field] = parseFloat(val)||0;
+  LS.set('activeWorkoutDraft', activeWorkout);
+}
+function toggleSetDone(ei, si){
+  var s = activeWorkout.exercises[ei].sets[si];
+  s.done = !s.done;
+  LS.set('activeWorkoutDraft', activeWorkout);
+  renderActiveWorkout();
+  if(s.done) openRestTimer();
+}
+function swapExercise(ei){
+  var current = activeWorkout.exercises[ei].name;
+  var alternatives = EXERCISE_PRESETS.filter(function(n){ return n!==current; });
+  var pick = alternatives[Math.floor(Math.random()*alternatives.length)];
+  activeWorkout.exercises[ei].name = pick;
+  LS.set('activeWorkoutDraft', activeWorkout);
+  renderActiveWorkout();
+}
+function addCustomExercise(){
+  var name = prompt('שם התרגיל:');
+  if(!name) return;
+  activeWorkout.exercises.push({name:name, sets:[{target_w:0,target_r:8,w:0,r:0,done:false},{target_w:0,target_r:8,w:0,r:0,done:false}]});
+  LS.set('activeWorkoutDraft', activeWorkout);
+  renderActiveWorkout();
+}
+function openRestTimer(){
+  restSecondsLeft = 90;
+  document.getElementById('aw-rest-overlay').style.display = 'block';
+  document.getElementById('aw-rest-timer').textContent = restSecondsLeft;
+  if(restTimerHandle) clearInterval(restTimerHandle);
+  restTimerHandle = setInterval(function(){
+    restSecondsLeft--;
+    document.getElementById('aw-rest-timer').textContent = Math.max(0,restSecondsLeft);
+    if(restSecondsLeft<=0){ clearInterval(restTimerHandle); document.getElementById('aw-rest-overlay').style.display='none'; }
+  }, 1000);
+}
+function adjustRestTimer(delta){ restSecondsLeft = Math.max(0, restSecondsLeft+delta); document.getElementById('aw-rest-timer').textContent = restSecondsLeft; }
+function skipRestTimer(){ if(restTimerHandle) clearInterval(restTimerHandle); document.getElementById('aw-rest-overlay').style.display='none'; }
+function openFinishWorkoutModal(){ document.getElementById('finish-workout-modal').classList.add('show'); }
+function endActiveWorkoutPrompt(){
+  if(activeWorkout && confirm('לצאת בלי לשמור את האימון?')){
+    activeWorkout = null; LS.set('activeWorkoutDraft', null);
+    if(activeWorkoutTimerHandle) clearInterval(activeWorkoutTimerHandle);
+    goTo('screen-workouts'); if(window.renderWorkouts) window.renderWorkouts();
+  } else if(!activeWorkout){ goTo('screen-workouts'); }
+}
+function finishActiveWorkout(){
+  var rpe = parseInt(document.getElementById('aw-rpe').value,10);
+  var durationMin = Math.round((Date.now()-activeWorkout.startedAt)/60000);
+  var key = todayKey();
+  var log = LS.get('workoutLog', {});
+  log[key] = log[key] || [];
+  var totalCal = Math.max(50, durationMin*7);
+  log[key].push({type:'אימון כוח (מעקב סטים)', duration:durationMin, calories:totalCal, source:'tracker', ts:Date.now(), rpe:rpe});
+  LS.set('workoutLog', log);
+  activeWorkout = null;
+  LS.set('activeWorkoutDraft', null);
+  if(activeWorkoutTimerHandle) clearInterval(activeWorkoutTimerHandle);
+  if(restTimerHandle) clearInterval(restTimerHandle);
+  document.getElementById('finish-workout-modal').classList.remove('show');
+  goTo('screen-workouts');
+  if(window.renderWorkouts) window.renderWorkouts();
+}
+window.startActiveWorkout = startActiveWorkout; window.updateSetField = updateSetField;
+window.toggleSetDone = toggleSetDone; window.swapExercise = swapExercise; window.addCustomExercise = addCustomExercise;
+window.adjustRestTimer = adjustRestTimer; window.skipRestTimer = skipRestTimer; window.openFinishWorkoutModal = openFinishWorkoutModal;
+window.endActiveWorkoutPrompt = endActiveWorkoutPrompt; window.finishActiveWorkout = finishActiveWorkout;
+
+/* ===================== SLEEP & RECOVERY ===================== */
+function renderSleepScreen(){
+  var deep = parseFloat(document.getElementById('sl-deep').value)||0;
+  var rem = parseFloat(document.getElementById('sl-rem').value)||0;
+  var light = parseFloat(document.getElementById('sl-light').value)||0;
+  var awake = parseFloat(document.getElementById('sl-awake').value)||0;
+  var total = deep+rem+light;
+  var inBed = total+awake;
+  var targetHours = 8;
+  var durationPct = Math.min(100, (total/targetHours)*100);
+  var deepRemPct = total ? ((deep+rem)/total)*100 : 0;
+  var qualityScore = Math.max(0, 100 - Math.abs(deepRemPct-45)*2);
+  var efficiency = inBed ? (total/inBed)*100 : 0;
+  var sleepScore = Math.round(0.4*durationPct + 0.4*qualityScore + 0.2*efficiency);
+
+  var profile = LS.get('profile', {});
+  var hrv = LS.get('vytalMetrics', {}).hrv || (50+Math.round(Math.random()*20));
+  var rhr = LS.get('vytalMetrics', {}).rhr || (58+Math.round(Math.random()*8));
+  var tempDelta = (Math.random()*0.6-0.3).toFixed(1);
+  var rhrBaseline = 62;
+  var hrvBaseline = 58;
+  var hrvDeviation = (hrv-hrvBaseline)/hrvBaseline;
+  var rhrDeviation = rhr-rhrBaseline;
+  var recoveryScore = Math.round(Math.max(20, Math.min(98, 70 + hrvDeviation*100 - rhrDeviation*1.5 + (sleepScore-70)*0.2)));
+
+  var circle = document.getElementById('recovery-circle');
+  var pct = recoveryScore/100;
+  var circumference = 2*Math.PI*64;
+  circle.style.strokeDasharray = circumference;
+  circle.style.strokeDashoffset = circumference*(1-pct);
+  circle.style.stroke = recoveryScore>=70?'#3ddc97':(recoveryScore>=50?'#f5c451':'#ff6b6b');
+  document.getElementById('recovery-num').textContent = recoveryScore;
+
+  document.getElementById('recovery-metrics-grid').innerHTML =
+    '<div class="card"><div class="muted" style="font-size:12px;">HRV (שונות דופק)</div><div style="font-size:20px;font-weight:800;">'+hrv+' ms</div></div>'+
+    '<div class="card"><div class="muted" style="font-size:12px;">דופק מנוחה (RHR)</div><div style="font-size:20px;font-weight:800;">'+rhr+' BPM</div></div>'+
+    '<div class="card"><div class="muted" style="font-size:12px;">יעילות שינה</div><div style="font-size:20px;font-weight:800;">'+Math.round(efficiency)+'%</div></div>'+
+    '<div class="card"><div class="muted" style="font-size:12px;">סטיית טמפ׳ עור</div><div style="font-size:20px;font-weight:800;">'+(tempDelta>0?'+':'')+tempDelta+'&deg;C</div></div>';
+
+  var illnessBanner = document.getElementById('sleep-illness-banner');
+  if(tempDelta>1.2 && rhrDeviation>15 && hrvDeviation < -1){
+    illnessBanner.style.display='block';
+    illnessBanner.innerHTML = '&#129489;&#8205;&#9877;&#65039; Vytal OS זיהתה שינוי פיזיולוגי חריג במדדי הגוף שלך הלילה. ה-AI השבית את משימות האימון להיום ושינה את יעד התזונה למנוחה והתאוששות.';
+  } else {
+    illnessBanner.style.display='none';
+  }
+
+  var insight = recoveryScore>=70 ?
+    'התאוששת היטב! '+(deepRemPct<35?'שים לב ששלבי השינה העמוקה וה-REM היו נמוכים מהאופטימלי, כדאי לבדוק את שעת השכיבה.':'הגוף מוכן ליום מאתגר.') :
+    (recoveryScore>=50 ? 'התאוששות בינונית. אימון קל עד מתון מומלץ היום.' : 'התאוששות נמוכה - שווה לשקול יום מנוחה או אימון קל מאוד.');
+  document.getElementById('sleep-ai-insight').innerHTML = '<b>תובנת ה-AI Coach</b><div class="muted" style="margin-top:6px;">'+insight+'</div>';
+}
+function openFeelingPrompt(){
+  var v = prompt('איך אתה מרגיש היום? (1=מותש, 5=מצוין)');
+  if(v) alert('תודה! נשמור את התחושה שלך (' + v + '/5) ונשווה אותה למדדי החיישנים.');
+}
+window.renderSleepScreen = renderSleepScreen; window.openFeelingPrompt = openFeelingPrompt;
+
+window.__vytal_part7_loaded = true;
 
 /* global error visibility for debugging */
 window.addEventListener('error', function(e){
