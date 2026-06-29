@@ -53,6 +53,21 @@
   .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
   .chip{padding:8px 12px;border-radius:20px;background:#1e293b;border:1px solid #334155;font-size:.8rem;cursor:pointer;}
   .chip.sel{background:#7c3aed;border-color:#7c3aed;}
+  .meal-section{margin-bottom:14px;}
+  .meal-head{display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:6px;}
+  .food-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #334155;font-size:.85rem;}
+  .food-row .del-x{color:#ef4444;cursor:pointer;font-size:.8rem;padding:2px 8px;}
+  .macro-bar-row{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.75rem;}
+  .macro-bar-track{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;}
+  .macro-bar-fill{height:100%;border-radius:3px;}
+  .day-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .day-nav span{cursor:pointer;font-size:1.3rem;color:#a78bfa;}
+  .search-result{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #334155;cursor:pointer;}
+  .toggle-row{display:flex;background:#1e293b;border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .toggle-opt{flex:1;text-align:center;padding:10px;cursor:pointer;font-size:.85rem;}
+  .toggle-opt.active{background:#7c3aed;font-weight:bold;}
+  .slider-row{margin-bottom:10px;}
+  .slider-row input[type=range]{width:100%;}
 </style>
 </head>
 <body>
@@ -73,15 +88,51 @@ function loadState(){
     connections:{},
     goals:[],
     sleepLogs:[],
-    nutritionLogs:[],
+    nutrition:{
+      mode:"auto",
+      calories:2000,
+      proteinPct:30,
+      carbPct:40,
+      fatPct:30,
+      diary:{},
+      customFoods:[]
+    },
     missions:[],
     missionDate:null,
-    tab:"dashboard"
+    tab:"dashboard",
+    diaryDate:null,
+    foodSearchMeal:null,
+    foodSearchQuery:"",
+    pendingFood:null
   };
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
 var state=loadState();
+if(!state.nutrition) state.nutrition={mode:"auto",calories:2000,proteinPct:30,carbPct:40,fatPct:30,diary:{},customFoods:[]};
+if(state.diaryDate===undefined) state.diaryDate=null;
+if(state.foodSearchMeal===undefined) state.foodSearchMeal=null;
+if(state.foodSearchQuery===undefined) state.foodSearchQuery="";
+if(state.pendingFood===undefined) state.pendingFood=null;
+
+// ---------- Local food database (per 100g) ----------
+var FOOD_DB=[
+  {name:"חזה עוף", cal:165, protein:31, carb:0, fat:3.6},
+  {name:"אורז לבן מבושל", cal:130, protein:2.7, carb:28, fat:0.3},
+  {name:"יוגורט טבעי", cal:59, protein:10, carb:3.6, fat:0.4},
+  {name:"ביצה", cal:155, protein:13, carb:1.1, fat:11},
+  {name:"לחם מלא", cal:247, protein:13, carb:41, fat:3.4},
+  {name:"בננה", cal:89, protein:1.1, carb:23, fat:0.3},
+  {name:"שקדים", cal:579, protein:21, carb:22, fat:50},
+  {name:"סלמון", cal:208, protein:20, carb:0, fat:13},
+  {name:"קוטג'", cal:98, protein:11, carb:3.4, fat:4.3},
+  {name:"שמן זית", cal:884, protein:0, carb:0, fat:100},
+  {name:"טופו", cal:76, protein:8, carb:1.9, fat:4.8},
+  {name:"תפוח", cal:52, protein:0.3, carb:14, fat:0.2},
+  {name:"שיבולת שועל", cal:389, protein:17, carb:66, fat:7},
+  {name:"גבינה צהובה", cal:402, protein:25, carb:1.3, fat:33}
+];
+function allFoods(){ return FOOD_DB.concat(state.nutrition.customFoods); }
 
 function go(screen){ state.screen=screen; saveState(); render(); }
 function setTab(tab){ state.tab=tab; saveState(); render(); }
@@ -177,17 +228,53 @@ function renderQuestionnaire(){
   html+='</div>';
   html+='<div class="field-label">שעות שינה ממוצעות בלילה</div><input id="q-sleep" type="number" value="'+(state.profile.avgSleep||7)+'">';
   html+='<div class="field-label">רמת פעילות שבועית (פעמים)</div><input id="q-activity" type="number" value="'+(state.profile.weeklyActivity||3)+'">';
-  html+='<button id="btn-q-finish">סיום והגעה ל-Dashboard</button>';
+  html+='<button id="btn-q-finish">סיום וחישוב יעדים</button>';
   html+='</div>';
   return html;
 }
 
+// ---------- BMI / BMR ----------
+function calcBMI(){
+  var p=state.profile;
+  if(!p.height||!p.weight) return null;
+  var h=p.height/100;
+  return p.weight/(h*h);
+}
+function calcBMR(){
+  var p=state.profile;
+  if(!p.height||!p.weight||!p.age) return null;
+  var base=10*p.weight + 6.25*p.height - 5*p.age;
+  return p.gender==="female" ? base-161 : base+5;
+}
+function calcAutoCalorieGoal(){
+  var bmr=calcBMR();
+  if(!bmr) return 2000;
+  var activity=state.profile.weeklyActivity||3;
+  var factor = activity>=6 ? 1.7 : activity>=4 ? 1.5 : activity>=2 ? 1.35 : 1.2;
+  return Math.round(bmr*factor);
+}
+
 // ---------- Life Score calc ----------
+function todayDiary(){
+  var d=todayStr();
+  if(!state.nutrition.diary[d]) state.nutrition.diary[d]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+  return state.nutrition.diary[d];
+}
+function diaryTotalCal(diary){
+  var sum=0;
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    diary[m].forEach(function(item){ sum+=item.cal; });
+  });
+  return sum;
+}
 function calcLifeScore(){
   var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
   var sleepScore=Math.max(0, Math.min(100, 100 - Math.abs(8-sleepAvg)*18));
-  var nutriCount=recentCount(state.nutritionLogs,7);
-  var nutriScore=Math.min(100, nutriCount*12);
+  var diary=todayDiary();
+  var consumed=diaryTotalCal(diary);
+  var goal=state.nutrition.calories||2000;
+  var deviationPct=goal? Math.abs(consumed-goal)/goal*100 : 100;
+  var nutriScore = consumed===0 ? 0 : Math.max(0, Math.min(100, 100 - Math.max(0, deviationPct-10)*2));
   var missionRate=missionCompletionRate();
   var total=Math.round(sleepScore*0.4 + nutriScore*0.3 + missionRate*0.3);
   return {total:total, sleepScore:Math.round(sleepScore), nutriScore:Math.round(nutriScore), missionRate:Math.round(missionRate)};
@@ -196,9 +283,6 @@ function avgRecent(arr, n){
   var slice=arr.slice(-n);
   if(!slice.length) return null;
   return slice.reduce(function(a,b){return a+b;},0)/slice.length;
-}
-function recentCount(arr,days){
-  return arr.length; // simple count, no fake precision
 }
 function missionCompletionRate(){
   if(!state.missions.length) return 0;
@@ -215,7 +299,8 @@ function ensureMissions(){
     var missions=[];
     if(sleepAvg<7) missions.push({text:"לישון הלילה 30 דקות מוקדם יותר", done:false});
     else missions.push({text:"לשמור על שעת שינה קבועה הלילה", done:false});
-    if(state.nutritionLogs.length<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", done:false});
+    var loggedToday=["breakfast","lunch","dinner","snacks"].reduce(function(n,m){ return n+(todayDiary()[m]||[]).length; },0);
+    if(loggedToday<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", done:false});
     else missions.push({text:"לשתות לפחות 2 ליטר מים היום", done:false});
     missions.push({text:"5 דקות נשימות / מדיטציה", done:false});
     state.missions=missions;
@@ -249,7 +334,7 @@ function renderDashboard(){
 
   html+='<div class="grid2">';
   html+='<button data-go="sleep">😴 Sleep AI</button>';
-  html+='<button data-go="nutrition">🍽 Nutrition AI</button>';
+  html+='<button data-go="foodlog">🍽 Nutrition AI</button>';
   html+='</div>';
   html+='<div style="height:10px;"></div>';
   html+='<button data-go="vision" class="secondary">📸 Vision AI - נתח צלחת</button>';
@@ -295,32 +380,161 @@ function renderSleep(){
   return html;
 }
 
-// ---------- Nutrition AI ----------
-function renderNutrition(){
+// ---------- Mסך 11: Food Log / Daily Diary ----------
+var MEAL_LABELS={breakfast:"ארוחת בוקר", lunch:"ארוחת צהריים", dinner:"ארוחת ערב", snacks:"נשנושים"};
+function addDays(dateStr, n){
+  var d=new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function renderFoodLog(){
+  var date=state.diaryDate||todayStr();
+  if(!state.nutrition.diary[date]) state.nutrition.diary[date]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+  var diary=state.nutrition.diary[date];
+  var consumed=diaryTotalCal(diary);
+  var goal=state.nutrition.calories;
+  var remaining=goal-consumed;
+
   var html='<div class="screen">';
   html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
-  html+='<h1>🍽 Nutrition AI</h1>';
-  html+='<div class="card">';
-  html+='<div class="field-label">מה אכלת?</div>';
-  html+='<input id="nutri-text" placeholder="לדוגמה: סלט עוף וקינואה">';
-  html+='<div class="field-label">קלוריות משוערות</div>';
-  html+='<input id="nutri-cal" type="number" placeholder="450">';
-  html+='<button id="btn-nutri-save">שמור ארוחה</button>';
-  html+='</div>';
-
-  var totalCal=state.nutritionLogs.filter(function(l){return l.date===todayStr();}).reduce(function(a,b){return a+(b.cal||0);},0);
-  html+='<div class="card">';
-  html+='<h2 style="margin-top:0;">היום</h2>';
-  html+='<p>סה"כ קלוריות שתועדו: <b>'+totalCal+'</b></p>';
-  html+='</div>';
+  html+='<h1>🍽 יומן האוכל</h1>';
+  html+='<div class="day-nav"><span data-day="-1">›</span><b>'+date+'</b><span data-day="1">‹</span></div>';
 
   html+='<div class="card">';
-  html+='<h2 style="margin-top:0;">היסטוריה</h2>';
-  if(!state.nutritionLogs.length) html+='<p class="empty">אין רשומות עדיין</p>';
-  else state.nutritionLogs.slice().reverse().slice(0,10).forEach(function(l){
-    html+='<div class="stat-row"><span>'+l.text+'</span><span>'+(l.cal||'-')+' קל\' • '+l.date+'</span></div>';
+  html+='<div class="stat-row"><span>יעד</span><span>'+goal+'</span></div>';
+  html+='<div class="stat-row"><span>נאכל</span><span>'+consumed+'</span></div>';
+  html+='<div class="stat-row"><span>נותר</span><span>'+remaining+'</span></div>';
+  var totals=diaryMacroTotals(diary);
+  ["protein","carb","fat"].forEach(function(k){
+    var label=k==="protein"?"חלבון":k==="carb"?"פחמימה":"שומן";
+    var targetG=macroGoalGrams(k);
+    var pct=Math.min(100, Math.round(totals[k]/targetG*100)||0);
+    var color=k==="protein"?"#7c3aed":k==="carb"?"#0ea5e9":"#f59e0b";
+    html+='<div class="macro-bar-row"><span style="width:60px;">'+label+'</span><div class="macro-bar-track"><div class="macro-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div><span>'+Math.round(totals[k])+'/'+Math.round(targetG)+'ג</span></div>';
   });
   html+='</div>';
+
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    var items=diary[m];
+    var mealCal=items.reduce(function(a,b){return a+b.cal;},0);
+    html+='<div class="card meal-section">';
+    html+='<div class="meal-head"><span>'+MEAL_LABELS[m]+' ('+mealCal+' קל\')</span></div>';
+    if(!items.length) html+='<p class="empty" style="padding:6px;">אין פריטים</p>';
+    items.forEach(function(item,i){
+      html+='<div class="food-row"><span>'+item.name+' • '+item.grams+'ג</span><span>'+item.cal+' קל\' <span class="del-x" data-del-food="'+m+'|'+i+'">✕</span></span></div>';
+    });
+    html+='<button class="secondary small" data-add-meal="'+m+'" style="margin-top:8px;">+ הוסף מאכל</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function diaryMacroTotals(diary){
+  var t={protein:0,carb:0,fat:0};
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    diary[m].forEach(function(item){ t.protein+=item.protein; t.carb+=item.carb; t.fat+=item.fat; });
+  });
+  return t;
+}
+function macroGoalGrams(key){
+  var cal=state.nutrition.calories;
+  if(key==="protein") return cal*(state.nutrition.proteinPct/100)/4;
+  if(key==="carb") return cal*(state.nutrition.carbPct/100)/4;
+  return cal*(state.nutrition.fatPct/100)/9;
+}
+
+// ---------- Mסך 12: Food Search ----------
+function renderFoodSearch(){
+  var q=state.foodSearchQuery.trim().toLowerCase();
+  var results=allFoods().filter(function(f){ return !q || f.name.toLowerCase().indexOf(q)>=0; });
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodlog">← חזרה</span>';
+  html+='<h1>חיפוש מאכל</h1>';
+  html+='<input id="food-search-input" placeholder="חפש מאכל..." value="'+escapeHtml(state.foodSearchQuery)+'">';
+  html+='<div class="card">';
+  if(!results.length) html+='<p class="empty">לא מצאנו את המאכל הזה, אפשר ליצור אותו</p>';
+  results.forEach(function(f,i){
+    html+='<div class="search-result" data-pick-food="'+i+'"><span>'+f.name+'</span><span>'+f.cal+' קל\'/100ג</span></div>';
+  });
+  html+='</div>';
+  html+='<button id="btn-new-food" class="secondary">לא מצאת? צור מאכל חדש</button>';
+  html+='</div>';
+  return html;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+// ---------- Mסך 13: Food Detail / Add to diary ----------
+function renderFoodDetail(){
+  var f=state.pendingFood;
+  if(!f) return renderFoodSearch();
+  var grams=f.grams||100;
+  var ratio=grams/100;
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodsearch">← חזרה</span>';
+  html+='<h1>'+f.name+'</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">משקל (גרם)</div>';
+  html+='<input id="detail-grams" type="number" value="'+grams+'">';
+  html+='<div class="stat-row"><span>קלוריות</span><span>'+Math.round(f.cal*ratio)+'</span></div>';
+  html+='<div class="stat-row"><span>חלבון</span><span>'+Math.round(f.protein*ratio)+'ג</span></div>';
+  html+='<div class="stat-row"><span>פחמימה</span><span>'+Math.round(f.carb*ratio)+'ג</span></div>';
+  html+='<div class="stat-row"><span>שומן</span><span>'+Math.round(f.fat*ratio)+'ג</span></div>';
+  html+='</div>';
+  html+='<button id="btn-add-to-diary">אשר והוסף ליומן האוכל</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Mסך 14: Custom Food Creator ----------
+function renderFoodCreate(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodsearch">← חזרה</span>';
+  html+='<h1>מאכל חדש</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">שם המאכל</div><input id="cf-name">';
+  html+='<div class="field-label">קלוריות ל-100 גרם</div><input id="cf-cal" type="number">';
+  html+='<div class="field-label">חלבון (גרם ל-100 גרם)</div><input id="cf-protein" type="number">';
+  html+='<div class="field-label">פחמימה (גרם ל-100 גרם)</div><input id="cf-carb" type="number">';
+  html+='<div class="field-label">שומן (גרם ל-100 גרם)</div><input id="cf-fat" type="number">';
+  html+='<button id="btn-save-custom-food">שמור מאכל לפרופיל שלי</button>';
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Mסך 15: Nutrition Goals ----------
+function renderGoals(){
+  var n=state.nutrition;
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>יעדי תזונה</h1>';
+  html+='<div class="toggle-row">';
+  html+='<div class="toggle-opt'+(n.mode==="auto"?' active':'')+'" data-goal-mode="auto">ניהול אוטומטי (AI)</div>';
+  html+='<div class="toggle-opt'+(n.mode==="manual"?' active':'')+'" data-goal-mode="manual">ניהול ידני</div>';
+  html+='</div>';
+
+  if(n.mode==="auto"){
+    var bmr=calcBMR(), bmi=calcBMI();
+    html+='<div class="card">';
+    if(bmr) html+='<p>על בסיס המשקל, הגובה, הגיל ורמת הפעילות שלך, ה-BMR (חילוף חומרים בסיסי) מחושב ל-'+Math.round(bmr)+' קלוריות. בהתאם לרמת הפעילות שדיווחת, יעד הקלוריות היומי שנקבע הוא <b>'+n.calories+'</b> קלוריות, עם חלוקה של '+n.proteinPct+'% חלבון, '+n.carbPct+'% פחמימה, '+n.fatPct+'% שומן.</p>';
+    else html+='<p class="empty">חסרים נתוני גובה/משקל/גיל בפרופיל לחישוב מדויק</p>';
+    if(bmi) html+='<p>BMI: '+bmi.toFixed(1)+'</p>';
+    html+='</div>';
+  } else {
+    html+='<div class="card">';
+    html+='<div class="field-label">סך קלוריות יומי</div><input id="g-calories" type="number" value="'+n.calories+'">';
+    html+='<div class="slider-row"><div class="field-label">חלבון: <span id="g-protein-val">'+n.proteinPct+'</span>%</div><input id="g-protein" type="range" min="0" max="100" value="'+n.proteinPct+'"></div>';
+    html+='<div class="slider-row"><div class="field-label">פחמימה: <span id="g-carb-val">'+n.carbPct+'</span>%</div><input id="g-carb" type="range" min="0" max="100" value="'+n.carbPct+'"></div>';
+    html+='<div class="slider-row"><div class="field-label">שומן: <span id="g-fat-val">'+n.fatPct+'</span>%</div><input id="g-fat" type="range" min="0" max="100" value="'+n.fatPct+'"></div>';
+    var sum=n.proteinPct+n.carbPct+n.fatPct;
+    html+='<p id="g-sum-status" style="color:'+(sum===100?'#86efac':'#ef4444')+';">סך הכל: '+sum+'%</p>';
+    html+='<button id="btn-save-goals"'+(sum!==100?' disabled style="opacity:.5;"':'')+'>עדכן יעדי תזונה</button>';
+    html+='</div>';
+  }
   html+='</div>';
   return html;
 }
@@ -391,6 +605,7 @@ function renderSettings(){
   html+='<div class="stat-row"><span>אימייל</span><span>'+(state.profile.email||'-')+'</span></div>';
   html+='<div class="stat-row"><span>מטרות</span><span>'+state.goals.join(", ")+'</span></div>';
   html+='</div>';
+  html+='<button data-go="goals" style="margin-bottom:10px;">🎯 יעדי תזונה</button>';
   html+='<button class="secondary" id="btn-reset">איפוס כל הנתונים</button>';
   html+='</div>';
   return html;
@@ -401,7 +616,7 @@ function renderTabbar(){
   var tabs=[
     {key:"dashboard", icon:"🏠", label:"בית"},
     {key:"sleep", icon:"😴", label:"שינה"},
-    {key:"nutrition", icon:"🍽", label:"תזונה"},
+    {key:"foodlog", icon:"🍽", label:"תזונה"},
     {key:"settings", icon:"⚙️", label:"הגדרות"}
   ];
   var html='<div class="tabbar">';
@@ -426,7 +641,11 @@ function render(){
     case "questionnaire": html=renderQuestionnaire(); break;
     case "dashboard": html=renderDashboard(); showTabbar=true; break;
     case "sleep": html=renderSleep(); showTabbar=true; break;
-    case "nutrition": html=renderNutrition(); showTabbar=true; break;
+    case "foodlog": html=renderFoodLog(); showTabbar=true; break;
+    case "foodsearch": html=renderFoodSearch(); break;
+    case "fooddetail": html=renderFoodDetail(); break;
+    case "foodcreate": html=renderFoodCreate(); break;
+    case "goals": html=renderGoals(); break;
     case "vision": html=renderVision(); break;
     case "settings": html=renderSettings(); showTabbar=true; break;
     default: html=renderDashboard(); showTabbar=true;
@@ -479,6 +698,7 @@ function bindEvents(){
   if(qFinish) qFinish.onclick=function(){
     state.profile.avgSleep=Number(document.getElementById("q-sleep").value)||7;
     state.profile.weeklyActivity=Number(document.getElementById("q-activity").value)||3;
+    state.nutrition.calories=calcAutoCalorieGoal();
     saveState();
     go("dashboard");
   };
@@ -504,13 +724,97 @@ function bindEvents(){
     saveState(); render();
   };
 
-  var btnNutriSave=document.getElementById("btn-nutri-save");
-  if(btnNutriSave) btnNutriSave.onclick=function(){
-    var text=document.getElementById("nutri-text").value.trim();
-    var cal=Number(document.getElementById("nutri-cal").value)||0;
-    if(!text) return;
-    state.nutritionLogs.push({date:todayStr(), text:text, cal:cal});
+  document.querySelectorAll("[data-day]").forEach(function(el){
+    el.onclick=function(){
+      var delta=Number(el.getAttribute("data-day"));
+      state.diaryDate=addDays(state.diaryDate||todayStr(), delta);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll("[data-add-meal]").forEach(function(el){
+    el.onclick=function(){
+      state.foodSearchMeal=el.getAttribute("data-add-meal");
+      state.foodSearchQuery="";
+      saveState(); go("foodsearch");
+    };
+  });
+  document.querySelectorAll("[data-del-food]").forEach(function(el){
+    el.onclick=function(){
+      var parts=el.getAttribute("data-del-food").split("|");
+      var date=state.diaryDate||todayStr();
+      state.nutrition.diary[date][parts[0]].splice(Number(parts[1]),1);
+      saveState(); render();
+    };
+  });
+
+  var foodSearchInput=document.getElementById("food-search-input");
+  if(foodSearchInput){
+    foodSearchInput.oninput=function(e){ state.foodSearchQuery=e.target.value; saveState(); render(); };
+    setTimeout(function(){ foodSearchInput.focus(); foodSearchInput.setSelectionRange(foodSearchInput.value.length, foodSearchInput.value.length); },0);
+  }
+  document.querySelectorAll("[data-pick-food]").forEach(function(el){
+    el.onclick=function(){
+      var q=state.foodSearchQuery.trim().toLowerCase();
+      var results=allFoods().filter(function(f){ return !q || f.name.toLowerCase().indexOf(q)>=0; });
+      var f=results[Number(el.getAttribute("data-pick-food"))];
+      state.pendingFood=Object.assign({grams:100}, f);
+      saveState(); go("fooddetail");
+    };
+  });
+  var btnNewFood=document.getElementById("btn-new-food");
+  if(btnNewFood) btnNewFood.onclick=function(){ go("foodcreate"); };
+
+  var detailGrams=document.getElementById("detail-grams");
+  if(detailGrams) detailGrams.oninput=function(e){
+    state.pendingFood.grams=Number(e.target.value)||0;
     saveState(); render();
+  };
+  var btnAddDiary=document.getElementById("btn-add-to-diary");
+  if(btnAddDiary) btnAddDiary.onclick=function(){
+    var f=state.pendingFood;
+    var ratio=(f.grams||100)/100;
+    var date=state.diaryDate||todayStr();
+    if(!state.nutrition.diary[date]) state.nutrition.diary[date]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+    state.nutrition.diary[date][state.foodSearchMeal||"snacks"].push({
+      name:f.name, grams:f.grams||100,
+      cal:Math.round(f.cal*ratio), protein:f.protein*ratio, carb:f.carb*ratio, fat:f.fat*ratio
+    });
+    state.pendingFood=null;
+    saveState(); go("foodlog");
+  };
+
+  var btnSaveCustomFood=document.getElementById("btn-save-custom-food");
+  if(btnSaveCustomFood) btnSaveCustomFood.onclick=function(){
+    var name=document.getElementById("cf-name").value.trim();
+    if(!name) return;
+    state.nutrition.customFoods.push({
+      name:name,
+      cal:Number(document.getElementById("cf-cal").value)||0,
+      protein:Number(document.getElementById("cf-protein").value)||0,
+      carb:Number(document.getElementById("cf-carb").value)||0,
+      fat:Number(document.getElementById("cf-fat").value)||0
+    });
+    saveState(); go("foodsearch");
+  };
+
+  document.querySelectorAll("[data-goal-mode]").forEach(function(el){
+    el.onclick=function(){
+      state.nutrition.mode=el.getAttribute("data-goal-mode");
+      if(state.nutrition.mode==="auto") state.nutrition.calories=calcAutoCalorieGoal();
+      saveState(); render();
+    };
+  });
+  ["protein","carb","fat"].forEach(function(k){
+    var slider=document.getElementById("g-"+k);
+    if(slider) slider.oninput=function(e){
+      state.nutrition[k+"Pct"]=Number(e.target.value);
+      saveState(); render();
+    };
+  });
+  var btnSaveGoals=document.getElementById("btn-save-goals");
+  if(btnSaveGoals) btnSaveGoals.onclick=function(){
+    state.nutrition.calories=Number(document.getElementById("g-calories").value)||2000;
+    saveState(); go("settings");
   };
 
   var visionFile=document.getElementById("vision-file");
@@ -530,9 +834,10 @@ function bindEvents(){
       html+='<button id="btn-vision-log" style="margin-top:10px;">שמור כארוחה</button>';
       out.innerHTML=html;
       document.getElementById("btn-vision-log").onclick=function(){
-        state.nutritionLogs.push({date:todayStr(), text:"ארוחה מצולמת (Vision AI)", cal:result.estCalories});
+        var diary=todayDiary();
+        diary.snacks.push({name:"ארוחה מצולמת (Vision AI)", grams:0, cal:result.estCalories, protein:0, carb:0, fat:0});
         saveState();
-        go("nutrition");
+        go("foodlog");
       };
     };
     img.src=URL.createObjectURL(file);
