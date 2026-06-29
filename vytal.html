@@ -1460,33 +1460,65 @@ function analyzeImageFoodScore(dataUrl){
     var img = new Image();
     img.onload = function(){
       try{
-        var w = 48, h = 48;
+        var w = 64, h = 64;
         var canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         var ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
         var data = ctx.getImageData(0, 0, w, h).data;
         var satSum = 0, satSumSq = 0, warmCount = 0, n = 0;
-        for(var i=0; i<data.length; i+=4){
-          var r=data[i]/255, g=data[i+1]/255, b=data[i+2]/255;
-          var max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
-          var s = max===min ? 0 : (l>0.5 ? (max-min)/(2-max-min) : (max-min)/(max+min));
-          var hue=0;
-          if(max!==min){
-            if(max===r) hue = 60*(((g-b)/(max-min))%6);
-            else if(max===g) hue = 60*(((b-r)/(max-min))+2);
-            else hue = 60*(((r-g)/(max-min))+4);
+        var lum = new Array(w*h);
+        var gridSat = [0,0,0,0], gridHue = [0,0,0,0], gridN = [0,0,0,0];
+        for(var py=0; py<h; py++){
+          for(var px=0; px<w; px++){
+            var idx = (py*w+px)*4;
+            var r=data[idx]/255, g=data[idx+1]/255, b=data[idx+2]/255;
+            var max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+            var s = max===min ? 0 : (l>0.5 ? (max-min)/(2-max-min) : (max-min)/(max+min));
+            var hue=0;
+            if(max!==min){
+              if(max===r) hue = 60*(((g-b)/(max-min))%6);
+              else if(max===g) hue = 60*(((b-r)/(max-min))+2);
+              else hue = 60*(((r-g)/(max-min))+4);
+            }
+            if(hue<0) hue += 360;
+            satSum += s; satSumSq += s*s;
+            /* foods: reds/oranges/yellows/browns (0-70) and greens (70-170) at meaningful saturation */
+            if(s>0.18 && hue>=0 && hue<=170) warmCount++;
+            lum[py*w+px] = l;
+            var gi = (py<h/2?0:1)*2 + (px<w/2?0:1);
+            gridSat[gi]+=s; gridHue[gi]+=hue; gridN[gi]++;
+            n++;
           }
-          if(hue<0) hue += 360;
-          satSum += s; satSumSq += s*s;
-          /* foods: reds/oranges/yellows/browns (0-70) and greens (70-170) at meaningful saturation */
-          if(s>0.18 && hue>=0 && hue<=170) warmCount++;
-          n++;
         }
         var avgSat = satSum/n;
         var satVariance = Math.max(0, satSumSq/n - avgSat*avgSat);
         var warmFrac = warmCount/n;
-        var score = Math.min(1, avgSat*0.45 + warmFrac*0.65 + Math.sqrt(satVariance)*0.5);
+        /* texture: local brightness variation — flat surfaces (floor/wall/fabric) are smooth,
+           real food close-ups have visible texture from ingredients, sauce, char marks etc. */
+        var texSum = 0, texN = 0;
+        for(var ty=1; ty<h-1; ty++){
+          for(var tx=1; tx<w-1; tx++){
+            var c = lum[ty*w+tx];
+            texSum += Math.abs(c - lum[ty*w+tx+1]) + Math.abs(c - lum[(ty+1)*w+tx]);
+            texN++;
+          }
+        }
+        var texture = texN ? (texSum/texN) : 0;
+        /* spatial variety: real plated food usually has multiple differently-colored regions
+           (protein/veg/sauce), flat surfaces look near-identical in every quadrant */
+        var quadSats = [], quadHues = [];
+        for(var qi=0; qi<4; qi++){ quadSats.push(gridN[qi]?gridSat[qi]/gridN[qi]:0); quadHues.push(gridN[qi]?gridHue[qi]/gridN[qi]:0); }
+        var quadSatMean = (quadSats[0]+quadSats[1]+quadSats[2]+quadSats[3])/4;
+        var quadSatVar = quadSats.reduce(function(acc,v){ return acc+(v-quadSatMean)*(v-quadSatMean); }, 0)/4;
+        var quadHueMean = (quadHues[0]+quadHues[1]+quadHues[2]+quadHues[3])/4;
+        var quadHueVar = quadHues.reduce(function(acc,v){ return acc+(v-quadHueMean)*(v-quadHueMean); }, 0)/4;
+        var spatialVariety = Math.min(1, Math.sqrt(quadHueVar)/40 + Math.sqrt(quadSatVar)*2);
+        var rawScore = avgSat*0.30 + warmFrac*0.40 + Math.sqrt(satVariance)*0.30 +
+          Math.min(1, texture*6)*0.25 + spatialVariety*0.20;
+        /* boost mid/high raw scores so genuine, varied food close-ups can clear the 90%
+           confidence gate, while flat non-food surfaces (which score very low here) stay low */
+        var score = Math.min(1, rawScore*1.4);
         resolve(score);
       }catch(e){ resolve(0); }
     };
