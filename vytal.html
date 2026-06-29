@@ -121,6 +121,9 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;}
 .modal-overlay.show{display:flex;}
 .modal-box{background:var(--card);border-radius:16px;padding:20px;width:85%;max-width:380px;}
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--card2);color:var(--muted);border:none;font-size:11px;font-weight:700;margin:0 4px;flex:0 0 18px;cursor:pointer;vertical-align:middle;padding:0;}
+.modal-box .modal-close{position:absolute;top:14px;left:14px;background:var(--card2);border:none;border-radius:50%;width:28px;height:28px;color:var(--text);font-size:15px;cursor:pointer;}
+.modal-box.info-box{position:relative;}
 </style>
 </head>
 <body>
@@ -229,7 +232,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
         <circle cx="80" cy="80" r="68" stroke="#232a36" stroke-width="14" fill="none"/>
         <circle id="score-circle" cx="80" cy="80" r="68" stroke="#3ddc97" stroke-width="14" fill="none" stroke-linecap="round"/>
       </svg>
-      <div class="score-num"><div class="n" id="score-num">0</div><div class="muted">Vytal Score</div></div>
+      <div class="score-num"><div class="n" id="score-num">0</div><div class="muted">Vytal Score<button class="info-btn" type="button" onclick="showInfo('vytalScore')">?</button></div></div>
     </div>
     <div id="score-alert" class="muted" style="margin-top:8px;"></div>
   </div>
@@ -288,18 +291,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div class="card center">
     <div class="streak-fire">&#128293;</div>
     <div style="font-size:26px;font-weight:800;" id="streak-num">0 ימים</div>
-    <div class="muted">רצף נוכחי</div>
+    <div class="muted">רצף נוכחי<button class="info-btn" type="button" onclick="showInfo('streak')">?</button></div>
     <div class="row" style="margin-top:10px;align-items:center;">
-      <span class="muted">הקפאת רצף (חולה/פציעה)</span>
+      <span class="muted">הקפאת רצף (חולה/פציעה)<button class="info-btn" type="button" onclick="showInfo('streakFreeze')">?</button></span>
       <button class="toggle" id="streak-freeze-toggle" onclick="toggleStreakFreeze()"><span class="knob"></span></button>
     </div>
   </div>
   <div class="card">
-    <div class="row" style="justify-content:space-between;"><span>רמה <b id="xp-level">1</b></span><span class="muted" id="xp-text">0/100 XP</span></div>
+    <div class="row" style="justify-content:space-between;"><span>רמה <b id="xp-level">1</b><button class="info-btn" type="button" onclick="showInfo('level')">?</button></span><span class="muted" id="xp-text">0/100 XP<button class="info-btn" type="button" onclick="showInfo('xp')">?</button></span></div>
     <div class="xpbar"><div class="xpfill" id="xp-fill" style="width:0%"></div></div>
   </div>
   <div class="card">
-    <div class="row" style="justify-content:space-between;"><b>התקדמות יומית</b><span id="daily-progress-pct">0%</span></div>
+    <div class="row" style="justify-content:space-between;"><b>התקדמות יומית<button class="info-btn" type="button" onclick="showInfo('dailyProgress')">?</button></b><span id="daily-progress-pct">0%</span></div>
     <div class="progress-bar"><div class="progress-fill" id="daily-progress-fill" style="width:0%"></div></div>
   </div>
   <h3>משימות</h3>
@@ -407,12 +410,12 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div id="cf-suggestions"></div>
     <div class="muted" style="margin-top:4px;font-size:12px;">הערכים הם ל-100 גרם. בוחרים הצעה כדי למלא אוטומטית, ואפשר לערוך ידנית.</div>
     <div class="row">
-      <div><label>קלוריות (ל-100 גרם)</label><input id="cf-cal" type="number"></div>
-      <div><label>חלבון (גרם)</label><input id="cf-protein" type="number"></div>
+      <div><label>קלוריות (ל-100 גרם)<button class="info-btn" type="button" onclick="showInfo('calories')">?</button></label><input id="cf-cal" type="number"></div>
+      <div><label>חלבון (גרם)<button class="info-btn" type="button" onclick="showInfo('protein')">?</button></label><input id="cf-protein" type="number"></div>
     </div>
     <div class="row">
-      <div><label>פחמימה (גרם)</label><input id="cf-carb" type="number"></div>
-      <div><label>שומן (גרם)</label><input id="cf-fat" type="number"></div>
+      <div><label>פחמימה (גרם)<button class="info-btn" type="button" onclick="showInfo('carb')">?</button></label><input id="cf-carb" type="number"></div>
+      <div><label>שומן (גרם)<button class="info-btn" type="button" onclick="showInfo('fat')">?</button></label><input id="cf-fat" type="number"></div>
     </div>
     <button class="btn" style="margin-top:14px;" onclick="saveCustomFood()">שמור למאכלים שלי</button>
   </div>
@@ -441,18 +444,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div id="goals-ai-detail" style="margin-top:10px;"></div>
   </div>
   <div id="goals-manual-view" class="card" style="display:none;">
-    <label>קלוריות יומיות</label>
+    <label>קלוריות יומיות<button class="info-btn" type="button" onclick="showInfo('calories')">?</button></label>
     <input id="goals-cal" type="number" oninput="renderGoalsManual()">
     <div class="slider-row">
-      <div class="slider-label"><span>חלבון</span><span id="pct-protein-label">30%</span></div>
+      <div class="slider-label"><span>חלבון<button class="info-btn" type="button" onclick="showInfo('protein')">?</button></span><span id="pct-protein-label">30%</span></div>
       <input type="range" id="slider-protein" min="0" max="100" value="30" oninput="onSliderChange('protein')">
     </div>
     <div class="slider-row">
-      <div class="slider-label"><span>פחמימה</span><span id="pct-carb-label">40%</span></div>
+      <div class="slider-label"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo('carb')">?</button></span><span id="pct-carb-label">40%</span></div>
       <input type="range" id="slider-carb" min="0" max="100" value="40" oninput="onSliderChange('carb')">
     </div>
     <div class="slider-row">
-      <div class="slider-label"><span>שומן</span><span id="pct-fat-label">30%</span></div>
+      <div class="slider-label"><span>שומן<button class="info-btn" type="button" onclick="showInfo('fat')">?</button></span><span id="pct-fat-label">30%</span></div>
       <input type="range" id="slider-fat" min="0" max="100" value="30" oninput="onSliderChange('fat')">
     </div>
     <div class="muted" id="pct-sum-label">סה"כ: 100%</div>
@@ -471,6 +474,15 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <button class="navbtn" onclick="navTo('screen-goals')"><span class="ic">&#127919;</span>יעדים</button>
 </div>
 
+</div>
+
+<!-- Info modal -->
+<div class="modal-overlay" id="info-modal">
+  <div class="modal-box info-box">
+    <button class="modal-close" onclick="closeInfo()">&#10005;</button>
+    <h3 id="info-modal-title"></h3>
+    <p class="muted" id="info-modal-text"></p>
+  </div>
 </div>
 
 <!-- Retroactive change modal -->
@@ -492,6 +504,35 @@ var LS = {
   get:function(k,d){ try{ var v=localStorage.getItem('vytal_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
   set:function(k,v){ try{ localStorage.setItem('vytal_'+k, JSON.stringify(v)); }catch(e){} }
 };
+
+/* ===================== INFO TOOLTIPS ===================== */
+var INFO_DICT = {
+  calories: {title:'קלוריות', text:'יחידת מידה לכמות האנרגיה שיש במאכל או בשתייה. הגוף שלך צריך כמות מסוימת של קלוריות ביום כדי לתפקד, ולשמור/לרדת/לעלות במשקל בהתאם לאיזון בין מה שאוכלים למה ששורפים.'},
+  protein: {title:'חלבון', text:'אבן הבניין של השרירים והרקמות בגוף. חשוב לשמירה ובניית מסת שריר, להחלמה מאימונים ולתחושת שובע.'},
+  carb: {title:'פחמימה', text:'מקור האנרגיה המהיר והעיקרי של הגוף, בעיקר לפעילות גופנית ולמוח. נמצא בלחם, אורז, פירות, פסטה ועוד.'},
+  fat: {title:'שומן', text:'מקור אנרגיה מרוכז, חשוב לייצור הורמונים, לספיגת ויטמינים ולבריאות הלב. שומן איכותי (כמו אגוזים, שמן זית, אבוקדו) חשוב לתפריט מאוזן.'},
+  xp: {title:'XP (נקודות חוויה)', text:'נקודות שצוברים על ביצוע משימות יומיות, אימונים ועמידה ביעדים. כשממלאים את מד ה-XP עוברים שלב (Level) ומשם הוא מתחיל להתמלא מההתחלה.'},
+  level: {title:'רמה (Level)', text:'מציין כמה ניסיון צברת באפליקציה עד כה. עולים רמה כל פעם שממלאים את מד ה-XP, וזה דרך נחמדה לראות התקדמות ולהישאר מחוברים.'},
+  streak: {title:'רצף נוכחי', text:'מספר הימים הרצופים שבהם עמדת ביעדים שהגדרת (תזונה, פעילות, שינה). שומרים על הרצף כדי לבנות הרגל יומיומי בריא.'},
+  dailyProgress: {title:'התקדמות יומית', text:'אחוז המשימות וההיעדים שהשלמת היום מתוך כל מה שהוגדר לך להיום (תזונה, פעילות ושינה).'},
+  bmr: {title:'BMR - קצב מטבולי בסיסי', text:'כמות הקלוריות שהגוף שלך שורף במנוחה מוחלטת, רק כדי לתפקד (נשימה, חימום הגוף וכו׳), לפני כל פעילות. משמש בסיס לחישוב היעד הקלורי היומי שלך.'},
+  vytalScore: {title:'Vytal Score', text:'ציון יומי שמשקלל את התזונה, הפעילות והשינה שלך לציון אחד פשוט, כדי שתוכל לראות במהירות איך היה היום שלך בסך הכול.'},
+  streakFreeze: {title:'הקפאת רצף', text:'מאפשרת לשמור על הרצף הנוכחי שלך אפילו ביום שבו לא עמדת ביעדים, למשל בזמן מחלה או פציעה.'}
+};
+function infoBtn(key){
+  return '<button class="info-btn" type="button" onclick="event.stopPropagation();showInfo(\''+key+'\')">?</button>';
+}
+function showInfo(key){
+  var info = INFO_DICT[key];
+  if(!info) return;
+  document.getElementById('info-modal-title').textContent = info.title;
+  document.getElementById('info-modal-text').textContent = info.text;
+  document.getElementById('info-modal').classList.add('show');
+}
+function closeInfo(){
+  document.getElementById('info-modal').classList.remove('show');
+}
+window.infoBtn = infoBtn; window.showInfo = showInfo; window.closeInfo = closeInfo;
 
 /* ===================== NAVIGATION ===================== */
 function goTo(id){
@@ -767,7 +808,7 @@ function renderQuizPage(){
     var bmr = calcBMR(profile, quizState.activity);
     html += '<h2>סיכום</h2>'+
       '<div class="card"><div class="muted">BMI</div><div style="font-size:24px;font-weight:800;">'+bmi.toFixed(1)+'</div></div>'+
-      '<div class="card"><div class="muted">BMR (קצב מטבולי בסיסי)</div><div style="font-size:24px;font-weight:800;">'+Math.round(bmr)+' קק"ל</div></div>'+
+      '<div class="card"><div class="muted">BMR (קצב מטבולי בסיסי)<button class="info-btn" type="button" onclick="showInfo(\'bmr\')">?</button></div><div style="font-size:24px;font-weight:800;">'+Math.round(bmr)+' קק"ל</div></div>'+
       '<div class="muted">החישובים הללו ישמשו לקביעת יעדי התזונה האוטומטיים שלך.</div>';
   }
   html += '<div class="row" style="margin-top:20px;">';
@@ -1384,10 +1425,10 @@ function renderVisionResult(item, confidence, withBox){
   return '<div class="card">'+
     photoHtml+
     '<div class="row" style="justify-content:space-between;"><b>'+item.name+'</b><span class="muted">ביטחון: '+confidence+'%</span></div>'+
-    '<div class="food-row"><span>קלוריות</span><span>'+item.calories+' קק"ל</span></div>'+
-    '<div class="food-row"><span>חלבון</span><span>'+item.protein+' ג\'</span></div>'+
-    '<div class="food-row"><span>פחמימה</span><span>'+item.carb+' ג\'</span></div>'+
-    '<div class="food-row"><span>שומן</span><span>'+item.fat+' ג\'</span></div>'+
+    '<div class="food-row"><span>קלוריות<button class="info-btn" type="button" onclick="showInfo(\'calories\')">?</button></span><span>'+item.calories+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון<button class="info-btn" type="button" onclick="showInfo(\'protein\')">?</button></span><span>'+item.protein+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo(\'carb\')">?</button></span><span>'+item.carb+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן<button class="info-btn" type="button" onclick="showInfo(\'fat\')">?</button></span><span>'+item.fat+' ג\'</span></div>'+
     '<button class="btn" style="margin-top:10px;" onclick="confirmVisionAdd(\''+item.name.replace(/'/g,"\\'")+'\','+item.calories+','+item.protein+','+item.carb+','+item.fat+')">אישור והוספה ליומן</button>'+
     '</div>';
 }
@@ -1784,10 +1825,10 @@ function renderFoodDetailTotals(){
     cal: f.cal*factor, protein: f.protein*factor, carb: f.carb*factor, fat: f.fat*factor
   };
   document.getElementById('fd-table').innerHTML =
-    '<div class="food-row"><span>קלוריות</span><span>'+Math.round(totals.cal)+' קק"ל</span></div>'+
-    '<div class="food-row"><span>חלבון</span><span>'+totals.protein.toFixed(1)+' ג\'</span></div>'+
-    '<div class="food-row"><span>פחמימה</span><span>'+totals.carb.toFixed(1)+' ג\'</span></div>'+
-    '<div class="food-row"><span>שומן</span><span>'+totals.fat.toFixed(1)+' ג\'</span></div>';
+    '<div class="food-row"><span>קלוריות<button class="info-btn" type="button" onclick="showInfo(\'calories\')">?</button></span><span>'+Math.round(totals.cal)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון<button class="info-btn" type="button" onclick="showInfo(\'protein\')">?</button></span><span>'+totals.protein.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo(\'carb\')">?</button></span><span>'+totals.carb.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן<button class="info-btn" type="button" onclick="showInfo(\'fat\')">?</button></span><span>'+totals.fat.toFixed(1)+' ג\'</span></div>';
 }
 function confirmAddFood(){
   var qtyVal = parseFloat(document.getElementById('fd-qty').value);
@@ -1909,10 +1950,10 @@ function renderRecipeTotals(){
   };
   document.getElementById('cfr-totals').innerHTML =
     '<b>לכל מנה (מתוך '+servings+' מנות):</b>'+
-    '<div class="food-row"><span>קלוריות</span><span>'+Math.round(perServing.cal)+' קק"ל</span></div>'+
-    '<div class="food-row"><span>חלבון</span><span>'+perServing.protein.toFixed(1)+' ג\'</span></div>'+
-    '<div class="food-row"><span>פחמימה</span><span>'+perServing.carb.toFixed(1)+' ג\'</span></div>'+
-    '<div class="food-row"><span>שומן</span><span>'+perServing.fat.toFixed(1)+' ג\'</span></div>';
+    '<div class="food-row"><span>קלוריות<button class="info-btn" type="button" onclick="showInfo(\'calories\')">?</button></span><span>'+Math.round(perServing.cal)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון<button class="info-btn" type="button" onclick="showInfo(\'protein\')">?</button></span><span>'+perServing.protein.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo(\'carb\')">?</button></span><span>'+perServing.carb.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן<button class="info-btn" type="button" onclick="showInfo(\'fat\')">?</button></span><span>'+perServing.fat.toFixed(1)+' ג\'</span></div>';
 }
 function saveRecipe(){
   var name = document.getElementById('cfr-name').value.trim();
@@ -1963,9 +2004,9 @@ function renderGoals(){
   var goalAdj = (profile.goals||[]).indexOf('lose')>-1 ? 0.85 : ((profile.goals||[]).indexOf('gain')>-1 ? 1.15 : 1);
   var autoCal = Math.round(bmr*goalAdj);
   document.getElementById('goals-ai-detail').innerHTML =
-    '<div class="food-row"><span>BMR בסיסי</span><span>'+Math.round(bmr)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>BMR בסיסי<button class="info-btn" type="button" onclick="showInfo(\'bmr\')">?</button></span><span>'+Math.round(bmr)+' קק"ל</span></div>'+
     '<div class="food-row"><span>מטרה</span><span>'+((profile.goals||[]).join(', ')||'שמירה')+'</span></div>'+
-    '<div class="food-row"><span><b>יעד קלוריות יומי</b></span><span><b>'+autoCal+' קק"ל</b></span></div>'+
+    '<div class="food-row"><span><b>יעד קלוריות יומי</b><button class="info-btn" type="button" onclick="showInfo(\'calories\')">?</button></span><span><b>'+autoCal+' קק"ל</b></span></div>'+
     '<div class="muted" style="margin-top:8px;">חלוקת מאקרו אוטומטית: 30% חלבון, 40% פחמימה, 30% שומן.</div>';
 
   if(mode==='manual'){
@@ -2001,9 +2042,9 @@ function renderGoalsManual(){
   var gCarb = (cal*(c/100))/4;
   var gFat = (cal*(f/100))/9;
   document.getElementById('goals-gram-table').innerHTML =
-    '<div class="food-row"><span>חלבון</span><span>'+gProtein.toFixed(0)+' גרם</span></div>'+
-    '<div class="food-row"><span>פחמימה</span><span>'+gCarb.toFixed(0)+' גרם</span></div>'+
-    '<div class="food-row"><span>שומן</span><span>'+gFat.toFixed(0)+' גרם</span></div>';
+    '<div class="food-row"><span>חלבון<button class="info-btn" type="button" onclick="showInfo(\'protein\')">?</button></span><span>'+gProtein.toFixed(0)+' גרם</span></div>'+
+    '<div class="food-row"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo(\'carb\')">?</button></span><span>'+gCarb.toFixed(0)+' גרם</span></div>'+
+    '<div class="food-row"><span>שומן<button class="info-btn" type="button" onclick="showInfo(\'fat\')">?</button></span><span>'+gFat.toFixed(0)+' גרם</span></div>';
 
   var errEl = document.getElementById('err-pct-sum');
   var saveBtn = document.getElementById('goals-save-btn');
