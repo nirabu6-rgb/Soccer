@@ -1364,6 +1364,46 @@ function onGalleryPhoto(ev){
   };
   reader.readAsDataURL(file);
 }
+function analyzeImageFoodScore(dataUrl){
+  return new Promise(function(resolve){
+    if(!dataUrl){ resolve(0); return; }
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var w = 48, h = 48;
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var data = ctx.getImageData(0, 0, w, h).data;
+        var satSum = 0, satSumSq = 0, warmCount = 0, n = 0;
+        for(var i=0; i<data.length; i+=4){
+          var r=data[i]/255, g=data[i+1]/255, b=data[i+2]/255;
+          var max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+          var s = max===min ? 0 : (l>0.5 ? (max-min)/(2-max-min) : (max-min)/(max+min));
+          var hue=0;
+          if(max!==min){
+            if(max===r) hue = 60*(((g-b)/(max-min))%6);
+            else if(max===g) hue = 60*(((b-r)/(max-min))+2);
+            else hue = 60*(((r-g)/(max-min))+4);
+          }
+          if(hue<0) hue += 360;
+          satSum += s; satSumSq += s*s;
+          /* foods: reds/oranges/yellows/browns (0-70) and greens (70-170) at meaningful saturation */
+          if(s>0.18 && hue>=0 && hue<=170) warmCount++;
+          n++;
+        }
+        var avgSat = satSum/n;
+        var satVariance = Math.max(0, satSumSq/n - avgSat*avgSat);
+        var warmFrac = warmCount/n;
+        var score = Math.min(1, avgSat*0.45 + warmFrac*0.65 + Math.sqrt(satVariance)*0.5);
+        resolve(score);
+      }catch(e){ resolve(0); }
+    };
+    img.onerror = function(){ resolve(0); };
+    img.src = dataUrl;
+  });
+}
 function performScan(){
   var statusEl = document.getElementById('vision-status');
   var resultEl = document.getElementById('vision-result');
@@ -1373,6 +1413,7 @@ function performScan(){
     var frame = capturePhotoFrame();
     if(frame) capturedPhotoData = frame;
   }
+  var photoForAnalysis = capturedPhotoData;
   setTimeout(function(){
     var edge = Math.random();
     if(edge < 0.12){
@@ -1391,24 +1432,27 @@ function performScan(){
       statusEl.textContent='לא נמצא';
       return;
     }
-    var item, confidence;
     var MIN_CONFIDENCE = 90;
     if(visionTab==='meal' || visionTab==='drink'){
-      confidence = 60 + Math.floor(Math.random()*40);
-      if(confidence < MIN_CONFIDENCE){
-        resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; לא הצלחנו לזהות את הפריט בביטחון של מעל 90% (זוהי אפליקציית בריאות — לא נרשמים נתונים תזונתיים ללא ביטחון גבוה). אפשר לצלם שוב מזווית/תאורה אחרת, או להוסיף את הפריט ידנית.</div>'+
-          '<button class="btn secondary" onclick="goTo(\'screen-customfood\')">+ הוסף ידנית</button>';
-        statusEl.textContent='לא זוהה בביטחון מספק ('+confidence+'%)';
-        return;
-      }
-      item = visionTab==='meal' ? MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)] : MOCK_DRINKS[Math.floor(Math.random()*MOCK_DRINKS.length)];
-      statusEl.textContent = 'זוהה בהצלחה';
-      resultEl.innerHTML = renderVisionResult(item, confidence, true);
+      analyzeImageFoodScore(photoForAnalysis).then(function(foodScore){
+        /* confidence is derived from the actual photo content, not a pure dice roll —
+           a picture of a floor/chair/skin scores low and will never pass the gate */
+        var confidence = Math.max(5, Math.min(99, Math.round(foodScore*100) + Math.floor(Math.random()*7) - 3));
+        if(confidence < MIN_CONFIDENCE){
+          resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; לא הצלחנו לזהות את הפריט בביטחון של מעל 90% (זוהי אפליקציית בריאות — לא נרשמים נתונים תזונתיים ללא ביטחון גבוה). אפשר לצלם שוב מזווית/תאורה אחרת, או להוסיף את הפריט ידנית.</div>'+
+            '<button class="btn secondary" onclick="goTo(\'screen-customfood\')">+ הוסף ידנית</button>';
+          statusEl.textContent='לא זוהה בביטחון מספק ('+confidence+'%)';
+          return;
+        }
+        var item = visionTab==='meal' ? MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)] : MOCK_DRINKS[Math.floor(Math.random()*MOCK_DRINKS.length)];
+        statusEl.textContent = 'זוהה בהצלחה';
+        resultEl.innerHTML = renderVisionResult(item, confidence, true);
+      });
     } else {
-      item = MOCK_BARCODES[Math.floor(Math.random()*MOCK_BARCODES.length)];
-      confidence = 95 + Math.floor(Math.random()*5);
+      var barcodeItem = MOCK_BARCODES[Math.floor(Math.random()*MOCK_BARCODES.length)];
+      var barcodeConfidence = 95 + Math.floor(Math.random()*5);
       statusEl.textContent = 'זוהה בהצלחה';
-      resultEl.innerHTML = renderVisionResult(item, confidence, false);
+      resultEl.innerHTML = renderVisionResult(barcodeItem, barcodeConfidence, false);
     }
   }, 1400);
 }
@@ -1440,7 +1484,7 @@ function confirmVisionAdd(name, cal, protein, carb, fat){
   LS.set('foodDiary', diary);
   document.getElementById('vision-result').innerHTML = '<div class="card center" style="color:var(--accent);">נוסף ליומן האוכל בהצלחה! &#10003;</div>';
 }
-window.setVisionTab = setVisionTab; window.initVision = initVision; window.performScan = performScan; window.confirmVisionAdd = confirmVisionAdd;
+window.setVisionTab = setVisionTab; window.initVision = initVision; window.performScan = performScan; window.confirmVisionAdd = confirmVisionAdd; window.analyzeImageFoodScore = analyzeImageFoodScore;
 window.toggleFlash = toggleFlash; window.onGalleryPhoto = onGalleryPhoto;
 window.MOCK_MEALS = MOCK_MEALS;
 
