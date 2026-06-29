@@ -1200,8 +1200,23 @@ function generateMockCoachReply(text){
   if(lower.indexOf('ארוחת ערב') > -1 || lower.indexOf('המלץ') > -1){
     return 'בהתבסס על היעדים שלך, אני ממליץ על ארוחה עם חלבון רזה (כמו עוף או טופו), ירקות ופחמימה מורכבת אחת. רוצה שאחשב לך כמויות מדויקות?';
   }
-  var generic = ['מבין אותך. בהמשך ליעדים שלך, אני ממליץ להתמקד בעקביות יומית.','מעולה ששאלת — ככל שתתעד יותר נתונים, אוכל לתת לך תובנות מדויקות יותר.','זה נושא טוב. תרצה שאבדוק את הנתונים האחרונים שלך לגביו?'];
-  return generic[Math.floor(Math.random()*generic.length)];
+  if(lower.indexOf('אימון') > -1 || lower.indexOf('תוכנית') > -1 || lower.indexOf('להתאמן') > -1 || lower.indexOf('להתאמן') > -1 || lower.indexOf('לצאת') > -1 || lower.indexOf('ספורט') > -1){
+    var profile = LS.get('profile', {});
+    var activity = profile.activity || 'moderate';
+    var picks = {
+      light: 'הליכה מהירה של 30 דקות, או יוגה קלה — מתאים לרמת הפעילות שהגדרת.',
+      moderate: 'ריצה קלה/אופניים 30-40 דקות, ועוד יום של אימון כוח (פלג גוף עליון/תחתון) בשבוע הזה.',
+      high: 'אימון כוח מלא + 20 דקות אינטרוולים (HIIT) — אתה ברמת פעילות גבוהה, אפשר לדחוף.'
+    };
+    var suggestion = picks[activity] || picks.moderate;
+    return 'בהתאם ליעדים ולרמת הפעילות שלך, אני מציע היום: '+suggestion+' תוכל לתעד את האימון ב"יומן אימונים" כדי שזה יחושב גם בתקציב הקלוריות שלך.';
+  }
+  var lastGenericReply = window.__VYTAL_lastGeneric || -1;
+  var generic = ['מבין אותך. בהמשך ליעדים שלך, אני ממליץ להתמקד בעקביות יומית.','מעולה ששאלת — ככל שתתעד יותר נתונים, אוכל לתת לך תובנות מדויקות יותר.','זה נושא טוב. תרצה שאבדוק את הנתונים האחרונים שלך לגביו?','תוכל לפרט קצת יותר? כך אוכל לתת לך תשובה ממוקדת יותר.'];
+  var idx = Math.floor(Math.random()*generic.length);
+  if(idx===lastGenericReply) idx = (idx+1)%generic.length;
+  window.__VYTAL_lastGeneric = idx;
+  return generic[idx];
 }
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 window.initCoach = initCoach; window.autoGrow = autoGrow; window.attachMockImage = attachMockImage;
