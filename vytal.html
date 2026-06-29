@@ -259,10 +259,16 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>סקאנר חזותי</h3></div>
   <div class="tabbar">
     <button id="vtab-meal" class="active" onclick="setVisionTab('meal')">סקאן ארוחה</button>
+    <button id="vtab-drink" onclick="setVisionTab('drink')">סקאן שתייה</button>
     <button id="vtab-barcode" onclick="setVisionTab('barcode')">סקאן בר-קוד</button>
   </div>
   <div class="viewfinder" id="viewfinder">
     <div class="scan-line"></div>
+  </div>
+  <div class="row" style="margin-top:8px;justify-content:center;gap:18px;">
+    <button class="icon-btn" id="vision-flash-btn" title="פלאש" onclick="toggleFlash()">&#128161;</button>
+    <button class="icon-btn" title="גלריה" onclick="document.getElementById('vision-gallery-input').click()">&#128247;</button>
+    <input type="file" id="vision-gallery-input" accept="image/*" capture="environment" style="display:none" onchange="onGalleryPhoto(event)">
   </div>
   <div class="muted center" id="vision-status" style="margin-top:8px;">מאתר מצלמה...</div>
   <button class="btn" style="margin-top:14px;" onclick="performScan()">סרוק עכשיו</button>
@@ -453,6 +459,10 @@ var LS = {
 function goTo(id){
   var els = document.querySelectorAll('.screen');
   for(var i=0;i<els.length;i++){ els[i].classList.remove('active'); }
+  if(id!=='screen-vision' && typeof cameraStream!=='undefined' && cameraStream){
+    cameraStream.getTracks().forEach(function(t){ t.stop(); });
+    cameraStream = null; cameraVideoEl = null;
+  }
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   var bn = document.getElementById('bottomnav');
@@ -1047,6 +1057,15 @@ var MOCK_MEALS = [
   {name:'אורז עם טופו מוקפץ', calories:390, protein:22, carb:52, fat:10},
   {name:'כריך חביתה וגבינה', calories:340, protein:20, carb:30, fat:16}
 ];
+var MOCK_DRINKS = [
+  {name:'קפה שחור', calories:5, protein:0, carb:1, fat:0},
+  {name:'לאטה עם חלב 3%', calories:140, protein:7, carb:11, fat:7},
+  {name:'מיץ תפוזים טבעי (כוס)', calories:110, protein:1, carb:26, fat:0},
+  {name:'שייק חלבון ופירות', calories:260, protein:24, carb:30, fat:5},
+  {name:'קולה רגילה (פחית)', calories:140, protein:0, carb:39, fat:0},
+  {name:'בירה (פחית)', calories:150, protein:1, carb:13, fat:0},
+  {name:'מים מינרלים', calories:0, protein:0, carb:0, fat:0}
+];
 var MOCK_BARCODES = [
   {name:'יוגורט טבעי 3%', calories:120, protein:6, carb:9, fat:6, code:'7290001234567'},
   {name:'במבה אגוז', calories:540, protein:18, carb:46, fat:32, code:'7290000111111'},
@@ -1054,14 +1073,19 @@ var MOCK_BARCODES = [
 ];
 var visionTab = 'meal';
 var cameraStream = null;
+var cameraVideoEl = null;
+var capturedPhotoData = null;
+var flashOn = false;
 function setVisionTab(tab){
   visionTab = tab;
   document.getElementById('vtab-meal').classList.toggle('active', tab==='meal');
+  document.getElementById('vtab-drink').classList.toggle('active', tab==='drink');
   document.getElementById('vtab-barcode').classList.toggle('active', tab==='barcode');
   document.getElementById('vision-result').innerHTML='';
 }
 function initVision(){
   setVisionTab('meal');
+  capturedPhotoData = null;
   var vf = document.getElementById('viewfinder');
   var statusEl = document.getElementById('vision-status');
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
@@ -1070,9 +1094,10 @@ function initVision(){
       var video = document.createElement('video');
       video.autoplay = true; video.muted = true; video.playsInline = true;
       video.srcObject = stream;
+      cameraVideoEl = video;
       vf.innerHTML = '<div class="scan-line"></div>';
       vf.insertBefore(video, vf.firstChild);
-      statusEl.textContent = 'מצלמה פעילה — מקם את הארוחה במרכז';
+      statusEl.textContent = 'מצלמה פעילה — מקם את הארוחה או השתייה במרכז';
     }).catch(function(){
       degradeViewfinder();
     });
@@ -1082,23 +1107,64 @@ function initVision(){
 }
 function degradeViewfinder(){
   var vf = document.getElementById('viewfinder');
+  cameraVideoEl = null;
   vf.innerHTML = '<div class="scan-line"></div><div style="font-size:50px;">&#127859;</div>';
-  document.getElementById('vision-status').textContent = 'אין גישה למצלמה — מצב הדגמה (תמונה סטטית)';
+  document.getElementById('vision-status').textContent = 'אין גישה למצלמה — אפשר להעלות תמונה מהגלריה, או להמשיך במצב הדגמה';
+}
+function toggleFlash(){
+  flashOn = !flashOn;
+  document.getElementById('vision-flash-btn').style.color = flashOn ? '#ffd54a' : '';
+  var applied = false;
+  if(cameraStream){
+    var track = cameraStream.getVideoTracks()[0];
+    if(track && track.getCapabilities && track.getCapabilities().torch){
+      track.applyConstraints({advanced:[{torch:flashOn}]}).catch(function(){});
+      applied = true;
+    }
+  }
+  if(!applied && cameraVideoEl){
+    cameraVideoEl.style.filter = flashOn ? 'brightness(1.5)' : 'none';
+  }
+}
+function capturePhotoFrame(){
+  if(!cameraVideoEl || !cameraVideoEl.videoWidth) return null;
+  var canvas = document.createElement('canvas');
+  canvas.width = cameraVideoEl.videoWidth;
+  canvas.height = cameraVideoEl.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(cameraVideoEl, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+function onGalleryPhoto(ev){
+  var file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    capturedPhotoData = e.target.result;
+    var vf = document.getElementById('viewfinder');
+    vf.innerHTML = '<img src="'+capturedPhotoData+'" style="width:100%;height:100%;object-fit:cover;"><div class="scan-line"></div>';
+    document.getElementById('vision-status').textContent = 'תמונה נטענה מהגלריה — לחץ "סרוק עכשיו"';
+  };
+  reader.readAsDataURL(file);
 }
 function performScan(){
   var statusEl = document.getElementById('vision-status');
   var resultEl = document.getElementById('vision-result');
-  statusEl.textContent = 'סורק...';
+  statusEl.textContent = 'מצלם ומנתח...';
   resultEl.innerHTML = '';
+  if(!capturedPhotoData){
+    var frame = capturePhotoFrame();
+    if(frame) capturedPhotoData = frame;
+  }
   setTimeout(function(){
     var edge = Math.random();
     if(edge < 0.12){
-      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; תאורה חלשה מדי — נסה לסרוק במקום מואר יותר.</div>';
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; תאורה חלשה מדי — מומלץ להדליק את הפלאש ולצלם שוב.</div>';
       statusEl.textContent='סריקה נכשלה';
       return;
     }
     if(edge < 0.22){
-      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; התמונה מטושטשת — נסה לייצב את המצלמה ולסרוק שוב.</div>';
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; התמונה מטושטשת — אנא החזק את המכשיר יציב ונסה שוב.</div>';
       statusEl.textContent='סריקה נכשלה';
       return;
     }
@@ -1114,6 +1180,10 @@ function performScan(){
       item = MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)];
       confidence = 72 + Math.floor(Math.random()*24);
       resultEl.innerHTML = renderVisionResult(item, confidence, true);
+    } else if(visionTab==='drink'){
+      item = MOCK_DRINKS[Math.floor(Math.random()*MOCK_DRINKS.length)];
+      confidence = 72 + Math.floor(Math.random()*24);
+      resultEl.innerHTML = renderVisionResult(item, confidence, true);
     } else {
       item = MOCK_BARCODES[Math.floor(Math.random()*MOCK_BARCODES.length)];
       confidence = 95 + Math.floor(Math.random()*5);
@@ -1122,9 +1192,7 @@ function performScan(){
   }, 1400);
 }
 function renderVisionResult(item, confidence, withBox){
-  var boxHtml = withBox ? '<div class="bbox" style="top:30%;left:20%;width:60%;height:40%;"></div>' : '';
   var vf = document.getElementById('viewfinder');
-  // inject a bbox overlay briefly
   var existing = vf.querySelector('.bbox');
   if(existing) existing.remove();
   if(withBox){
@@ -1132,7 +1200,9 @@ function renderVisionResult(item, confidence, withBox){
     b.className='bbox'; b.style.top='30%'; b.style.left='20%'; b.style.width='60%'; b.style.height='40%';
     vf.appendChild(b);
   }
+  var photoHtml = capturedPhotoData ? '<img src="'+capturedPhotoData+'" style="width:100%;border-radius:10px;margin-bottom:8px;max-height:160px;object-fit:cover;">' : '';
   return '<div class="card">'+
+    photoHtml+
     '<div class="row" style="justify-content:space-between;"><b>'+item.name+'</b><span class="muted">ביטחון: '+confidence+'%</span></div>'+
     '<div class="food-row"><span>קלוריות</span><span>'+item.calories+' קק"ל</span></div>'+
     '<div class="food-row"><span>חלבון</span><span>'+item.protein+' ג\'</span></div>'+
@@ -1150,6 +1220,7 @@ function confirmVisionAdd(name, cal, protein, carb, fat){
   document.getElementById('vision-result').innerHTML = '<div class="card center" style="color:var(--accent);">נוסף ליומן האוכל בהצלחה! &#10003;</div>';
 }
 window.setVisionTab = setVisionTab; window.initVision = initVision; window.performScan = performScan; window.confirmVisionAdd = confirmVisionAdd;
+window.toggleFlash = toggleFlash; window.onGalleryPhoto = onGalleryPhoto;
 window.MOCK_MEALS = MOCK_MEALS;
 
 window.__vytal_part3_loaded = true;
