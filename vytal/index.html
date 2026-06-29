@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vytal OS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;margin:0;background:#0f172a;color:#f1f5f9;min-height:100vh;}
+  #root{max-width:480px;margin:auto;min-height:100vh;background:#0f172a;position:relative;padding-bottom:70px;}
+  .screen{padding:20px;}
+  h1{font-size:1.6rem;margin:0 0 6px;}
+  h2{font-size:1.2rem;margin:18px 0 8px;}
+  p{color:#94a3b8;line-height:1.5;}
+  .card{background:#1e293b;border-radius:14px;padding:16px;margin-bottom:14px;}
+  input,select{width:100%;padding:12px;margin-bottom:10px;border:1px solid #334155;border-radius:8px;font-size:1rem;background:#0f172a;color:#f1f5f9;}
+  button{width:100%;padding:13px;background:#7c3aed;color:#fff;border:none;cursor:pointer;border-radius:10px;font-size:1rem;font-weight:bold;}
+  button.secondary{background:#334155;}
+  button.small{width:auto;padding:8px 14px;font-size:.85rem;}
+  .logo{font-size:3rem;text-align:center;margin-top:80px;}
+  .splash-title{text-align:center;font-size:1.8rem;font-weight:bold;color:#a78bfa;}
+  .center{text-align:center;}
+  .dots{display:flex;justify-content:center;gap:6px;margin:20px 0;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#334155;}
+  .dot.active{background:#7c3aed;}
+  .onb-icon{font-size:4rem;text-align:center;margin:30px 0;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .conn-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#1e293b;border-radius:10px;margin-bottom:8px;}
+  .conn-item button{width:auto;padding:6px 14px;font-size:.85rem;}
+  .score-ring{width:140px;height:140px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:10px auto;background:conic-gradient(#7c3aed calc(var(--p)*1%), #334155 0);}
+  .score-ring-inner{width:112px;height:112px;border-radius:50%;background:#1e293b;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .score-num{font-size:2rem;font-weight:bold;}
+  .score-label{font-size:.7rem;color:#94a3b8;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:auto;display:flex;background:#1e293b;border-top:1px solid #334155;}
+  .tab{flex:1;text-align:center;padding:10px 0;color:#64748b;font-size:.7rem;cursor:pointer;}
+  .tab.active{color:#a78bfa;}
+  .tab .ic{font-size:1.3rem;display:block;}
+  .mission-item{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #334155;}
+  .mission-item.done span{text-decoration:line-through;color:#64748b;}
+  .check{width:22px;height:22px;border-radius:50%;border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+  .check.done{background:#7c3aed;}
+  .stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #334155;font-size:.9rem;}
+  .badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:.7rem;font-weight:bold;}
+  .badge.high{background:#7f1d1d;color:#fca5a5;}
+  .badge.medium{background:#78350f;color:#fcd34d;}
+  .badge.low{background:#14532d;color:#86efac;}
+  .photo-preview{width:100%;border-radius:10px;margin-bottom:10px;max-height:240px;object-fit:cover;}
+  .empty{color:#64748b;text-align:center;padding:20px;}
+  .back-link{color:#a78bfa;cursor:pointer;display:inline-block;margin-bottom:10px;}
+  .field-label{font-size:.8rem;color:#94a3b8;margin-bottom:4px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .chip{padding:8px 12px;border-radius:20px;background:#1e293b;border:1px solid #334155;font-size:.8rem;cursor:pointer;}
+  .chip.sel{background:#7c3aed;border-color:#7c3aed;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+var STORAGE_KEY="vytal_state_v1";
+
+function loadState(){
+  try{
+    var s=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(s) return s;
+  }catch(e){}
+  return {
+    screen:"splash",
+    onbStep:0,
+    profile:null,
+    connections:{},
+    goals:[],
+    sleepLogs:[],
+    nutritionLogs:[],
+    missions:[],
+    missionDate:null,
+    tab:"dashboard"
+  };
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+var state=loadState();
+
+function go(screen){ state.screen=screen; saveState(); render(); }
+function setTab(tab){ state.tab=tab; saveState(); render(); }
+
+// ---------- Splash ----------
+setTimeout(function(){
+  if(state.screen==="splash"){
+    state.screen = state.profile ? "dashboard" : "onboarding";
+    saveState();
+    render();
+  }
+}, 1200);
+
+// ---------- Onboarding ----------
+var ONB_SLIDES=[
+  {icon:"✨", title:"Vytal", text:"מערכת AI אישית שמלווה אותך בכל יום - שינה, תזונה, אנרגיה והחלטות חכמות."},
+  {icon:"🧠", title:"AI Coach", text:"מאמן דיגיטלי שמנתח את הנתונים שלך ונותן הנחיות מותאמות אישית בכל בוקר."},
+  {icon:"📸", title:"Vision AI", text:"צלם את הצלחת שלך וקבל הערכת מנה אמיתית, מבוססת ניתוח תמונה בזמן אמת."},
+  {icon:"🎯", title:"Daily Mission", text:"כל יום מקבל 3 משימות קטנות שמתאימות למצב שלך - שינה, פעילות ותזונה."},
+  {icon:"🚀", title:"מוכנים להתחיל?", text:"כמה שאלות קצרות ונבנה לך פרופיל אישי."}
+];
+
+function renderOnboarding(){
+  var s=ONB_SLIDES[state.onbStep];
+  var html='<div class="screen">';
+  html+='<div class="onb-icon">'+s.icon+'</div>';
+  html+='<h1 class="center">'+s.title+'</h1>';
+  html+='<p class="center">'+s.text+'</p>';
+  html+='<div class="dots">';
+  ONB_SLIDES.forEach(function(_,i){ html+='<div class="dot'+(i===state.onbStep?' active':'')+'"></div>'; });
+  html+='</div>';
+  html+='<button id="btn-onb-next">'+(state.onbStep===ONB_SLIDES.length-1?'התחל הרשמה':'הבא')+'</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Register ----------
+function renderRegister(){
+  var p=state.profile||{};
+  var html='<div class="screen">';
+  html+='<h1>הרשמה</h1>';
+  html+='<p>ניצור לך פרופיל בסיסי.</p>';
+  html+='<div class="field-label">שם</div><input id="r-name" value="'+(p.name||'')+'">';
+  html+='<div class="grid2">';
+  html+='<div><div class="field-label">גיל</div><input id="r-age" type="number" value="'+(p.age||'')+'"></div>';
+  html+='<div><div class="field-label">מין</div><select id="r-gender"><option value="male"'+(p.gender==='male'?' selected':'')+'>זכר</option><option value="female"'+(p.gender==='female'?' selected':'')+'>נקבה</option><option value="other"'+(p.gender==='other'?' selected':'')+'>אחר</option></select></div>';
+  html+='</div>';
+  html+='<div class="grid2">';
+  html+='<div><div class="field-label">גובה (ס"מ)</div><input id="r-height" type="number" value="'+(p.height||'')+'"></div>';
+  html+='<div><div class="field-label">משקל (ק"ג)</div><input id="r-weight" type="number" value="'+(p.weight||'')+'"></div>';
+  html+='</div>';
+  html+='<div class="field-label">אימייל</div><input id="r-email" type="email" value="'+(p.email||'')+'">';
+  html+='<button id="btn-register">המשך</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Connections ----------
+var DEVICES=[
+  {key:"apple", label:"Apple Health", icon:"🍎"},
+  {key:"google", label:"Google Health Connect", icon:"🤖"},
+  {key:"garmin", label:"Garmin", icon:"⌚"},
+  {key:"oura", label:"Oura", icon:"💍"},
+  {key:"whoop", label:"WHOOP", icon:"📟"},
+  {key:"fitbit", label:"Fitbit", icon:"🏃"},
+  {key:"samsung", label:"Samsung Health", icon:"📱"},
+  {key:"polar", label:"Polar", icon:"❄️"},
+  {key:"strava", label:"Strava", icon:"🚴"}
+];
+function renderConnections(){
+  var html='<div class="screen">';
+  html+='<h1>חיבורים</h1>';
+  html+='<p>חבר מכשירים ואפליקציות בריאות (חיבור אמיתי דורש הרשאות OAuth מהיצרן - כרגע זה מסך הדמיה לבחירה, ויתעדכן בהמשך).</p>';
+  DEVICES.forEach(function(d){
+    var connected=!!state.connections[d.key];
+    html+='<div class="conn-item"><span>'+d.icon+' '+d.label+'</span><button class="'+(connected?'secondary':'')+'" data-conn="'+d.key+'">'+(connected?'מחובר ✓':'חבר')+'</button></div>';
+  });
+  html+='<button id="btn-conn-next" style="margin-top:14px;">המשך</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Questionnaire ----------
+var GOAL_OPTIONS=["הרזיה","עלייה במסת שריר","בריאות כללית","שיפור שינה","ריצה","אופניים","הפחתת לחץ נפשי"];
+function renderQuestionnaire(){
+  var html='<div class="screen">';
+  html+='<h1>שאלון אישי</h1>';
+  html+='<p>בחר את המטרות שלך (אפשר כמה):</p>';
+  html+='<div class="chip-row">';
+  GOAL_OPTIONS.forEach(function(g){
+    html+='<div class="chip'+(state.goals.indexOf(g)>=0?' sel':'')+'" data-goal="'+g+'">'+g+'</div>';
+  });
+  html+='</div>';
+  html+='<div class="field-label">שעות שינה ממוצעות בלילה</div><input id="q-sleep" type="number" value="'+(state.profile.avgSleep||7)+'">';
+  html+='<div class="field-label">רמת פעילות שבועית (פעמים)</div><input id="q-activity" type="number" value="'+(state.profile.weeklyActivity||3)+'">';
+  html+='<button id="btn-q-finish">סיום והגעה ל-Dashboard</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Life Score calc ----------
+function calcLifeScore(){
+  var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
+  var sleepScore=Math.max(0, Math.min(100, 100 - Math.abs(8-sleepAvg)*18));
+  var nutriCount=recentCount(state.nutritionLogs,7);
+  var nutriScore=Math.min(100, nutriCount*12);
+  var missionRate=missionCompletionRate();
+  var total=Math.round(sleepScore*0.4 + nutriScore*0.3 + missionRate*0.3);
+  return {total:total, sleepScore:Math.round(sleepScore), nutriScore:Math.round(nutriScore), missionRate:Math.round(missionRate)};
+}
+function avgRecent(arr, n){
+  var slice=arr.slice(-n);
+  if(!slice.length) return null;
+  return slice.reduce(function(a,b){return a+b;},0)/slice.length;
+}
+function recentCount(arr,days){
+  return arr.length; // simple count, no fake precision
+}
+function missionCompletionRate(){
+  if(!state.missions.length) return 0;
+  var done=state.missions.filter(function(m){return m.done;}).length;
+  return (done/state.missions.length)*100;
+}
+
+// ---------- Daily Mission generation ----------
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function ensureMissions(){
+  var today=todayStr();
+  if(state.missionDate!==today){
+    var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
+    var missions=[];
+    if(sleepAvg<7) missions.push({text:"לישון הלילה 30 דקות מוקדם יותר", done:false});
+    else missions.push({text:"לשמור על שעת שינה קבועה הלילה", done:false});
+    if(state.nutritionLogs.length<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", done:false});
+    else missions.push({text:"לשתות לפחות 2 ליטר מים היום", done:false});
+    missions.push({text:"5 דקות נשימות / מדיטציה", done:false});
+    state.missions=missions;
+    state.missionDate=today;
+    saveState();
+  }
+}
+
+// ---------- Dashboard ----------
+function renderDashboard(){
+  ensureMissions();
+  var score=calcLifeScore();
+  var html='<div class="screen">';
+  html+='<h1>היי '+(state.profile.name||'')+' 👋</h1>';
+  html+='<div class="card center">';
+  html+='<div class="score-ring" style="--p:'+score.total+'"><div class="score-ring-inner"><div class="score-num">'+score.total+'</div><div class="score-label">Life Score</div></div></div>';
+  html+='<div class="stat-row"><span>שינה</span><span>'+score.sleepScore+'</span></div>';
+  html+='<div class="stat-row"><span>תזונה</span><span>'+score.nutriScore+'</span></div>';
+  html+='<div class="stat-row"><span>משימות</span><span>'+score.missionRate+'%</span></div>';
+  html+='</div>';
+
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">🎯 Daily Mission</h2>';
+  state.missions.forEach(function(m,i){
+    html+='<div class="mission-item'+(m.done?' done':'')+'">';
+    html+='<div class="check'+(m.done?' done':'')+'" data-mission="'+i+'">'+(m.done?'✓':'')+'</div>';
+    html+='<span>'+m.text+'</span>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  html+='<div class="grid2">';
+  html+='<button data-go="sleep">😴 Sleep AI</button>';
+  html+='<button data-go="nutrition">🍽 Nutrition AI</button>';
+  html+='</div>';
+  html+='<div style="height:10px;"></div>';
+  html+='<button data-go="vision" class="secondary">📸 Vision AI - נתח צלחת</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Sleep AI ----------
+function renderSleep(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>😴 Sleep AI</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">כמה שעות ישנת הלילה?</div>';
+  html+='<input id="sleep-hours" type="number" step="0.5" placeholder="7.5">';
+  html+='<div class="field-label">איכות השינה (1-5)</div>';
+  html+='<input id="sleep-quality" type="number" min="1" max="5" placeholder="4">';
+  html+='<button id="btn-sleep-save">שמור לוג שינה</button>';
+  html+='</div>';
+
+  var avg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7);
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">תובנה</h2>';
+  if(avg===null){
+    html+='<p class="empty">עדיין אין מספיק נתונים</p>';
+  } else {
+    var diff=8-avg;
+    var msg = diff>1 ? "אתה ישן בממוצע "+avg.toFixed(1)+" שעות - מומלץ להוסיף עוד "+diff.toFixed(1)+" שעות בקירוב כדי להגיע ל-8."
+            : diff< -1 ? "אתה ישן בממוצע "+avg.toFixed(1)+" שעות, מעל הצורך הממוצע."
+            : "ממוצע השינה שלך ("+avg.toFixed(1)+" שעות) קרוב לטווח המומלץ.";
+    html+='<p>'+msg+'</p>';
+  }
+  html+='</div>';
+
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">היסטוריה</h2>';
+  if(!state.sleepLogs.length) html+='<p class="empty">אין רשומות עדיין</p>';
+  else state.sleepLogs.slice().reverse().slice(0,10).forEach(function(l){
+    html+='<div class="stat-row"><span>'+l.date+'</span><span>'+l.hours+' שעות, איכות '+l.quality+'</span></div>';
+  });
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Nutrition AI ----------
+function renderNutrition(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>🍽 Nutrition AI</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">מה אכלת?</div>';
+  html+='<input id="nutri-text" placeholder="לדוגמה: סלט עוף וקינואה">';
+  html+='<div class="field-label">קלוריות משוערות</div>';
+  html+='<input id="nutri-cal" type="number" placeholder="450">';
+  html+='<button id="btn-nutri-save">שמור ארוחה</button>';
+  html+='</div>';
+
+  var totalCal=state.nutritionLogs.filter(function(l){return l.date===todayStr();}).reduce(function(a,b){return a+(b.cal||0);},0);
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">היום</h2>';
+  html+='<p>סה"כ קלוריות שתועדו: <b>'+totalCal+'</b></p>';
+  html+='</div>';
+
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">היסטוריה</h2>';
+  if(!state.nutritionLogs.length) html+='<p class="empty">אין רשומות עדיין</p>';
+  else state.nutritionLogs.slice().reverse().slice(0,10).forEach(function(l){
+    html+='<div class="stat-row"><span>'+l.text+'</span><span>'+(l.cal||'-')+' קל\' • '+l.date+'</span></div>';
+  });
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Vision AI: real client-side plate/portion analysis ----------
+var visionResult=null;
+function analyzePlateImage(imgEl){
+  var w=300, h=300;
+  var canvas=document.createElement("canvas");
+  canvas.width=w; canvas.height=h;
+  var ctx=canvas.getContext("2d");
+  ctx.drawImage(imgEl,0,0,w,h);
+  var data=ctx.getImageData(0,0,w,h).data;
+
+  // classify pixels by hue family to estimate food-group coverage (real pixel analysis, heuristic mapping)
+  var counts={protein:0, carb:0, veg:0, other:0, plate:0};
+  var total=0;
+  for(var i=0;i<data.length;i+=4*3){ // sample every 3rd pixel for speed
+    var r=data[i], g=data[i+1], b=data[i+2];
+    total++;
+    var brightness=(r+g+b)/3;
+    if(brightness>200 && Math.abs(r-g)<15 && Math.abs(g-b)<15){
+      counts.plate++; // bright/white-ish = plate/background
+    } else if(g>r && g>b && g>70){
+      counts.veg++; // greenish = vegetables
+    } else if(r>150 && g>100 && b<100){
+      counts.carb++; // light brown/yellow = carbs (rice, bread, potato)
+    } else if(r>100 && r>g && r>b && brightness<150){
+      counts.protein++; // darker reddish-brown = protein (meat)
+    } else {
+      counts.other++;
+    }
+  }
+  var foodTotal = total - counts.plate;
+  if(foodTotal<=0) foodTotal=1;
+  var pct={
+    protein: Math.round(counts.protein/foodTotal*100),
+    carb: Math.round(counts.carb/foodTotal*100),
+    veg: Math.round(counts.veg/foodTotal*100),
+    other: Math.round(counts.other/foodTotal*100)
+  };
+  var plateCoverage=Math.round((total-counts.plate)/total*100); // how full the plate looks = portion size proxy
+
+  var estCalories = Math.round(150 + plateCoverage*5 + pct.protein*2 + pct.carb*2.5);
+
+  return { pct:pct, plateCoverage:plateCoverage, estCalories:estCalories, dataUrl:canvas.toDataURL("image/png") };
+}
+
+function renderVision(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>📸 Vision AI</h1>';
+  html+='<p>צלם/העלה תמונה של הצלחת. הניתוח מבוסס פילוח פיקסלים אמיתי (גוון/בהירות) להערכת הרכב המנה - לא AI מבוסס שרת, אלא חישוב מקומי בדפדפן.</p>';
+  html+='<div class="card">';
+  html+='<input id="vision-file" type="file" accept="image/*" capture="environment">';
+  html+='<div id="vision-out"></div>';
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Settings ----------
+function renderSettings(){
+  var html='<div class="screen">';
+  html+='<h1>⚙️ הגדרות</h1>';
+  html+='<div class="card">';
+  html+='<div class="stat-row"><span>שם</span><span>'+state.profile.name+'</span></div>';
+  html+='<div class="stat-row"><span>אימייל</span><span>'+(state.profile.email||'-')+'</span></div>';
+  html+='<div class="stat-row"><span>מטרות</span><span>'+state.goals.join(", ")+'</span></div>';
+  html+='</div>';
+  html+='<button class="secondary" id="btn-reset">איפוס כל הנתונים</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Tabbar ----------
+function renderTabbar(){
+  var tabs=[
+    {key:"dashboard", icon:"🏠", label:"בית"},
+    {key:"sleep", icon:"😴", label:"שינה"},
+    {key:"nutrition", icon:"🍽", label:"תזונה"},
+    {key:"settings", icon:"⚙️", label:"הגדרות"}
+  ];
+  var html='<div class="tabbar">';
+  tabs.forEach(function(t){
+    html+='<div class="tab'+(state.screen===t.key?' active':'')+'" data-go="'+t.key+'"><span class="ic">'+t.icon+'</span>'+t.label+'</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// ---------- Main render ----------
+function render(){
+  var html="";
+  var showTabbar=false;
+  switch(state.screen){
+    case "splash":
+      html='<div class="logo">✨</div><div class="splash-title">Vytal</div>';
+      break;
+    case "onboarding": html=renderOnboarding(); break;
+    case "register": html=renderRegister(); break;
+    case "connections": html=renderConnections(); break;
+    case "questionnaire": html=renderQuestionnaire(); break;
+    case "dashboard": html=renderDashboard(); showTabbar=true; break;
+    case "sleep": html=renderSleep(); showTabbar=true; break;
+    case "nutrition": html=renderNutrition(); showTabbar=true; break;
+    case "vision": html=renderVision(); break;
+    case "settings": html=renderSettings(); showTabbar=true; break;
+    default: html=renderDashboard(); showTabbar=true;
+  }
+  if(showTabbar) html+=renderTabbar();
+  document.getElementById("root").innerHTML=html;
+  bindEvents();
+}
+
+function bindEvents(){
+  var onbNext=document.getElementById("btn-onb-next");
+  if(onbNext) onbNext.onclick=function(){
+    if(state.onbStep<ONB_SLIDES.length-1){ state.onbStep++; saveState(); render(); }
+    else { go("register"); }
+  };
+
+  var btnRegister=document.getElementById("btn-register");
+  if(btnRegister) btnRegister.onclick=function(){
+    state.profile={
+      name: document.getElementById("r-name").value.trim()||"משתמש",
+      age: Number(document.getElementById("r-age").value)||null,
+      gender: document.getElementById("r-gender").value,
+      height: Number(document.getElementById("r-height").value)||null,
+      weight: Number(document.getElementById("r-weight").value)||null,
+      email: document.getElementById("r-email").value.trim()
+    };
+    saveState();
+    go("connections");
+  };
+
+  document.querySelectorAll("[data-conn]").forEach(function(btn){
+    btn.onclick=function(){
+      var k=btn.getAttribute("data-conn");
+      state.connections[k]=!state.connections[k];
+      saveState(); render();
+    };
+  });
+  var connNext=document.getElementById("btn-conn-next");
+  if(connNext) connNext.onclick=function(){ go("questionnaire"); };
+
+  document.querySelectorAll("[data-goal]").forEach(function(chip){
+    chip.onclick=function(){
+      var g=chip.getAttribute("data-goal");
+      var idx=state.goals.indexOf(g);
+      if(idx>=0) state.goals.splice(idx,1); else state.goals.push(g);
+      saveState(); render();
+    };
+  });
+  var qFinish=document.getElementById("btn-q-finish");
+  if(qFinish) qFinish.onclick=function(){
+    state.profile.avgSleep=Number(document.getElementById("q-sleep").value)||7;
+    state.profile.weeklyActivity=Number(document.getElementById("q-activity").value)||3;
+    saveState();
+    go("dashboard");
+  };
+
+  document.querySelectorAll("[data-go]").forEach(function(el){
+    el.onclick=function(){ go(el.getAttribute("data-go")); };
+  });
+
+  document.querySelectorAll("[data-mission]").forEach(function(el){
+    el.onclick=function(){
+      var i=Number(el.getAttribute("data-mission"));
+      state.missions[i].done=!state.missions[i].done;
+      saveState(); render();
+    };
+  });
+
+  var btnSleepSave=document.getElementById("btn-sleep-save");
+  if(btnSleepSave) btnSleepSave.onclick=function(){
+    var hours=Number(document.getElementById("sleep-hours").value);
+    var quality=Number(document.getElementById("sleep-quality").value)||3;
+    if(!hours) return;
+    state.sleepLogs.push({date:todayStr(), hours:hours, quality:quality});
+    saveState(); render();
+  };
+
+  var btnNutriSave=document.getElementById("btn-nutri-save");
+  if(btnNutriSave) btnNutriSave.onclick=function(){
+    var text=document.getElementById("nutri-text").value.trim();
+    var cal=Number(document.getElementById("nutri-cal").value)||0;
+    if(!text) return;
+    state.nutritionLogs.push({date:todayStr(), text:text, cal:cal});
+    saveState(); render();
+  };
+
+  var visionFile=document.getElementById("vision-file");
+  if(visionFile) visionFile.onchange=function(e){
+    var file=e.target.files[0];
+    if(!file) return;
+    var img=new Image();
+    img.onload=function(){
+      var result=analyzePlateImage(img);
+      var out=document.getElementById("vision-out");
+      var html='<img class="photo-preview" src="'+result.dataUrl+'">';
+      html+='<div class="stat-row"><span>מילוי הצלחת (אומדן מנה)</span><span>'+result.plateCoverage+'%</span></div>';
+      html+='<div class="stat-row"><span>חלבון (אומדן ויזואלי)</span><span>'+result.pct.protein+'%</span></div>';
+      html+='<div class="stat-row"><span>פחמימה/עמילן (אומדן ויזואלי)</span><span>'+result.pct.carb+'%</span></div>';
+      html+='<div class="stat-row"><span>ירקות (אומדן ויזואלי)</span><span>'+result.pct.veg+'%</span></div>';
+      html+='<div class="stat-row"><span>הערכת קלוריות גסה</span><span>~'+result.estCalories+'</span></div>';
+      html+='<button id="btn-vision-log" style="margin-top:10px;">שמור כארוחה</button>';
+      out.innerHTML=html;
+      document.getElementById("btn-vision-log").onclick=function(){
+        state.nutritionLogs.push({date:todayStr(), text:"ארוחה מצולמת (Vision AI)", cal:result.estCalories});
+        saveState();
+        go("nutrition");
+      };
+    };
+    img.src=URL.createObjectURL(file);
+  };
+
+  var btnReset=document.getElementById("btn-reset");
+  if(btnReset) btnReset.onclick=function(){
+    if(confirm("לאפס את כל הנתונים?")){
+      localStorage.removeItem(STORAGE_KEY);
+      state=loadState();
+      render();
+    }
+  };
+}
+
+render();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>

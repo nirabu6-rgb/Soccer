@@ -1,0 +1,11 @@
+{
+  "name": "Vytal OS",
+  "short_name": "Vytal",
+  "description": "מערכת AI אישית לשינה, תזונה ובריאות",
+  "start_url": "/vytal/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "icons": []
+}
