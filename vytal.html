@@ -224,7 +224,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div class="screen" id="screen-dashboard">
   <div class="top-nav" style="justify-content:space-between;">
     <div><h2 id="dash-greeting">שלום!</h2><div class="muted" id="dash-date"></div></div>
-    <div style="font-size:26px;">&#128100;</div>
+    <button id="dash-avatar-btn" type="button" onclick="openProfileModal()" style="background:var(--card2);border:none;border-radius:50%;width:44px;height:44px;font-size:24px;flex:0 0 44px;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">&#128100;</button>
   </div>
   <div class="card center">
     <div class="score-ring">
@@ -485,6 +485,31 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   </div>
 </div>
 
+<!-- Profile modal -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal-box info-box" style="max-height:80vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeProfileModal()">&#10005;</button>
+    <h3>הפרופיל שלי</h3>
+    <div class="center" style="margin:10px 0 16px;">
+      <div id="pm-photo-preview" style="width:84px;height:84px;border-radius:50%;background:var(--card2);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;">&#128100;</div>
+      <button class="btn secondary" type="button" onclick="document.getElementById('pm-photo-input').click()">&#128247; שינוי תמונת פרופיל</button>
+      <input type="file" id="pm-photo-input" accept="image/*" style="display:none" onchange="onProfilePhotoChange(event)">
+    </div>
+    <label>שם מלא</label><input id="pm-name">
+    <div class="row">
+      <div><label>תאריך לידה</label><input id="pm-birthdate" type="date"></div>
+      <div><label>מין</label><select id="pm-sex"><option value="male">זכר</option><option value="female">נקבה</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>גובה (ס"מ)</label><input id="pm-height" type="number"></div>
+      <div><label>משקל (ק"ג)</label><input id="pm-weight" type="number"></div>
+    </div>
+    <label>אימייל</label><input id="pm-email">
+    <label>טלפון</label><input id="pm-phone">
+    <button class="btn" style="margin-top:14px;" onclick="saveProfileModal()">שמור שינויים</button>
+  </div>
+</div>
+
 <!-- Retroactive change modal -->
 <div class="modal-overlay" id="retro-modal">
   <div class="modal-box">
@@ -686,6 +711,70 @@ function submitRegister(){
   goTo('screen-integrations');
 }
 window.submitRegister = submitRegister;
+
+/* ===================== PROFILE MODAL ===================== */
+function renderProfileAvatar(){
+  var profile = LS.get('profile', {});
+  var btn = document.getElementById('dash-avatar-btn');
+  if(!btn) return;
+  btn.innerHTML = profile.photo ? '<img src="'+profile.photo+'" style="width:100%;height:100%;object-fit:cover;">' : '&#128100;';
+}
+function openProfileModal(){
+  var profile = LS.get('profile', {});
+  document.getElementById('pm-photo-preview').innerHTML = profile.photo ? '<img src="'+profile.photo+'" style="width:100%;height:100%;object-fit:cover;">' : '&#128100;';
+  document.getElementById('pm-name').value = profile.name || '';
+  document.getElementById('pm-birthdate').value = profile.birthdate || '';
+  document.getElementById('pm-sex').value = profile.sex || 'male';
+  document.getElementById('pm-height').value = profile.height || '';
+  document.getElementById('pm-weight').value = profile.weight || '';
+  document.getElementById('pm-email').value = profile.email || '';
+  document.getElementById('pm-phone').value = profile.phone || '';
+  document.getElementById('profile-modal').classList.add('show');
+}
+function closeProfileModal(){
+  document.getElementById('profile-modal').classList.remove('show');
+}
+function onProfilePhotoChange(ev){
+  var file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var profile = LS.get('profile', {});
+    profile.photo = e.target.result;
+    LS.set('profile', profile);
+    document.getElementById('pm-photo-preview').innerHTML = '<img src="'+profile.photo+'" style="width:100%;height:100%;object-fit:cover;">';
+    renderProfileAvatar();
+  };
+  reader.readAsDataURL(file);
+}
+function saveProfileModal(){
+  var name = document.getElementById('pm-name').value.trim();
+  if(name.length < 2){ alert('יש להזין שם תקין'); return; }
+  var birthdate = document.getElementById('pm-birthdate').value;
+  var age = calcAgeFromBirthdate(birthdate);
+  if(!birthdate || age===null || age < 13 || age > 120){ alert('תאריך הלידה לא תקין'); return; }
+  var height = parseFloat(document.getElementById('pm-height').value);
+  if(isNaN(height) || height < 50 || height > 250){ alert('הגובה חייב להיות בין 50 ל-250 ס"מ'); return; }
+  var weight = parseFloat(document.getElementById('pm-weight').value);
+  if(isNaN(weight) || weight < 30 || weight > 300){ alert('המשקל חייב להיות בין 30 ל-300 ק"ג'); return; }
+  var email = document.getElementById('pm-email').value.trim();
+  var phone = document.getElementById('pm-phone').value.trim();
+  var profile = LS.get('profile', {});
+  profile.name = name; profile.birthdate = birthdate; profile.age = age;
+  profile.sex = document.getElementById('pm-sex').value;
+  profile.height = height; profile.weight = weight;
+  profile.email = email; profile.phone = phone;
+  var heightM = height/100;
+  profile.bmi = weight/(heightM*heightM);
+  profile.bmr = calcBMR(profile, profile.activity||'moderate');
+  LS.set('profile', profile);
+  closeProfileModal();
+  renderProfileAvatar();
+  if(window.renderDashboard) window.renderDashboard();
+}
+window.openProfileModal = openProfileModal; window.closeProfileModal = closeProfileModal;
+window.onProfilePhotoChange = onProfilePhotoChange; window.saveProfileModal = saveProfileModal;
+window.renderProfileAvatar = renderProfileAvatar;
 
 /* ===================== INTEGRATIONS ===================== */
 var WEARABLES = [
@@ -979,6 +1068,7 @@ function renderDashboard(){
   var profile = LS.get('profile', {});
   document.getElementById('dash-greeting').textContent = 'שלום, '+(profile.name||'משתמש')+'!';
   document.getElementById('dash-date').textContent = new Date().toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
+  if(window.renderProfileAvatar) window.renderProfileAvatar();
 
   var result = computeVytalScore();
   var circumference = 2*Math.PI*68;
