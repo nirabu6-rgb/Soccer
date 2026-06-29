@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vytal OS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;margin:0;background:#0f172a;color:#f1f5f9;min-height:100vh;}
+  #root{max-width:480px;margin:auto;min-height:100vh;background:#0f172a;position:relative;padding-bottom:70px;}
+  .screen{padding:20px;}
+  h1{font-size:1.6rem;margin:0 0 6px;}
+  h2{font-size:1.2rem;margin:18px 0 8px;}
+  p{color:#94a3b8;line-height:1.5;}
+  .card{background:#1e293b;border-radius:14px;padding:16px;margin-bottom:14px;}
+  input,select{width:100%;padding:12px;margin-bottom:10px;border:1px solid #334155;border-radius:8px;font-size:1rem;background:#0f172a;color:#f1f5f9;}
+  button{width:100%;padding:13px;background:#7c3aed;color:#fff;border:none;cursor:pointer;border-radius:10px;font-size:1rem;font-weight:bold;}
+  button.secondary{background:#334155;}
+  button.small{width:auto;padding:8px 14px;font-size:.85rem;}
+  .logo{font-size:3rem;text-align:center;margin-top:80px;}
+  .splash-title{text-align:center;font-size:1.8rem;font-weight:bold;color:#a78bfa;}
+  .center{text-align:center;}
+  .dots{display:flex;justify-content:center;gap:6px;margin:20px 0;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#334155;}
+  .dot.active{background:#7c3aed;}
+  .onb-icon{font-size:4rem;text-align:center;margin:30px 0;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .conn-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#1e293b;border-radius:10px;margin-bottom:8px;}
+  .conn-item button{width:auto;padding:6px 14px;font-size:.85rem;}
+  .score-ring{width:140px;height:140px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:10px auto;background:conic-gradient(#7c3aed calc(var(--p)*1%), #334155 0);}
+  .score-ring-inner{width:112px;height:112px;border-radius:50%;background:#1e293b;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .score-num{font-size:2rem;font-weight:bold;}
+  .score-label{font-size:.7rem;color:#94a3b8;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:auto;display:flex;background:#1e293b;border-top:1px solid #334155;}
+  .tab{flex:1;text-align:center;padding:10px 0;color:#64748b;font-size:.7rem;cursor:pointer;}
+  .tab.active{color:#a78bfa;}
+  .tab .ic{font-size:1.3rem;display:block;}
+  .mission-item{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #334155;}
+  .mission-item.done span{text-decoration:line-through;color:#64748b;}
+  .check{width:22px;height:22px;border-radius:50%;border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+  .check.done{background:#7c3aed;}
+  .stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #334155;font-size:.9rem;}
+  .badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:.7rem;font-weight:bold;}
+  .badge.high{background:#7f1d1d;color:#fca5a5;}
+  .badge.medium{background:#78350f;color:#fcd34d;}
+  .badge.low{background:#14532d;color:#86efac;}
+  .photo-preview{width:100%;border-radius:10px;margin-bottom:10px;max-height:240px;object-fit:cover;}
+  .empty{color:#64748b;text-align:center;padding:20px;}
+  .back-link{color:#a78bfa;cursor:pointer;display:inline-block;margin-bottom:10px;}
+  .field-label{font-size:.8rem;color:#94a3b8;margin-bottom:4px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .chip{padding:8px 12px;border-radius:20px;background:#1e293b;border:1px solid #334155;font-size:.8rem;cursor:pointer;}
+  .chip.sel{background:#7c3aed;border-color:#7c3aed;}
+  .meal-section{margin-bottom:14px;}
+  .meal-head{display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:6px;}
+  .food-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #334155;font-size:.85rem;}
+  .food-row .del-x{color:#ef4444;cursor:pointer;font-size:.8rem;padding:2px 8px;}
+  .macro-bar-row{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.75rem;}
+  .macro-bar-track{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;}
+  .macro-bar-fill{height:100%;border-radius:3px;}
+  .day-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .day-nav span{cursor:pointer;font-size:1.3rem;color:#a78bfa;}
+  .search-result{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #334155;cursor:pointer;}
+  .toggle-row{display:flex;background:#1e293b;border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .toggle-opt{flex:1;text-align:center;padding:10px;cursor:pointer;font-size:.85rem;}
+  .toggle-opt.active{background:#7c3aed;font-weight:bold;}
+  .slider-row{margin-bottom:10px;}
+  .slider-row input[type=range]{width:100%;}
+  .streak-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .streak-box{text-align:center;}
+  .streak-num{font-size:1.6rem;font-weight:bold;}
+  .streak-label{font-size:.7rem;color:#94a3b8;}
+  .mission-cat{font-size:.75rem;color:#a78bfa;margin:10px 0 4px;}
+  .progress-track{height:8px;background:#334155;border-radius:4px;overflow:hidden;margin-bottom:14px;}
+  .progress-fill{height:100%;background:#22c55e;border-radius:4px;transition:width .3s;}
+  .confetti{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:3rem;z-index:50;animation:fadeOut 1.5s forwards;}
+  @keyframes fadeOut{0%{opacity:1;}80%{opacity:1;}100%{opacity:0;}}
+  .chat-bubble{max-width:85%;padding:10px 14px;border-radius:14px;margin-bottom:8px;font-size:.9rem;line-height:1.4;}
+  .chat-bubble.user{background:#7c3aed;margin-right:0;margin-left:auto;}
+  .chat-bubble.coach{background:#1e293b;}
+  .chat-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .chat-chip{padding:6px 10px;border-radius:14px;background:#1e293b;border:1px solid #334155;font-size:.75rem;cursor:pointer;}
+  .bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:10px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar-fill{width:100%;background:#7c3aed;border-radius:4px 4px 0 0;}
+  .bar-label{font-size:.65rem;color:#64748b;margin-top:4px;}
+  .insight-card{border-right:3px solid #7c3aed;}
+  .fab{position:fixed;bottom:80px;left:16px;width:54px;height:54px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:40;}
+  .fab-menu{position:fixed;bottom:140px;left:16px;background:#1e293b;border-radius:12px;padding:8px;z-index:40;}
+  .fab-menu-item{padding:10px 14px;font-size:.85rem;cursor:pointer;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+var STORAGE_KEY="vytal_state_v1";
+
+function loadState(){
+  try{
+    var s=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(s) return s;
+  }catch(e){}
+  return {
+    screen:"splash",
+    onbStep:0,
+    profile:null,
+    connections:{},
+    goals:[],
+    sleepLogs:[],
+    nutrition:{
+      mode:"auto",
+      calories:2000,
+      proteinPct:30,
+      carbPct:40,
+      fatPct:30,
+      diary:{},
+      customFoods:[]
+    },
+    missions:[],
+    missionDate:null,
+    tab:"dashboard",
+    diaryDate:null,
+    foodSearchMeal:null,
+    foodSearchQuery:"",
+    pendingFood:null,
+    xp:0,
+    streak:0,
+    lastMissionFullDate:null,
+    streakFreezeUntil:null,
+    chatHistory:[],
+    showConfetti:false,
+    fabOpen:false,
+    weeklyOffset:0
+  };
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+var state=loadState();
+if(!state.nutrition) state.nutrition={mode:"auto",calories:2000,proteinPct:30,carbPct:40,fatPct:30,diary:{},customFoods:[]};
+if(state.diaryDate===undefined) state.diaryDate=null;
+if(state.foodSearchMeal===undefined) state.foodSearchMeal=null;
+if(state.foodSearchQuery===undefined) state.foodSearchQuery="";
+if(state.pendingFood===undefined) state.pendingFood=null;
+if(state.xp===undefined) state.xp=0;
+if(state.streak===undefined) state.streak=0;
+if(state.lastMissionFullDate===undefined) state.lastMissionFullDate=null;
+if(state.streakFreezeUntil===undefined) state.streakFreezeUntil=null;
+if(state.chatHistory===undefined) state.chatHistory=[];
+if(state.showConfetti===undefined) state.showConfetti=false;
+if(state.fabOpen===undefined) state.fabOpen=false;
+if(state.weeklyOffset===undefined) state.weeklyOffset=0;
+
+// ---------- Local food database (per 100g) ----------
+var FOOD_DB=[
+  {name:"חזה עוף", cal:165, protein:31, carb:0, fat:3.6},
+  {name:"אורז לבן מבושל", cal:130, protein:2.7, carb:28, fat:0.3},
+  {name:"יוגורט טבעי", cal:59, protein:10, carb:3.6, fat:0.4},
+  {name:"ביצה", cal:155, protein:13, carb:1.1, fat:11},
+  {name:"לחם מלא", cal:247, protein:13, carb:41, fat:3.4},
+  {name:"בננה", cal:89, protein:1.1, carb:23, fat:0.3},
+  {name:"שקדים", cal:579, protein:21, carb:22, fat:50},
+  {name:"סלמון", cal:208, protein:20, carb:0, fat:13},
+  {name:"קוטג'", cal:98, protein:11, carb:3.4, fat:4.3},
+  {name:"שמן זית", cal:884, protein:0, carb:0, fat:100},
+  {name:"טופו", cal:76, protein:8, carb:1.9, fat:4.8},
+  {name:"תפוח", cal:52, protein:0.3, carb:14, fat:0.2},
+  {name:"שיבולת שועל", cal:389, protein:17, carb:66, fat:7},
+  {name:"גבינה צהובה", cal:402, protein:25, carb:1.3, fat:33}
+];
+function allFoods(){ return FOOD_DB.concat(state.nutrition.customFoods); }
+
+function go(screen){ state.screen=screen; saveState(); render(); }
+function setTab(tab){ state.tab=tab; saveState(); render(); }
+
+// ---------- Splash ----------
+setTimeout(function(){
+  if(state.screen==="splash"){
+    state.screen = state.profile ? "dashboard" : "onboarding";
+    saveState();
+    render();
+  }
+}, 1200);
+
+// ---------- Onboarding ----------
+var ONB_SLIDES=[
+  {icon:"✨", title:"Vytal", text:"מערכת AI אישית שמלווה אותך בכל יום - שינה, תזונה, אנרגיה והחלטות חכמות."},
+  {icon:"🧠", title:"AI Coach", text:"מאמן דיגיטלי שמנתח את הנתונים שלך ונותן הנחיות מותאמות אישית בכל בוקר."},
+  {icon:"📸", title:"Vision AI", text:"צלם את הצלחת שלך וקבל הערכת מנה אמיתית, מבוססת ניתוח תמונה בזמן אמת."},
+  {icon:"🎯", title:"Daily Mission", text:"כל יום מקבל 3 משימות קטנות שמתאימות למצב שלך - שינה, פעילות ותזונה."},
+  {icon:"🚀", title:"מוכנים להתחיל?", text:"כמה שאלות קצרות ונבנה לך פרופיל אישי."}
+];
+
+function renderOnboarding(){
+  var s=ONB_SLIDES[state.onbStep];
+  var html='<div class="screen">';
+  html+='<div class="onb-icon">'+s.icon+'</div>';
+  html+='<h1 class="center">'+s.title+'</h1>';
+  html+='<p class="center">'+s.text+'</p>';
+  html+='<div class="dots">';
+  ONB_SLIDES.forEach(function(_,i){ html+='<div class="dot'+(i===state.onbStep?' active':'')+'"></div>'; });
+  html+='</div>';
+  html+='<button id="btn-onb-next">'+(state.onbStep===ONB_SLIDES.length-1?'התחל הרשמה':'הבא')+'</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Register ----------
+function renderRegister(){
+  var p=state.profile||{};
+  var html='<div class="screen">';
+  html+='<h1>הרשמה</h1>';
+  html+='<p>ניצור לך פרופיל בסיסי.</p>';
+  html+='<div class="field-label">שם</div><input id="r-name" value="'+(p.name||'')+'">';
+  html+='<div class="grid2">';
+  html+='<div><div class="field-label">גיל</div><input id="r-age" type="number" value="'+(p.age||'')+'"></div>';
+  html+='<div><div class="field-label">מין</div><select id="r-gender"><option value="male"'+(p.gender==='male'?' selected':'')+'>זכר</option><option value="female"'+(p.gender==='female'?' selected':'')+'>נקבה</option><option value="other"'+(p.gender==='other'?' selected':'')+'>אחר</option></select></div>';
+  html+='</div>';
+  html+='<div class="grid2">';
+  html+='<div><div class="field-label">גובה (ס"מ)</div><input id="r-height" type="number" value="'+(p.height||'')+'"></div>';
+  html+='<div><div class="field-label">משקל (ק"ג)</div><input id="r-weight" type="number" value="'+(p.weight||'')+'"></div>';
+  html+='</div>';
+  html+='<div class="field-label">אימייל</div><input id="r-email" type="email" value="'+(p.email||'')+'">';
+  html+='<button id="btn-register">המשך</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Connections ----------
+var DEVICES=[
+  {key:"apple", label:"Apple Health", icon:"🍎"},
+  {key:"google", label:"Google Health Connect", icon:"🤖"},
+  {key:"garmin", label:"Garmin", icon:"⌚"},
+  {key:"oura", label:"Oura", icon:"💍"},
+  {key:"whoop", label:"WHOOP", icon:"📟"},
+  {key:"fitbit", label:"Fitbit", icon:"🏃"},
+  {key:"samsung", label:"Samsung Health", icon:"📱"},
+  {key:"polar", label:"Polar", icon:"❄️"},
+  {key:"strava", label:"Strava", icon:"🚴"}
+];
+function renderConnections(){
+  var html='<div class="screen">';
+  html+='<h1>חיבורים</h1>';
+  html+='<p>חבר מכשירים ואפליקציות בריאות (חיבור אמיתי דורש הרשאות OAuth מהיצרן - כרגע זה מסך הדמיה לבחירה, ויתעדכן בהמשך).</p>';
+  DEVICES.forEach(function(d){
+    var connected=!!state.connections[d.key];
+    html+='<div class="conn-item"><span>'+d.icon+' '+d.label+'</span><button class="'+(connected?'secondary':'')+'" data-conn="'+d.key+'">'+(connected?'מחובר ✓':'חבר')+'</button></div>';
+  });
+  html+='<button id="btn-conn-next" style="margin-top:14px;">המשך</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Questionnaire ----------
+var GOAL_OPTIONS=["הרזיה","עלייה במסת שריר","בריאות כללית","שיפור שינה","ריצה","אופניים","הפחתת לחץ נפשי"];
+function renderQuestionnaire(){
+  var html='<div class="screen">';
+  html+='<h1>שאלון אישי</h1>';
+  html+='<p>בחר את המטרות שלך (אפשר כמה):</p>';
+  html+='<div class="chip-row">';
+  GOAL_OPTIONS.forEach(function(g){
+    html+='<div class="chip'+(state.goals.indexOf(g)>=0?' sel':'')+'" data-goal="'+g+'">'+g+'</div>';
+  });
+  html+='</div>';
+  html+='<div class="field-label">שעות שינה ממוצעות בלילה</div><input id="q-sleep" type="number" value="'+(state.profile.avgSleep||7)+'">';
+  html+='<div class="field-label">רמת פעילות שבועית (פעמים)</div><input id="q-activity" type="number" value="'+(state.profile.weeklyActivity||3)+'">';
+  html+='<button id="btn-q-finish">סיום וחישוב יעדים</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- BMI / BMR ----------
+function calcBMI(){
+  var p=state.profile;
+  if(!p.height||!p.weight) return null;
+  var h=p.height/100;
+  return p.weight/(h*h);
+}
+function calcBMR(){
+  var p=state.profile;
+  if(!p.height||!p.weight||!p.age) return null;
+  var base=10*p.weight + 6.25*p.height - 5*p.age;
+  return p.gender==="female" ? base-161 : base+5;
+}
+function calcAutoCalorieGoal(){
+  var bmr=calcBMR();
+  if(!bmr) return 2000;
+  var activity=state.profile.weeklyActivity||3;
+  var factor = activity>=6 ? 1.7 : activity>=4 ? 1.5 : activity>=2 ? 1.35 : 1.2;
+  return Math.round(bmr*factor);
+}
+
+// ---------- Life Score calc ----------
+function todayDiary(){
+  var d=todayStr();
+  if(!state.nutrition.diary[d]) state.nutrition.diary[d]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+  return state.nutrition.diary[d];
+}
+function diaryTotalCal(diary){
+  var sum=0;
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    diary[m].forEach(function(item){ sum+=item.cal; });
+  });
+  return sum;
+}
+function calcLifeScore(){
+  var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
+  var sleepScore=Math.max(0, Math.min(100, 100 - Math.abs(8-sleepAvg)*18));
+  var diary=todayDiary();
+  var consumed=diaryTotalCal(diary);
+  var goal=state.nutrition.calories||2000;
+  var deviationPct=goal? Math.abs(consumed-goal)/goal*100 : 100;
+  var nutriScore = consumed===0 ? 0 : Math.max(0, Math.min(100, 100 - Math.max(0, deviationPct-10)*2));
+  var missionRate=missionCompletionRate();
+  var total=Math.round(sleepScore*0.4 + nutriScore*0.3 + missionRate*0.3);
+  return {total:total, sleepScore:Math.round(sleepScore), nutriScore:Math.round(nutriScore), missionRate:Math.round(missionRate)};
+}
+function avgRecent(arr, n){
+  var slice=arr.slice(-n);
+  if(!slice.length) return null;
+  return slice.reduce(function(a,b){return a+b;},0)/slice.length;
+}
+function missionCompletionRate(){
+  if(!state.missions.length) return 0;
+  var done=state.missions.filter(function(m){return m.done;}).length;
+  return (done/state.missions.length)*100;
+}
+
+// ---------- Daily Mission generation ----------
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function ensureMissions(){
+  var today=todayStr();
+  if(state.missionDate!==today){
+    var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7) || state.profile.avgSleep || 7;
+    var missions=[];
+    if(sleepAvg<7) missions.push({text:"לישון הלילה 30 דקות מוקדם יותר", cat:"מיינדפולנס", xp:15, done:false});
+    else missions.push({text:"לשמור על שעת שינה קבועה הלילה", cat:"מיינדפולנס", xp:10, done:false});
+    var loggedToday=["breakfast","lunch","dinner","snacks"].reduce(function(n,m){ return n+(todayDiary()[m]||[]).length; },0);
+    if(loggedToday<2) missions.push({text:"לתעד 2 ארוחות באפליקציה היום", cat:"תזונה", xp:15, done:false});
+    else missions.push({text:"לשתות לפחות 2 ליטר מים היום", cat:"תזונה", xp:10, done:false});
+    missions.push({text:"5 דקות נשימות / מדיטציה", cat:"מיינדפולנס", xp:10, done:false});
+    missions.push({text:"לצאת ל-20 דקות הליכה", cat:"תנועה", xp:15, done:false});
+    state.missions=missions;
+    state.missionDate=today;
+    saveState();
+  }
+}
+function streakMultiplier(){
+  return 1 + Math.min(0.5, state.streak*0.02);
+}
+function onMissionsCompleted(){
+  if(missionCompletionRate()===100 && state.lastMissionFullDate!==todayStr()){
+    var frozen=state.streakFreezeUntil && state.streakFreezeUntil>=todayStr();
+    state.streak = frozen ? state.streak : state.streak+1;
+    state.lastMissionFullDate=todayStr();
+    state.showConfetti=true;
+  }
+}
+
+// ---------- Dashboard ----------
+function renderDashboard(){
+  ensureMissions();
+  var score=calcLifeScore();
+  var html='<div class="screen">';
+  html+='<h1>היי '+(state.profile.name||'')+' 👋</h1>';
+  html+='<div class="card center">';
+  html+='<div class="score-ring" style="--p:'+score.total+'"><div class="score-ring-inner"><div class="score-num">'+score.total+'</div><div class="score-label">Life Score</div></div></div>';
+  html+='<div class="stat-row"><span>שינה</span><span>'+score.sleepScore+'</span></div>';
+  html+='<div class="stat-row"><span>תזונה</span><span>'+score.nutriScore+'</span></div>';
+  html+='<div class="stat-row"><span>משימות</span><span>'+score.missionRate+'%</span></div>';
+  html+='</div>';
+
+  html+='<div class="card">';
+  html+='<div class="streak-bar">';
+  html+='<div class="streak-box"><div class="streak-num">🔥'+state.streak+'</div><div class="streak-label">ימי רצף</div></div>';
+  html+='<div class="streak-box"><div class="streak-num">⭐'+state.xp+'</div><div class="streak-label">XP (רמה '+(Math.floor(state.xp/100)+1)+')</div></div>';
+  html+='</div>';
+  html+='<h2 style="margin-top:0;">🎯 Daily Mission</h2>';
+  var byCategory={};
+  state.missions.forEach(function(m,i){
+    if(!byCategory[m.cat]) byCategory[m.cat]=[];
+    byCategory[m.cat].push({m:m,i:i});
+  });
+  Object.keys(byCategory).forEach(function(cat){
+    html+='<div class="mission-cat">'+cat+'</div>';
+    byCategory[cat].forEach(function(item){
+      var m=item.m, i=item.i;
+      html+='<div class="mission-item'+(m.done?' done':'')+'">';
+      html+='<div class="check'+(m.done?' done':'')+'" data-mission="'+i+'">'+(m.done?'✓':'')+'</div>';
+      html+='<span>'+m.text+' (+'+m.xp+' XP)</span>';
+      html+='</div>';
+    });
+  });
+  html+='<div class="progress-track" style="margin-top:10px;"><div class="progress-fill" style="width:'+score.missionRate+'%;"></div></div>';
+  html+='</div>';
+
+  html+='<div class="grid2">';
+  html+='<button data-go="sleep">😴 Sleep AI</button>';
+  html+='<button data-go="foodlog">🍽 Nutrition AI</button>';
+  html+='</div>';
+  html+='<div style="height:10px;"></div>';
+  html+='<div class="grid2">';
+  html+='<button data-go="vision" class="secondary">📸 Vision AI</button>';
+  html+='<button data-go="coach" class="secondary">🧠 AI Coach</button>';
+  html+='</div>';
+  html+='<div style="height:10px;"></div>';
+  html+='<button data-go="weekly" class="secondary">📊 סיכום שבועי</button>';
+  html+='</div>';
+  html+='<div class="fab" id="fab-btn">+</div>';
+  if(state.fabOpen){
+    html+='<div class="fab-menu">';
+    html+='<div class="fab-menu-item" data-go="vision">📸 צילום ארוחה</div>';
+    html+='<div class="fab-menu-item" data-go="sleep">😴 הזנת שינה</div>';
+    html+='<div class="fab-menu-item" data-go="foodlog">🍽 הזנת ארוחה</div>';
+    html+='</div>';
+  }
+  if(state.showConfetti){
+    html+='<div class="confetti">🎉🎊🎉</div>';
+  }
+  return html;
+}
+
+// ---------- Sleep AI ----------
+function renderSleep(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>😴 Sleep AI</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">כמה שעות ישנת הלילה?</div>';
+  html+='<input id="sleep-hours" type="number" step="0.5" placeholder="7.5">';
+  html+='<div class="field-label">איכות השינה (1-5)</div>';
+  html+='<input id="sleep-quality" type="number" min="1" max="5" placeholder="4">';
+  html+='<button id="btn-sleep-save">שמור לוג שינה</button>';
+  html+='</div>';
+
+  var avg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7);
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">תובנה</h2>';
+  if(avg===null){
+    html+='<p class="empty">עדיין אין מספיק נתונים</p>';
+  } else {
+    var diff=8-avg;
+    var msg = diff>1 ? "אתה ישן בממוצע "+avg.toFixed(1)+" שעות - מומלץ להוסיף עוד "+diff.toFixed(1)+" שעות בקירוב כדי להגיע ל-8."
+            : diff< -1 ? "אתה ישן בממוצע "+avg.toFixed(1)+" שעות, מעל הצורך הממוצע."
+            : "ממוצע השינה שלך ("+avg.toFixed(1)+" שעות) קרוב לטווח המומלץ.";
+    html+='<p>'+msg+'</p>';
+  }
+  html+='</div>';
+
+  html+='<div class="card">';
+  html+='<h2 style="margin-top:0;">היסטוריה</h2>';
+  if(!state.sleepLogs.length) html+='<p class="empty">אין רשומות עדיין</p>';
+  else state.sleepLogs.slice().reverse().slice(0,10).forEach(function(l){
+    html+='<div class="stat-row"><span>'+l.date+'</span><span>'+l.hours+' שעות, איכות '+l.quality+'</span></div>';
+  });
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Mסך 11: Food Log / Daily Diary ----------
+var MEAL_LABELS={breakfast:"ארוחת בוקר", lunch:"ארוחת צהריים", dinner:"ארוחת ערב", snacks:"נשנושים"};
+function addDays(dateStr, n){
+  var d=new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function renderFoodLog(){
+  var date=state.diaryDate||todayStr();
+  if(!state.nutrition.diary[date]) state.nutrition.diary[date]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+  var diary=state.nutrition.diary[date];
+  var consumed=diaryTotalCal(diary);
+  var goal=state.nutrition.calories;
+  var remaining=goal-consumed;
+
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>🍽 יומן האוכל</h1>';
+  html+='<div class="day-nav"><span data-day="-1">›</span><b>'+date+'</b><span data-day="1">‹</span></div>';
+
+  html+='<div class="card">';
+  html+='<div class="stat-row"><span>יעד</span><span>'+goal+'</span></div>';
+  html+='<div class="stat-row"><span>נאכל</span><span>'+consumed+'</span></div>';
+  html+='<div class="stat-row"><span>נותר</span><span>'+remaining+'</span></div>';
+  var totals=diaryMacroTotals(diary);
+  ["protein","carb","fat"].forEach(function(k){
+    var label=k==="protein"?"חלבון":k==="carb"?"פחמימה":"שומן";
+    var targetG=macroGoalGrams(k);
+    var pct=Math.min(100, Math.round(totals[k]/targetG*100)||0);
+    var color=k==="protein"?"#7c3aed":k==="carb"?"#0ea5e9":"#f59e0b";
+    html+='<div class="macro-bar-row"><span style="width:60px;">'+label+'</span><div class="macro-bar-track"><div class="macro-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div><span>'+Math.round(totals[k])+'/'+Math.round(targetG)+'ג</span></div>';
+  });
+  html+='</div>';
+
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    var items=diary[m];
+    var mealCal=items.reduce(function(a,b){return a+b.cal;},0);
+    html+='<div class="card meal-section">';
+    html+='<div class="meal-head"><span>'+MEAL_LABELS[m]+' ('+mealCal+' קל\')</span></div>';
+    if(!items.length) html+='<p class="empty" style="padding:6px;">אין פריטים</p>';
+    items.forEach(function(item,i){
+      html+='<div class="food-row"><span>'+item.name+' • '+item.grams+'ג</span><span>'+item.cal+' קל\' <span class="del-x" data-del-food="'+m+'|'+i+'">✕</span></span></div>';
+    });
+    html+='<button class="secondary small" data-add-meal="'+m+'" style="margin-top:8px;">+ הוסף מאכל</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function diaryMacroTotals(diary){
+  var t={protein:0,carb:0,fat:0};
+  ["breakfast","lunch","dinner","snacks"].forEach(function(m){
+    diary[m].forEach(function(item){ t.protein+=item.protein; t.carb+=item.carb; t.fat+=item.fat; });
+  });
+  return t;
+}
+function macroGoalGrams(key){
+  var cal=state.nutrition.calories;
+  if(key==="protein") return cal*(state.nutrition.proteinPct/100)/4;
+  if(key==="carb") return cal*(state.nutrition.carbPct/100)/4;
+  return cal*(state.nutrition.fatPct/100)/9;
+}
+
+// ---------- Mסך 12: Food Search ----------
+function renderFoodSearch(){
+  var q=state.foodSearchQuery.trim().toLowerCase();
+  var results=allFoods().filter(function(f){ return !q || f.name.toLowerCase().indexOf(q)>=0; });
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodlog">← חזרה</span>';
+  html+='<h1>חיפוש מאכל</h1>';
+  html+='<input id="food-search-input" placeholder="חפש מאכל..." value="'+escapeHtml(state.foodSearchQuery)+'">';
+  html+='<div class="card">';
+  if(!results.length) html+='<p class="empty">לא מצאנו את המאכל הזה, אפשר ליצור אותו</p>';
+  results.forEach(function(f,i){
+    html+='<div class="search-result" data-pick-food="'+i+'"><span>'+f.name+'</span><span>'+f.cal+' קל\'/100ג</span></div>';
+  });
+  html+='</div>';
+  html+='<button id="btn-new-food" class="secondary">לא מצאת? צור מאכל חדש</button>';
+  html+='</div>';
+  return html;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+// ---------- Mסך 13: Food Detail / Add to diary ----------
+function renderFoodDetail(){
+  var f=state.pendingFood;
+  if(!f) return renderFoodSearch();
+  var grams=f.grams||100;
+  var ratio=grams/100;
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodsearch">← חזרה</span>';
+  html+='<h1>'+f.name+'</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">משקל (גרם)</div>';
+  html+='<input id="detail-grams" type="number" value="'+grams+'">';
+  html+='<div class="stat-row"><span>קלוריות</span><span>'+Math.round(f.cal*ratio)+'</span></div>';
+  html+='<div class="stat-row"><span>חלבון</span><span>'+Math.round(f.protein*ratio)+'ג</span></div>';
+  html+='<div class="stat-row"><span>פחמימה</span><span>'+Math.round(f.carb*ratio)+'ג</span></div>';
+  html+='<div class="stat-row"><span>שומן</span><span>'+Math.round(f.fat*ratio)+'ג</span></div>';
+  html+='</div>';
+  html+='<button id="btn-add-to-diary">אשר והוסף ליומן האוכל</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Mסך 14: Custom Food Creator ----------
+function renderFoodCreate(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="foodsearch">← חזרה</span>';
+  html+='<h1>מאכל חדש</h1>';
+  html+='<div class="card">';
+  html+='<div class="field-label">שם המאכל</div><input id="cf-name">';
+  html+='<div class="field-label">קלוריות ל-100 גרם</div><input id="cf-cal" type="number">';
+  html+='<div class="field-label">חלבון (גרם ל-100 גרם)</div><input id="cf-protein" type="number">';
+  html+='<div class="field-label">פחמימה (גרם ל-100 גרם)</div><input id="cf-carb" type="number">';
+  html+='<div class="field-label">שומן (גרם ל-100 גרם)</div><input id="cf-fat" type="number">';
+  html+='<button id="btn-save-custom-food">שמור מאכל לפרופיל שלי</button>';
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Mסך 15: Nutrition Goals ----------
+function renderGoals(){
+  var n=state.nutrition;
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>יעדי תזונה</h1>';
+  html+='<div class="toggle-row">';
+  html+='<div class="toggle-opt'+(n.mode==="auto"?' active':'')+'" data-goal-mode="auto">ניהול אוטומטי (AI)</div>';
+  html+='<div class="toggle-opt'+(n.mode==="manual"?' active':'')+'" data-goal-mode="manual">ניהול ידני</div>';
+  html+='</div>';
+
+  if(n.mode==="auto"){
+    var bmr=calcBMR(), bmi=calcBMI();
+    html+='<div class="card">';
+    if(bmr) html+='<p>על בסיס המשקל, הגובה, הגיל ורמת הפעילות שלך, ה-BMR (חילוף חומרים בסיסי) מחושב ל-'+Math.round(bmr)+' קלוריות. בהתאם לרמת הפעילות שדיווחת, יעד הקלוריות היומי שנקבע הוא <b>'+n.calories+'</b> קלוריות, עם חלוקה של '+n.proteinPct+'% חלבון, '+n.carbPct+'% פחמימה, '+n.fatPct+'% שומן.</p>';
+    else html+='<p class="empty">חסרים נתוני גובה/משקל/גיל בפרופיל לחישוב מדויק</p>';
+    if(bmi) html+='<p>BMI: '+bmi.toFixed(1)+'</p>';
+    html+='</div>';
+  } else {
+    html+='<div class="card">';
+    html+='<div class="field-label">סך קלוריות יומי</div><input id="g-calories" type="number" value="'+n.calories+'">';
+    html+='<div class="slider-row"><div class="field-label">חלבון: <span id="g-protein-val">'+n.proteinPct+'</span>%</div><input id="g-protein" type="range" min="0" max="100" value="'+n.proteinPct+'"></div>';
+    html+='<div class="slider-row"><div class="field-label">פחמימה: <span id="g-carb-val">'+n.carbPct+'</span>%</div><input id="g-carb" type="range" min="0" max="100" value="'+n.carbPct+'"></div>';
+    html+='<div class="slider-row"><div class="field-label">שומן: <span id="g-fat-val">'+n.fatPct+'</span>%</div><input id="g-fat" type="range" min="0" max="100" value="'+n.fatPct+'"></div>';
+    var sum=n.proteinPct+n.carbPct+n.fatPct;
+    html+='<p id="g-sum-status" style="color:'+(sum===100?'#86efac':'#ef4444')+';">סך הכל: '+sum+'%</p>';
+    html+='<button id="btn-save-goals"'+(sum!==100?' disabled style="opacity:.5;"':'')+'>עדכן יעדי תזונה</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+// ---------- Vision AI: real client-side plate/portion analysis ----------
+var visionResult=null;
+function analyzePlateImage(imgEl){
+  var w=300, h=300;
+  var canvas=document.createElement("canvas");
+  canvas.width=w; canvas.height=h;
+  var ctx=canvas.getContext("2d");
+  ctx.drawImage(imgEl,0,0,w,h);
+  var data=ctx.getImageData(0,0,w,h).data;
+
+  // classify pixels by hue family to estimate food-group coverage (real pixel analysis, heuristic mapping)
+  var counts={protein:0, carb:0, veg:0, other:0, plate:0};
+  var total=0;
+  for(var i=0;i<data.length;i+=4*3){ // sample every 3rd pixel for speed
+    var r=data[i], g=data[i+1], b=data[i+2];
+    total++;
+    var brightness=(r+g+b)/3;
+    if(brightness>200 && Math.abs(r-g)<15 && Math.abs(g-b)<15){
+      counts.plate++; // bright/white-ish = plate/background
+    } else if(g>r && g>b && g>70){
+      counts.veg++; // greenish = vegetables
+    } else if(r>150 && g>100 && b<100){
+      counts.carb++; // light brown/yellow = carbs (rice, bread, potato)
+    } else if(r>100 && r>g && r>b && brightness<150){
+      counts.protein++; // darker reddish-brown = protein (meat)
+    } else {
+      counts.other++;
+    }
+  }
+  var foodTotal = total - counts.plate;
+  if(foodTotal<=0) foodTotal=1;
+  var pct={
+    protein: Math.round(counts.protein/foodTotal*100),
+    carb: Math.round(counts.carb/foodTotal*100),
+    veg: Math.round(counts.veg/foodTotal*100),
+    other: Math.round(counts.other/foodTotal*100)
+  };
+  var plateCoverage=Math.round((total-counts.plate)/total*100); // how full the plate looks = portion size proxy
+
+  var estCalories = Math.round(150 + plateCoverage*5 + pct.protein*2 + pct.carb*2.5);
+
+  return { pct:pct, plateCoverage:plateCoverage, estCalories:estCalories, dataUrl:canvas.toDataURL("image/png") };
+}
+
+function renderVision(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>📸 Vision AI</h1>';
+  html+='<p>צלם/העלה תמונה של הצלחת. הניתוח מבוסס פילוח פיקסלים אמיתי (גוון/בהירות) להערכת הרכב המנה - לא AI מבוסס שרת, אלא חישוב מקומי בדפדפן.</p>';
+  html+='<div class="card">';
+  html+='<input id="vision-file" type="file" accept="image/*" capture="environment">';
+  html+='<div id="vision-out"></div>';
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- AI Coach (rule-based local "coach", no server LLM) ----------
+var EMERGENCY_KEYWORDS=["קוצר נשימה","כאב חזק בחזה","כאב חזק ביד","אובדנות","להתאבד","דם בצואה","התעלפתי","התעלפות"];
+var COACH_CHIPS=["איך לשפר את השינה הלילה?","תבנה לי תפריט לפי הקלוריות שנשארו לי","איך אני מתקדם השבוע?","טיפ לאנרגיה"];
+function coachReply(text){
+  var lower=text.toLowerCase();
+  for(var i=0;i<EMERGENCY_KEYWORDS.length;i++){
+    if(lower.indexOf(EMERGENCY_KEYWORDS[i])>=0){
+      return {emergency:true, text:"Vytal OS זיהתה תיאור של מצב חירום רפואי. המערכת אינה מחליפה רופא. אנא פנה מיד לגורמי ההצלה או לחדר המיון הקרוב."};
+    }
+  }
+  var sleepAvg=avgRecent(state.sleepLogs.map(function(l){return l.hours;}),7);
+  var diary=todayDiary();
+  var consumed=diaryTotalCal(diary);
+  var remaining=state.nutrition.calories-consumed;
+
+  if(lower.indexOf("שינה")>=0){
+    if(sleepAvg===null) return {text:"עדיין אין מספיק נתוני שינה. תתחיל לתעד ב-Sleep AI ואחזור עם תובנה מדויקת."};
+    return {text: sleepAvg<7 ? "בשבוע האחרון ישנת בממוצע "+sleepAvg.toFixed(1)+" שעות. נסה לקבוע שעת כיבוי מסך 30 דקות לפני השינה ולשמור על שעה קבועה." : "ממוצע השינה שלך ("+sleepAvg.toFixed(1)+" שעות) תקין. המשך לשמור על שעות קבועות."};
+  }
+  if(lower.indexOf("תפריט")>=0 || lower.indexOf("קלוריות")>=0){
+    if(remaining<=0) return {text:"כבר עברת את היעד הקלורי היומי שלך ("+consumed+"/"+state.nutrition.calories+"). מומלץ לדלג על נשנושים נוספים היום."};
+    return {text:"נשארו לך "+remaining+" קלוריות היום. דוגמה למנה שמתאימה: חזה עוף 150 גרם + אורז 100 גרם + ירקות - בערך "+Math.round(165*1.5+130)+" קלוריות."};
+  }
+  if(lower.indexOf("מתקדם")>=0 || lower.indexOf("שבוע")>=0){
+    var score=calcLifeScore();
+    return {text:"ה-Life Score שלך היום הוא "+score.total+" (שינה "+score.sleepScore+", תזונה "+score.nutriScore+", משימות "+score.missionRate+"%). לפירוט מלא תעבור למסך הסיכום השבועי."};
+  }
+  if(lower.indexOf("אנרגיה")>=0){
+    return {text:"רמת האנרגיה מושפעת ישירות משינה ותזונה. ודא שאתה שותה מים, אוכל ארוחת בוקר עם חלבון, ולא מדלג על ארוחות."};
+  }
+  return {text:"קיבלתי. כרגע אני יכול לעזור בעיקר עם שאלות על שינה, תזונה והתקדמות שבועית - מבוסס על הנתונים שתיעדת באפליקציה."};
+}
+function renderCoach(){
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>🧠 AI Coach</h1>';
+  html+='<p>מאמן מבוסס חוקים על הנתונים המקומיים שלך (לא מודל שפה מבוסס שרת) - מנתח שינה, תזונה ומשימות ומשיב בהתאם.</p>';
+  html+='<div class="card" id="chat-feed">';
+  if(!state.chatHistory.length) html+='<p class="empty">שאל אותי משהו על השינה, התזונה או ההתקדמות שלך</p>';
+  state.chatHistory.forEach(function(m){
+    html+='<div class="chat-bubble '+(m.role==="user"?"user":"coach")+'">'+escapeHtml(m.text)+'</div>';
+  });
+  html+='</div>';
+  html+='<div class="chat-chip-row">';
+  COACH_CHIPS.forEach(function(c){ html+='<div class="chat-chip" data-chat-chip="'+escapeHtml(c)+'">'+c+'</div>'; });
+  html+='</div>';
+  html+='<input id="chat-input" placeholder="כתוב הודעה...">';
+  html+='<button id="btn-chat-send">שלח</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Weekly Report ----------
+function dailyScoreForDate(dateStr){
+  var diary=state.nutrition.diary[dateStr];
+  var consumed=diary?diaryTotalCal(diary):0;
+  var goal=state.nutrition.calories||2000;
+  var nutriScore = consumed===0 ? 0 : Math.max(0, Math.min(100, 100-Math.max(0, Math.abs(consumed-goal)/goal*100-10)*2));
+  var sleepLog=state.sleepLogs.filter(function(l){return l.date===dateStr;})[0];
+  var sleepScore = sleepLog ? Math.max(0, Math.min(100, 100-Math.abs(8-sleepLog.hours)*18)) : null;
+  if(sleepScore===null && consumed===0) return null;
+  return Math.round((sleepScore||50)*0.5 + nutriScore*0.5);
+}
+function renderWeekly(){
+  var today=todayStr();
+  var days=[];
+  for(var i=6;i>=0;i--) days.push(addDays(today, -i - state.weeklyOffset*7));
+  var scores=days.map(dailyScoreForDate);
+  var validScores=scores.filter(function(s){return s!==null;});
+  var avgThis = validScores.length ? validScores.reduce(function(a,b){return a+b;},0)/validScores.length : null;
+
+  var prevDays=[];
+  for(var j=6;j>=0;j--) prevDays.push(addDays(today, -j-7 - state.weeklyOffset*7));
+  var prevScores=prevDays.map(dailyScoreForDate).filter(function(s){return s!==null;});
+  var avgPrev = prevScores.length ? prevScores.reduce(function(a,b){return a+b;},0)/prevScores.length : null;
+
+  var html='<div class="screen">';
+  html+='<span class="back-link" data-go="dashboard">← חזרה</span>';
+  html+='<h1>📊 סיכום שבועי</h1>';
+  html+='<div class="day-nav"><span data-week="1">›</span><b>שבוע</b><span data-week="-1">‹</span></div>';
+
+  html+='<div class="card center">';
+  if(avgThis===null){
+    html+='<p class="empty">אין מספיק נתונים לשבוע הזה</p>';
+  } else {
+    html+='<div class="score-num">'+Math.round(avgThis)+'</div><div class="score-label">ממוצע Life Score שבועי</div>';
+    if(avgPrev===null){
+      html+='<p style="margin-top:8px;"><span class="badge low">🎉 ברוך הבא! זהו השבוע הראשון שלך</span></p>';
+    } else {
+      var deltaPct=Math.round((avgThis-avgPrev)/avgPrev*100);
+      html+='<p style="margin-top:8px;color:'+(deltaPct>=0?'#86efac':'#fca5a5')+';">'+(deltaPct>=0?'▲':'▼')+' '+Math.abs(deltaPct)+'% לעומת שבוע שעבר</p>';
+    }
+  }
+  html+='</div>';
+
+  html+='<div class="card"><div class="bar-chart">';
+  var maxScore=Math.max(20, validScores.length?Math.max.apply(null,validScores):20);
+  days.forEach(function(d,i){
+    var s=scores[i];
+    var h=s===null?2:Math.max(4, Math.round(s/100*100));
+    html+='<div class="bar-col"><div class="bar-fill" style="height:'+h+'%;"></div><div class="bar-label">'+d.slice(8)+'</div></div>';
+  });
+  html+='</div></div>';
+
+  html+='<div class="card insight-card">';
+  if(validScores.length<4){
+    html+='<p>כדי שנוכל להעניק לך תובנות מדויקות בשבוע הבא, נסה לתעד שינה ותזונה בתדירות גבוהה יותר.</p>';
+  } else {
+    var sleepHigh=state.sleepLogs.filter(function(l){ return days.indexOf(l.date)>=0 && l.hours>=7.5; });
+    if(sleepHigh.length>=2){
+      html+='<p>💡 בימים שבהם ישנת מעל 7.5 שעות, מדד ה-Life Score היומי שלך היה גבוה יותר בממוצע. שינה היא המרכיב המשמעותי ביותר באלגוריתם הציון שלך.</p>';
+    } else {
+      html+='<p>💡 לא נמצא קשר מובהק השבוע. המשך לתעד כדי שנזהה מגמות עם יותר נתונים.</p>';
+    }
+  }
+  html+='</div>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Settings ----------
+function renderSettings(){
+  var html='<div class="screen">';
+  html+='<h1>⚙️ הגדרות</h1>';
+  html+='<div class="card">';
+  html+='<div class="stat-row"><span>שם</span><span>'+state.profile.name+'</span></div>';
+  html+='<div class="stat-row"><span>אימייל</span><span>'+(state.profile.email||'-')+'</span></div>';
+  html+='<div class="stat-row"><span>מטרות</span><span>'+state.goals.join(", ")+'</span></div>';
+  html+='</div>';
+  html+='<button data-go="goals" style="margin-bottom:10px;">🎯 יעדי תזונה</button>';
+  html+='<button class="secondary" id="btn-streak-freeze" style="margin-bottom:10px;">❄️ סמן שאני חולה/פצוע (הקפאת רצף ל-48 שעות)</button>';
+  html+='<button class="secondary" id="btn-reset">איפוס כל הנתונים</button>';
+  html+='</div>';
+  return html;
+}
+
+// ---------- Tabbar ----------
+function renderTabbar(){
+  var tabs=[
+    {key:"dashboard", icon:"🏠", label:"בית"},
+    {key:"sleep", icon:"😴", label:"שינה"},
+    {key:"foodlog", icon:"🍽", label:"תזונה"},
+    {key:"settings", icon:"⚙️", label:"הגדרות"}
+  ];
+  var html='<div class="tabbar">';
+  tabs.forEach(function(t){
+    html+='<div class="tab'+(state.screen===t.key?' active':'')+'" data-go="'+t.key+'"><span class="ic">'+t.icon+'</span>'+t.label+'</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// ---------- Main render ----------
+function render(){
+  var html="";
+  var showTabbar=false;
+  switch(state.screen){
+    case "splash":
+      html='<div class="logo">✨</div><div class="splash-title">Vytal</div>';
+      break;
+    case "onboarding": html=renderOnboarding(); break;
+    case "register": html=renderRegister(); break;
+    case "connections": html=renderConnections(); break;
+    case "questionnaire": html=renderQuestionnaire(); break;
+    case "dashboard": html=renderDashboard(); showTabbar=true; break;
+    case "sleep": html=renderSleep(); showTabbar=true; break;
+    case "foodlog": html=renderFoodLog(); showTabbar=true; break;
+    case "foodsearch": html=renderFoodSearch(); break;
+    case "fooddetail": html=renderFoodDetail(); break;
+    case "foodcreate": html=renderFoodCreate(); break;
+    case "goals": html=renderGoals(); break;
+    case "vision": html=renderVision(); break;
+    case "coach": html=renderCoach(); break;
+    case "weekly": html=renderWeekly(); break;
+    case "settings": html=renderSettings(); showTabbar=true; break;
+    default: html=renderDashboard(); showTabbar=true;
+  }
+  if(showTabbar) html+=renderTabbar();
+  document.getElementById("root").innerHTML=html;
+  bindEvents();
+}
+
+function bindEvents(){
+  var onbNext=document.getElementById("btn-onb-next");
+  if(onbNext) onbNext.onclick=function(){
+    if(state.onbStep<ONB_SLIDES.length-1){ state.onbStep++; saveState(); render(); }
+    else { go("register"); }
+  };
+
+  var btnRegister=document.getElementById("btn-register");
+  if(btnRegister) btnRegister.onclick=function(){
+    state.profile={
+      name: document.getElementById("r-name").value.trim()||"משתמש",
+      age: Number(document.getElementById("r-age").value)||null,
+      gender: document.getElementById("r-gender").value,
+      height: Number(document.getElementById("r-height").value)||null,
+      weight: Number(document.getElementById("r-weight").value)||null,
+      email: document.getElementById("r-email").value.trim()
+    };
+    saveState();
+    go("connections");
+  };
+
+  document.querySelectorAll("[data-conn]").forEach(function(btn){
+    btn.onclick=function(){
+      var k=btn.getAttribute("data-conn");
+      state.connections[k]=!state.connections[k];
+      saveState(); render();
+    };
+  });
+  var connNext=document.getElementById("btn-conn-next");
+  if(connNext) connNext.onclick=function(){ go("questionnaire"); };
+
+  document.querySelectorAll("[data-goal]").forEach(function(chip){
+    chip.onclick=function(){
+      var g=chip.getAttribute("data-goal");
+      var idx=state.goals.indexOf(g);
+      if(idx>=0) state.goals.splice(idx,1); else state.goals.push(g);
+      saveState(); render();
+    };
+  });
+  var qFinish=document.getElementById("btn-q-finish");
+  if(qFinish) qFinish.onclick=function(){
+    state.profile.avgSleep=Number(document.getElementById("q-sleep").value)||7;
+    state.profile.weeklyActivity=Number(document.getElementById("q-activity").value)||3;
+    state.nutrition.calories=calcAutoCalorieGoal();
+    saveState();
+    go("dashboard");
+  };
+
+  document.querySelectorAll("[data-go]").forEach(function(el){
+    el.onclick=function(){ go(el.getAttribute("data-go")); };
+  });
+
+  document.querySelectorAll("[data-mission]").forEach(function(el){
+    el.onclick=function(){
+      var i=Number(el.getAttribute("data-mission"));
+      var m=state.missions[i];
+      m.done=!m.done;
+      if(m.done) state.xp+=Math.round(m.xp*streakMultiplier());
+      else state.xp=Math.max(0, state.xp-Math.round(m.xp*streakMultiplier()));
+      onMissionsCompleted();
+      saveState(); render();
+      if(state.showConfetti) setTimeout(function(){ state.showConfetti=false; saveState(); render(); }, 1500);
+    };
+  });
+  var fabBtn=document.getElementById("fab-btn");
+  if(fabBtn) fabBtn.onclick=function(){ state.fabOpen=!state.fabOpen; saveState(); render(); };
+
+  var btnSleepSave=document.getElementById("btn-sleep-save");
+  if(btnSleepSave) btnSleepSave.onclick=function(){
+    var hours=Number(document.getElementById("sleep-hours").value);
+    var quality=Number(document.getElementById("sleep-quality").value)||3;
+    if(!hours) return;
+    state.sleepLogs.push({date:todayStr(), hours:hours, quality:quality});
+    saveState(); render();
+  };
+
+  document.querySelectorAll("[data-day]").forEach(function(el){
+    el.onclick=function(){
+      var delta=Number(el.getAttribute("data-day"));
+      state.diaryDate=addDays(state.diaryDate||todayStr(), delta);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll("[data-add-meal]").forEach(function(el){
+    el.onclick=function(){
+      state.foodSearchMeal=el.getAttribute("data-add-meal");
+      state.foodSearchQuery="";
+      saveState(); go("foodsearch");
+    };
+  });
+  document.querySelectorAll("[data-del-food]").forEach(function(el){
+    el.onclick=function(){
+      var parts=el.getAttribute("data-del-food").split("|");
+      var date=state.diaryDate||todayStr();
+      state.nutrition.diary[date][parts[0]].splice(Number(parts[1]),1);
+      saveState(); render();
+    };
+  });
+
+  var foodSearchInput=document.getElementById("food-search-input");
+  if(foodSearchInput){
+    foodSearchInput.oninput=function(e){ state.foodSearchQuery=e.target.value; saveState(); render(); };
+    setTimeout(function(){ foodSearchInput.focus(); foodSearchInput.setSelectionRange(foodSearchInput.value.length, foodSearchInput.value.length); },0);
+  }
+  document.querySelectorAll("[data-pick-food]").forEach(function(el){
+    el.onclick=function(){
+      var q=state.foodSearchQuery.trim().toLowerCase();
+      var results=allFoods().filter(function(f){ return !q || f.name.toLowerCase().indexOf(q)>=0; });
+      var f=results[Number(el.getAttribute("data-pick-food"))];
+      state.pendingFood=Object.assign({grams:100}, f);
+      saveState(); go("fooddetail");
+    };
+  });
+  var btnNewFood=document.getElementById("btn-new-food");
+  if(btnNewFood) btnNewFood.onclick=function(){ go("foodcreate"); };
+
+  var detailGrams=document.getElementById("detail-grams");
+  if(detailGrams) detailGrams.oninput=function(e){
+    state.pendingFood.grams=Number(e.target.value)||0;
+    saveState(); render();
+  };
+  var btnAddDiary=document.getElementById("btn-add-to-diary");
+  if(btnAddDiary) btnAddDiary.onclick=function(){
+    var f=state.pendingFood;
+    var ratio=(f.grams||100)/100;
+    var date=state.diaryDate||todayStr();
+    if(!state.nutrition.diary[date]) state.nutrition.diary[date]={breakfast:[],lunch:[],dinner:[],snacks:[]};
+    state.nutrition.diary[date][state.foodSearchMeal||"snacks"].push({
+      name:f.name, grams:f.grams||100,
+      cal:Math.round(f.cal*ratio), protein:f.protein*ratio, carb:f.carb*ratio, fat:f.fat*ratio
+    });
+    state.pendingFood=null;
+    saveState(); go("foodlog");
+  };
+
+  var btnSaveCustomFood=document.getElementById("btn-save-custom-food");
+  if(btnSaveCustomFood) btnSaveCustomFood.onclick=function(){
+    var name=document.getElementById("cf-name").value.trim();
+    if(!name) return;
+    state.nutrition.customFoods.push({
+      name:name,
+      cal:Number(document.getElementById("cf-cal").value)||0,
+      protein:Number(document.getElementById("cf-protein").value)||0,
+      carb:Number(document.getElementById("cf-carb").value)||0,
+      fat:Number(document.getElementById("cf-fat").value)||0
+    });
+    saveState(); go("foodsearch");
+  };
+
+  document.querySelectorAll("[data-goal-mode]").forEach(function(el){
+    el.onclick=function(){
+      state.nutrition.mode=el.getAttribute("data-goal-mode");
+      if(state.nutrition.mode==="auto") state.nutrition.calories=calcAutoCalorieGoal();
+      saveState(); render();
+    };
+  });
+  ["protein","carb","fat"].forEach(function(k){
+    var slider=document.getElementById("g-"+k);
+    if(slider) slider.oninput=function(e){
+      state.nutrition[k+"Pct"]=Number(e.target.value);
+      saveState(); render();
+    };
+  });
+  var btnSaveGoals=document.getElementById("btn-save-goals");
+  if(btnSaveGoals) btnSaveGoals.onclick=function(){
+    state.nutrition.calories=Number(document.getElementById("g-calories").value)||2000;
+    saveState(); go("settings");
+  };
+
+  var visionFile=document.getElementById("vision-file");
+  if(visionFile) visionFile.onchange=function(e){
+    var file=e.target.files[0];
+    if(!file) return;
+    var img=new Image();
+    img.onload=function(){
+      var result=analyzePlateImage(img);
+      var out=document.getElementById("vision-out");
+      var html='<img class="photo-preview" src="'+result.dataUrl+'">';
+      html+='<div class="stat-row"><span>מילוי הצלחת (אומדן מנה)</span><span>'+result.plateCoverage+'%</span></div>';
+      html+='<div class="stat-row"><span>חלבון (אומדן ויזואלי)</span><span>'+result.pct.protein+'%</span></div>';
+      html+='<div class="stat-row"><span>פחמימה/עמילן (אומדן ויזואלי)</span><span>'+result.pct.carb+'%</span></div>';
+      html+='<div class="stat-row"><span>ירקות (אומדן ויזואלי)</span><span>'+result.pct.veg+'%</span></div>';
+      html+='<div class="stat-row"><span>הערכת קלוריות גסה</span><span>~'+result.estCalories+'</span></div>';
+      html+='<button id="btn-vision-log" style="margin-top:10px;">שמור כארוחה</button>';
+      out.innerHTML=html;
+      document.getElementById("btn-vision-log").onclick=function(){
+        var diary=todayDiary();
+        diary.snacks.push({name:"ארוחה מצולמת (Vision AI)", grams:0, cal:result.estCalories, protein:0, carb:0, fat:0});
+        saveState();
+        go("foodlog");
+      };
+    };
+    img.src=URL.createObjectURL(file);
+  };
+
+  var btnReset=document.getElementById("btn-reset");
+  if(btnReset) btnReset.onclick=function(){
+    if(confirm("לאפס את כל הנתונים?")){
+      localStorage.removeItem(STORAGE_KEY);
+      state=loadState();
+      render();
+    }
+  };
+
+  var btnStreakFreeze=document.getElementById("btn-streak-freeze");
+  if(btnStreakFreeze) btnStreakFreeze.onclick=function(){
+    state.streakFreezeUntil=addDays(todayStr(),2);
+    saveState();
+    alert("רצף הימים הוקפא ל-48 שעות הקרובות");
+    render();
+  };
+
+  function sendChat(text){
+    if(!text.trim()) return;
+    state.chatHistory.push({role:"user", text:text});
+    var reply=coachReply(text);
+    state.chatHistory.push({role:"coach", text:reply.text});
+    saveState(); render();
+    var feed=document.getElementById("chat-feed");
+    if(feed) feed.scrollTop=feed.scrollHeight;
+  }
+  var btnChatSend=document.getElementById("btn-chat-send");
+  var chatInput=document.getElementById("chat-input");
+  if(btnChatSend) btnChatSend.onclick=function(){
+    sendChat(chatInput.value);
+    chatInput.value="";
+  };
+  if(chatInput) chatInput.addEventListener("keypress", function(e){
+    if(e.key==="Enter"){ sendChat(chatInput.value); chatInput.value=""; }
+  });
+  document.querySelectorAll("[data-chat-chip]").forEach(function(el){
+    el.onclick=function(){ sendChat(el.getAttribute("data-chat-chip")); };
+  });
+
+  document.querySelectorAll("[data-week]").forEach(function(el){
+    el.onclick=function(){
+      state.weeklyOffset+=Number(el.getAttribute("data-week"));
+      if(state.weeklyOffset<0) state.weeklyOffset=0;
+      saveState(); render();
+    };
+  });
+}
+
+render();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>

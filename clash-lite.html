@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Clash Lite</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0ea5e9">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto;background:#fff;color:#0f172a;}
+  h1{text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:#64748b;margin-top:0;margin-bottom:18px;}
+  .card{background:#f1f5f9;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:15px;}
+  .note{background:#f1f5f9;padding:10px 12px;border-radius:8px;font-size:.85rem;color:#475569;margin-top:12px;}
+  .btn-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-secondary{background:#e2e8f0;color:#0f172a;}
+  .slot{margin-bottom:12px;}
+  .slot label{display:block;font-size:.85rem;color:#475569;margin-bottom:5px;font-weight:bold;}
+  .slot input[type=file]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;}
+  .slot .fname{font-size:.78rem;color:#0ea5e9;margin-top:4px;}
+  button{width:100%;padding:10px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;border-radius:6px;font-size:1rem;}
+  button:disabled{background:#94a3b8;cursor:not-allowed;}
+  h2{margin-top:22px;}
+  .pair-title{font-weight:bold;margin-top:14px;margin-bottom:6px;font-size:.95rem;}
+  .issue{background:#fff7ed;border-right:4px solid #f59e0b;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
+  .issue.high{border-right-color:#ef4444;}
+  .issue.medium{border-right-color:#f59e0b;}
+  .issue.low{border-right-color:#10b981;}
+  .ok{background:#ecfdf5;border-right:4px solid #10b981;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.95rem;}
+  .empty{color:#94a3b8;}
+  .overlay-wrap{text-align:center;margin-top:10px;margin-bottom:10px;}
+  .overlay-wrap img{max-width:100%;border:1px solid #cbd5e1;border-radius:8px;}
+  .overlay-cap{font-size:.78rem;color:#64748b;margin-top:6px;}
+  .loading{color:#0ea5e9;text-align:center;padding:10px;}
+  hr{border:none;border-top:1px solid #e2e8f0;margin:18px 0;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+var SLOTS=[
+  {key:'electric', label:'⚡ חשמל'},
+  {key:'plumbing', label:'🚿 אינסטלציה'},
+  {key:'construction', label:'🏗️ קונסטרוקציה'}
+];
+
+var state={ files:{}, results:null, loading:false, loadingStep:0, error:null };
+var LOADING_STEPS=['טוען קבצים','מזהה שכבות','בודק חפיפות בין מערכות'];
+
+function handleSlotUpload(key, e){
+  state.files[key]=e.target.files[0]||null;
+  state.results=null;
+  state.error=null;
+  render();
+}
+
+function filledCount(){
+  return SLOTS.filter(function(s){ return state.files[s.key]; }).length;
+}
+
+function fileToCanvas(file){
+  return new Promise(function(resolve, reject){
+    if(file.type==='application/pdf' || /\.pdf$/i.test(file.name)){
+      if(!window.pdfjsLib){ reject(new Error('PDF לא נתמך בדפדפן זה')); return; }
+      var reader=new FileReader();
+      reader.onload=function(){
+        pdfjsLib.getDocument({data:reader.result}).promise.then(function(pdf){
+          return pdf.getPage(1);
+        }).then(function(page){
+          var viewport=page.getViewport({scale:1.5});
+          var canvas=document.createElement('canvas');
+          canvas.width=viewport.width; canvas.height=viewport.height;
+          var ctx=canvas.getContext('2d');
+          page.render({canvasContext:ctx, viewport:viewport}).promise.then(function(){
+            resolve(canvas);
+          }).catch(reject);
+        }).catch(reject);
+      };
+      reader.onerror=reject;
+      reader.readAsArrayBuffer(file);
+    } else {
+      var img=new Image();
+      var url=URL.createObjectURL(file);
+      img.onload=function(){
+        var canvas=document.createElement('canvas');
+        canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+        canvas.getContext('2d').drawImage(img,0,0);
+        URL.revokeObjectURL(url);
+        resolve(canvas);
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); reject(new Error('לא ניתן לטעון את הקובץ: '+file.name)); };
+      img.src=url;
+    }
+  });
+}
+
+function resizeCanvas(src, w, h){
+  var c=document.createElement('canvas');
+  c.width=w; c.height=h;
+  var ctx=c.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
+  ctx.drawImage(src,0,0,w,h);
+  return c;
+}
+
+var ZONE_LABELS=[
+  ["פינה ימנית-עליונה","מרכז-עליון","פינה שמאלית-עליונה"],
+  ["מרכז-ימני","מרכז התוכנית","מרכז-שמאלי"],
+  ["פינה ימנית-תחתונה","מרכז-תחתון","פינה שמאלית-תחתונה"]
+];
+
+function analyzeCanvases(cA, cB){
+  var W=360, H=360;
+  var rA=resizeCanvas(cA,W,H), rB=resizeCanvas(cB,W,H);
+  var dA=rA.getContext('2d').getImageData(0,0,W,H).data;
+  var dB=rB.getContext('2d').getImageData(0,0,W,H).data;
+
+  var rows=3, cols=3;
+  var cellW=Math.floor(W/cols), cellH=Math.floor(H/rows);
+  var issues=[];
+
+  for(var r=0;r<rows;r++){
+    for(var c=0;c<cols;c++){
+      var sumA=0,sumB=0,n=0;
+      for(var y=r*cellH; y<(r+1)*cellH; y+=2){
+        for(var x=c*cellW; x<(c+1)*cellW; x+=2){
+          var i=(y*W+x)*4;
+          sumA += (dA[i]+dA[i+1]+dA[i+2])/3;
+          sumB += (dB[i]+dB[i+1]+dB[i+2])/3;
+          n++;
+        }
+      }
+      var avgA=sumA/n, avgB=sumB/n;
+      if(avgA<235 && avgB<235){
+        var darkA=255-avgA, darkB=255-avgB;
+        var combined=Math.min(darkA,darkB);
+        var severity = combined>90 ? 'high' : (combined>45 ? 'medium' : 'low');
+        issues.push({label: ZONE_LABELS[r][c], severity: severity});
+      }
+    }
+  }
+
+  var overlay=document.createElement('canvas');
+  overlay.width=W; overlay.height=H;
+  var octx=overlay.getContext('2d');
+  var out=octx.createImageData(W,H);
+  for(var p=0;p<W*H;p++){
+    var idx=p*4;
+    var darkA=255-((dA[idx]+dA[idx+1]+dA[idx+2])/3);
+    var darkB=255-((dB[idx]+dB[idx+1]+dB[idx+2])/3);
+    out.data[idx]   = 255-darkB*0.85;
+    out.data[idx+1] = 255-Math.max(darkA,darkB)*0.6;
+    out.data[idx+2] = 255-darkA*0.85;
+    out.data[idx+3] = 255;
+  }
+  octx.putImageData(out,0,0);
+
+  return { issues: issues, overlayUrl: overlay.toDataURL('image/png') };
+}
+
+function analyze(){
+  var present=SLOTS.filter(function(s){ return state.files[s.key]; });
+  if(present.length<2) return;
+  state.loading=true; state.loadingStep=1; state.error=null; render();
+
+  var canvasPromises={};
+  present.forEach(function(s){
+    canvasPromises[s.key]=fileToCanvas(state.files[s.key]);
+  });
+
+  var keys=Object.keys(canvasPromises);
+  Promise.all(keys.map(function(k){ return canvasPromises[k]; })).then(function(canvases){
+    state.loadingStep=2; render();
+    var canvasByKey={};
+    keys.forEach(function(k,i){ canvasByKey[k]=canvases[i]; });
+
+    var pairs=[];
+    for(var i=0;i<present.length;i++){
+      for(var j=i+1;j<present.length;j++){
+        pairs.push([present[i], present[j]]);
+      }
+    }
+
+    setTimeout(function(){
+      state.loadingStep=3; render();
+      state.results=pairs.map(function(pair){
+        var res=analyzeCanvases(canvasByKey[pair[0].key], canvasByKey[pair[1].key]);
+        return { a: pair[0], b: pair[1], issues: res.issues, overlayUrl: res.overlayUrl };
+      });
+      state.loading=false; state.loadingStep=0;
+      render();
+    }, 250);
+  }).catch(function(e){
+    state.loading=false; state.loadingStep=0;
+    state.error=e.message||'שגיאה בניתוח הקבצים';
+    render();
+  });
+}
+
+var SEVERITY_LABEL={high:'גבוהה', medium:'בינונית', low:'נמוכה'};
+
+function resetAll(){
+  state.files={}; state.results=null; state.error=null; state.loading=false; state.loadingStep=0;
+  render();
+}
+
+function downloadReport(){
+  if(!state.results) return;
+  var lines=['דו"ח בדיקת התנגשות - Clash Lite', ''];
+  state.results.forEach(function(pairResult){
+    lines.push(pairResult.a.label+' <-> '+pairResult.b.label+':');
+    if(pairResult.issues.length===0){
+      lines.push('  לא נמצאו אזורי חפיפה בולטים');
+    } else {
+      pairResult.issues.forEach(function(issue){
+        lines.push('  - ['+SEVERITY_LABEL[issue.severity]+'] אזור חפיפה אפשרי: '+issue.label);
+      });
+    }
+    lines.push('');
+  });
+  lines.push('הערה: מומלץ לבדוק נקודות אלו לפני ביצוע בשטח');
+  var blob=new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='clash-report.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function render(){
+  var html = '<h1>🏗️ Clash Lite</h1>';
+  html += '<p class="sub">בדיקת התנגשות בין תוכניות</p>';
+  html += '<div class="card">';
+  html += '<div style="margin-bottom:8px;font-weight:bold;">📤 העלה קבצים:</div>';
+
+  SLOTS.forEach(function(s){
+    var f=state.files[s.key];
+    html += '<div class="slot">';
+    html += '<label>'+s.label+'</label>';
+    html += '<input type="file" accept="image/*,.pdf" data-slot="'+s.key+'">';
+    if(f) html += '<div class="fname">✓ '+escapeHtml(f.name)+'</div>';
+    html += '</div>';
+  });
+
+  html += '<button id="btn-analyze"'+(filledCount()<2||state.loading?' disabled':'')+'>'+
+    (state.loading?'מנתח...':'🔍 נתח תוכניות')+'</button>';
+  html += '</div>';
+
+  if(state.loading){
+    html += '<div class="card">';
+    html += '<div style="font-weight:bold;margin-bottom:8px;">🔄 מנתח תוכניות...</div>';
+    LOADING_STEPS.forEach(function(stepLabel, idx){
+      var stepNum=idx+1;
+      var mark = stepNum<state.loadingStep ? '✔' : (stepNum===state.loadingStep ? '⏳' : '○');
+      html += '<div style="padding:4px 0;color:'+(stepNum<=state.loadingStep?'#0f172a':'#94a3b8')+';">'+mark+' '+stepLabel+'</div>';
+    });
+    html += '<div class="loading" style="text-align:right;padding-top:8px;">אנא המתן...</div>';
+    html += '</div>';
+  }
+  if(state.error){
+    html += '<div class="issue">⚠️ '+escapeHtml(state.error)+'</div>';
+  }
+
+  if(state.results){
+    html += '<h2>תוצאות הבדיקה</h2>';
+    state.results.forEach(function(pairResult){
+      html += '<hr>';
+      html += '<div class="pair-title">'+pairResult.a.label+' ⟷ '+pairResult.b.label+'</div>';
+      if(pairResult.issues.length===0){
+        html += '<div class="ok">✅ לא נמצאו אזורי חפיפה בולטים</div>';
+      } else {
+        pairResult.issues.forEach(function(issue){
+          html += '<div class="issue '+issue.severity+'">⚠️ אזור חפיפה אפשרי ('+SEVERITY_LABEL[issue.severity]+'): <b>'+escapeHtml(issue.label)+'</b></div>';
+        });
+      }
+      html += '<div class="overlay-wrap"><img src="'+pairResult.overlayUrl+'" alt="overlay"><div class="overlay-cap">כחול = '+pairResult.a.label+', אדום = '+pairResult.b.label+'. כהה/סגול = חפיפה.</div></div>';
+    });
+    html += '<div class="note">💡 מומלץ לבדוק נקודות אלו לפני ביצוע בשטח</div>';
+    html += '<div class="btn-row"><button id="btn-download">📄 הורד דו"ח</button><button id="btn-reset" class="btn-secondary">🔁 בדיקה חדשה</button></div>';
+  } else if(!state.loading && !state.error){
+    html += '<p class="empty">העלה לפחות 2 תוכניות ולחץ "נתח תוכניות" כדי לבדוק חפיפות אמיתיות בין השכבות</p>';
+  }
+
+  document.getElementById("root").innerHTML=html;
+
+  document.querySelectorAll('input[data-slot]').forEach(function(inp){
+    inp.addEventListener('change', function(e){ handleSlotUpload(inp.getAttribute('data-slot'), e); });
+  });
+  var btn=document.getElementById("btn-analyze");
+  if(btn) btn.onclick=analyze;
+  var dlBtn=document.getElementById("btn-download");
+  if(dlBtn) dlBtn.onclick=downloadReport;
+  var resetBtn=document.getElementById("btn-reset");
+  if(resetBtn) resetBtn.onclick=resetAll;
+}
+
+render();
+</script>
+</body>
+</html>
