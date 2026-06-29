@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vytal OS</title>
+<style>
+:root{
+  --bg:#0e1116; --card:#171b22; --card2:#1f2530; --accent:#3ddc97; --accent2:#5b8def;
+  --warn:#ff5d5d; --text:#e8ecf1; --muted:#8b95a5; --gold:#ffc857;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,Helvetica,sans-serif;height:100%;}
+#app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;overflow-x:hidden;padding-bottom:70px;}
+.screen{display:none;padding:18px;animation:fadein .25s ease;}
+.screen.active{display:block;}
+@keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+h1,h2,h3{margin:.2em 0;}
+button{cursor:pointer;font-family:inherit;}
+.btn{background:var(--accent);color:#06231a;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;width:100%;}
+.btn.secondary{background:var(--card2);color:var(--text);}
+.btn.outline{background:transparent;border:1px solid var(--muted);color:var(--text);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:10px 0;}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid #2a3140;color:var(--text);border-radius:10px;padding:11px;font-size:15px;margin-top:4px;}
+label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
+.err{color:var(--warn);font-size:12px;margin-top:4px;display:none;}
+.err.show{display:block;}
+.row{display:flex;gap:10px;}
+.row>*{flex:1;}
+.top-nav{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.back-btn{background:var(--card2);border:none;border-radius:50%;width:36px;height:36px;color:var(--text);font-size:18px;}
+.muted{color:var(--muted);font-size:13px;}
+.center{text-align:center;}
+.dots{display:flex;justify-content:center;gap:8px;margin:14px 0;}
+.dot{width:8px;height:8px;border-radius:50%;background:#333a47;}
+.dot.active{background:var(--accent);width:22px;border-radius:6px;transition:.2s;}
+.bottomnav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#11151c;display:flex;justify-content:space-around;padding:8px 0;border-top:1px solid #232a36;z-index:50;}
+.navbtn{background:none;border:none;color:var(--muted);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.navbtn.active{color:var(--accent);}
+.navbtn .ic{font-size:20px;}
+.chip{display:inline-block;background:var(--card2);border-radius:20px;padding:7px 14px;margin:4px;font-size:13px;cursor:pointer;border:1px solid transparent;}
+.chip.sel{border-color:var(--accent);color:var(--accent);}
+.goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.goal-tile{background:var(--card2);border-radius:14px;padding:16px;text-align:center;border:2px solid transparent;}
+.goal-tile.sel{border-color:var(--accent);background:#13392c;}
+.progress-bar{height:8px;background:var(--card2);border-radius:8px;overflow:hidden;margin:8px 0;}
+.progress-fill{height:100%;background:var(--accent);transition:.3s;}
+.score-ring{width:160px;height:160px;margin:0 auto;position:relative;}
+.score-ring svg{transform:rotate(-90deg);}
+.score-num{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-num .n{font-size:38px;font-weight:800;}
+.metric-card{background:var(--card);border-radius:14px;padding:14px;margin:8px 0;display:flex;align-items:center;justify-content:space-between;}
+.metric-card .reorder{display:flex;flex-direction:column;gap:2px;}
+.metric-card .reorder button{background:var(--card2);border:none;color:var(--muted);border-radius:6px;width:24px;height:20px;font-size:11px;}
+.mission-carousel{display:flex;overflow-x:auto;gap:10px;padding-bottom:4px;}
+.mission-card{min-width:150px;background:var(--card2);border-radius:14px;padding:12px;flex-shrink:0;}
+.fab{position:fixed;bottom:80px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#06231a;font-size:26px;border:none;box-shadow:0 6px 18px rgba(0,0,0,.4);z-index:60;}
+.fab-menu{position:fixed;bottom:145px;right:24px;display:none;flex-direction:column;gap:8px;z-index:60;}
+.fab-menu.show{display:flex;}
+.fab-menu button{background:var(--card);color:var(--text);border:1px solid #2a3140;border-radius:10px;padding:10px 14px;font-size:13px;white-space:nowrap;}
+.chat-wrap{display:flex;flex-direction:column;height:78vh;}
+.chat-msgs{flex:1;overflow-y:auto;padding:6px;}
+.bubble{max-width:80%;padding:10px 14px;border-radius:14px;margin:6px 0;font-size:14px;line-height:1.4;}
+.bubble.user{background:var(--accent2);color:#fff;margin-right:0;margin-left:auto;border-bottom-left-radius:4px;}
+.bubble.bot{background:var(--card2);margin-left:0;margin-right:auto;border-bottom-right-radius:4px;}
+.bubble.warn{background:#3a1414;border:1px solid var(--warn);color:#ffb3b3;}
+.typing-dots{display:inline-flex;gap:3px;}
+.typing-dots span{width:6px;height:6px;background:var(--muted);border-radius:50%;animation:blink 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
+.chat-input-bar{display:flex;gap:6px;align-items:flex-end;padding:8px 4px;}
+.chat-input-bar textarea{resize:none;max-height:90px;}
+.icon-btn{background:var(--card2);border:none;border-radius:50%;width:38px;height:38px;color:var(--text);font-size:16px;flex-shrink:0;}
+.chips-row{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;}
+.viewfinder{width:100%;height:320px;background:#000;border-radius:18px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.viewfinder video,.viewfinder img{width:100%;height:100%;object-fit:cover;}
+.scan-line{position:absolute;left:0;right:0;height:3px;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:scan 2s linear infinite;}
+@keyframes scan{0%{top:5%;}50%{top:90%;}100%{top:5%;}}
+.bbox{position:absolute;border:2px solid var(--accent);border-radius:6px;}
+.tabbar{display:flex;gap:6px;margin:10px 0;}
+.tabbar button{flex:1;background:var(--card2);border:none;color:var(--muted);padding:10px;border-radius:10px;font-size:13px;}
+.tabbar button.active{background:var(--accent);color:#06231a;font-weight:700;}
+.streak-fire{font-size:48px;text-align:center;animation:fire 1s infinite alternate;}
+@keyframes fire{from{transform:scale(1) rotate(-2deg);}to{transform:scale(1.08) rotate(2deg);}}
+.xpbar{height:14px;background:var(--card2);border-radius:8px;overflow:hidden;}
+.xpfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--accent));}
+.confetti{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;overflow:hidden;display:none;}
+.confetti.show{display:block;}
+.confetti span{position:absolute;top:-20px;font-size:18px;animation:fall 2.2s linear forwards;}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:.2;}}
+.bars{display:flex;align-items:flex-end;gap:8px;height:140px;margin:14px 0;}
+.bars .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;}
+.bars .bar{width:100%;background:var(--accent2);border-radius:6px 6px 0 0;transition:.2s;}
+.bars .bar-col.sel .bar{background:var(--accent);}
+.meal-section{background:var(--card);border-radius:14px;padding:12px;margin:10px 0;}
+.food-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #232a36;font-size:14px;}
+.food-row:last-child{border-bottom:none;}
+.search-list{max-height:50vh;overflow-y:auto;}
+.search-item{display:flex;justify-content:space-between;align-items:center;padding:10px 6px;border-bottom:1px solid #232a36;}
+.verified{color:var(--accent2);font-size:13px;margin-right:4px;}
+.slider-row{margin:14px 0;}
+.slider-row input[type=range]{width:100%;}
+.slider-label{display:flex;justify-content:space-between;font-size:13px;}
+.toggle{position:relative;width:46px;height:26px;background:#333a47;border-radius:20px;border:none;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle .knob{position:absolute;top:3px;right:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;}
+.toggle.on .knob{right:23px;}
+.wcard{display:flex;justify-content:space-between;align-items:center;}
+.delta-up{color:var(--accent);}
+.delta-down{color:var(--warn);}
+.badge{display:inline-block;background:var(--gold);color:#332600;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700;}
+.skipbtn{position:absolute;top:18px;left:18px;background:none;border:none;color:var(--muted);font-size:13px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border-radius:16px;padding:20px;width:85%;max-width:380px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- 1. SPLASH -->
+<div class="screen" id="screen-splash">
+  <div style="height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <div style="font-size:60px;">&#9889;</div>
+    <h1 style="letter-spacing:1px;">Vytal OS</h1>
+    <div class="muted">בריאות. תזונה. ביצועים.</div>
+    <div class="typing-dots" style="margin-top:30px;"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- 2. ONBOARDING -->
+<div class="screen" id="screen-onboarding" style="position:relative;">
+  <button class="skipbtn" onclick="finishOnboarding()">דלג</button>
+  <div id="onb-pages" style="height:75vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:40px;"></div>
+  <div class="dots" id="onb-dots"></div>
+  <button class="btn" id="onb-next" onclick="onbNext()">הבא</button>
+</div>
+
+<!-- 3. REGISTRATION -->
+<div class="screen" id="screen-register">
+  <h2>הרשמה ל-Vytal OS</h2>
+  <label>שם מלא</label>
+  <input id="reg-name" placeholder="לדוגמה: דנה כהן">
+  <div class="err" id="err-name">השם חייב להכיל לפחות 2 תווים</div>
+
+  <div class="row">
+    <div>
+      <label>גיל</label>
+      <input id="reg-age" type="number" placeholder="13-120">
+      <div class="err" id="err-age">הגיל חייב להיות בין 13 ל-120</div>
+    </div>
+    <div>
+      <label>מין</label>
+      <select id="reg-sex"><option value="male">זכר</option><option value="female">נקבה</option></select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>גובה (ס"מ)</label>
+      <input id="reg-height" type="number" placeholder="50-250">
+      <div class="err" id="err-height">הגובה חייב להיות בין 50 ל-250 ס"מ</div>
+    </div>
+    <div>
+      <label>משקל (ק"ג)</label>
+      <input id="reg-weight" type="number" placeholder="30-300">
+      <div class="err" id="err-weight">המשקל חייב להיות בין 30 ל-300 ק"ג</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>מדינה</label>
+      <select id="reg-country"><option>ישראל</option><option>ארה"ב</option><option>אחר</option></select>
+    </div>
+    <div>
+      <label>שפה</label>
+      <select id="reg-lang"><option value="he">עברית</option><option value="en">English</option></select>
+    </div>
+  </div>
+
+  <label>אימייל</label>
+  <input id="reg-email" type="text" placeholder="name@example.com">
+  <div class="err" id="err-email">כתובת אימייל לא תקינה</div>
+
+  <label>טלפון</label>
+  <input id="reg-phone" type="text" placeholder="05X-XXXXXXX">
+  <div class="err" id="err-phone">מספר טלפון לא תקין</div>
+
+  <label>סיסמה</label>
+  <input id="reg-pass" type="password" placeholder="לפחות 8 תווים, אות וגם מספר">
+  <div class="err" id="err-pass">הסיסמה חייבת להכיל לפחות 8 תווים, אות אחת ומספר אחד</div>
+
+  <button class="btn" style="margin-top:18px;" onclick="submitRegister()">המשך</button>
+</div>
+
+<!-- 4. INTEGRATIONS -->
+<div class="screen" id="screen-integrations">
+  <h2>חיבור מכשירים</h2>
+  <div class="muted">חבר את שעון/אפליקציית הבריאות שלך לקבלת נתונים אוטומטיים</div>
+  <div id="wearables-list"></div>
+  <button class="btn" style="margin-top:20px;" onclick="goTo('screen-questionnaire'); initQuestionnaire();">המשך</button>
+  <button class="btn secondary" onclick="goTo('screen-questionnaire'); initQuestionnaire();">דלג לעת עתה</button>
+</div>
+
+<!-- 5. QUESTIONNAIRE -->
+<div class="screen" id="screen-questionnaire">
+  <div class="progress-bar"><div class="progress-fill" id="quiz-progress" style="width:0%"></div></div>
+  <div id="quiz-pages"></div>
+</div>
+
+<!-- 6. DASHBOARD -->
+<div class="screen" id="screen-dashboard">
+  <div class="top-nav" style="justify-content:space-between;">
+    <div><h2 id="dash-greeting">שלום!</h2><div class="muted" id="dash-date"></div></div>
+    <div style="font-size:26px;">&#128100;</div>
+  </div>
+  <div class="card center">
+    <div class="score-ring">
+      <svg width="160" height="160">
+        <circle cx="80" cy="80" r="68" stroke="#232a36" stroke-width="14" fill="none"/>
+        <circle id="score-circle" cx="80" cy="80" r="68" stroke="#3ddc97" stroke-width="14" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="score-num"><div class="n" id="score-num">0</div><div class="muted">Vytal Score</div></div>
+    </div>
+    <div id="score-alert" class="muted" style="margin-top:8px;"></div>
+  </div>
+  <h3>המדדים שלי</h3>
+  <div id="metric-cards"></div>
+  <h3>משימות יומיות</h3>
+  <div class="mission-carousel" id="dash-missions"></div>
+</div>
+<button class="fab" onclick="toggleFab()">+</button>
+<div class="fab-menu" id="fab-menu">
+  <button onclick="goTo('screen-fooddiary');renderFoodDiary();">&#127869; יומן אוכל</button>
+  <button onclick="goTo('screen-vision');initVision();">&#128247; סקאן ארוחה</button>
+  <button onclick="goTo('screen-coach');initCoach();">&#129302; מאמן AI</button>
+</div>
+
+<!-- 7. AI COACH -->
+<div class="screen" id="screen-coach">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>מאמן AI - Vytal OS</h3></div>
+  <div class="chat-wrap">
+    <div class="chat-msgs" id="chat-msgs"></div>
+    <div class="chips-row" id="chat-chips"></div>
+    <div class="chat-input-bar">
+      <button class="icon-btn" title="מצלמה" onclick="attachMockImage()">&#128247;</button>
+      <button class="icon-btn" title="מיקרופון">&#127908;</button>
+      <textarea id="chat-input" rows="1" placeholder="כתוב הודעה..." oninput="autoGrow(this)"></textarea>
+      <button class="icon-btn" style="background:var(--accent);color:#06231a;" onclick="sendChat()">&#10148;</button>
+    </div>
+  </div>
+</div>
+
+<!-- 8. VISION AI -->
+<div class="screen" id="screen-vision">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>סקאנר חזותי</h3></div>
+  <div class="tabbar">
+    <button id="vtab-meal" class="active" onclick="setVisionTab('meal')">סקאן ארוחה</button>
+    <button id="vtab-barcode" onclick="setVisionTab('barcode')">סקאן בר-קוד</button>
+  </div>
+  <div class="viewfinder" id="viewfinder">
+    <div class="scan-line"></div>
+  </div>
+  <div class="muted center" id="vision-status" style="margin-top:8px;">מאתר מצלמה...</div>
+  <button class="btn" style="margin-top:14px;" onclick="performScan()">סרוק עכשיו</button>
+  <div id="vision-result"></div>
+</div>
+
+<!-- 9. GAMIFICATION -->
+<div class="screen" id="screen-gamify">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>הישגים</h3></div>
+  <div class="card center">
+    <div class="streak-fire">&#128293;</div>
+    <div style="font-size:26px;font-weight:800;" id="streak-num">0 ימים</div>
+    <div class="muted">רצף נוכחי</div>
+    <div class="row" style="margin-top:10px;align-items:center;">
+      <span class="muted">הקפאת רצף (חולה/פציעה)</span>
+      <button class="toggle" id="streak-freeze-toggle" onclick="toggleStreakFreeze()"><span class="knob"></span></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;"><span>רמה <b id="xp-level">1</b></span><span class="muted" id="xp-text">0/100 XP</span></div>
+    <div class="xpbar"><div class="xpfill" id="xp-fill" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;"><b>התקדמות יומית</b><span id="daily-progress-pct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="daily-progress-fill" style="width:0%"></div></div>
+  </div>
+  <h3>משימות</h3>
+  <div id="mission-categories"></div>
+</div>
+<div class="confetti" id="confetti"></div>
+
+<!-- 10. WEEKLY SUMMARY -->
+<div class="screen" id="screen-weekly">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>סיכום שבועי</h3></div>
+  <div id="weekly-badge"></div>
+  <div class="card center">
+    <div class="muted">Vytal Score שבועי</div>
+    <div style="font-size:30px;font-weight:800;" id="weekly-score">0</div>
+    <div id="weekly-delta"></div>
+  </div>
+  <div class="card">
+    <div class="bars" id="weekly-bars"></div>
+    <div id="weekly-day-detail" class="muted"></div>
+  </div>
+  <h3>תובנות AI</h3>
+  <div id="weekly-insights"></div>
+</div>
+
+<!-- 11. FOOD DIARY -->
+<div class="screen" id="screen-fooddiary">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>יומן אוכל</h3></div>
+  <div class="row" id="date-carousel" style="overflow-x:auto;"></div>
+  <div class="card">
+    <div class="center" style="font-size:13px;color:var(--muted);">יעד - אוכל + אימון = נותר</div>
+    <div class="center" style="font-size:20px;font-weight:800;margin-top:4px;" id="budget-equation"></div>
+  </div>
+  <div id="meal-sections"></div>
+</div>
+
+<!-- 12. FOOD SEARCH -->
+<div class="screen" id="screen-foodsearch">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-fooddiary')">&#8594;</button><h3>חיפוש מאכל</h3></div>
+  <input id="food-search-input" placeholder="חפש מאכל..." oninput="renderFoodSearch()">
+  <div class="tabbar">
+    <button class="active" id="fstab-all" onclick="setFoodSearchTab('all')">הכל</button>
+    <button id="fstab-history" onclick="setFoodSearchTab('history')">היסטוריה</button>
+    <button id="fstab-fav" onclick="setFoodSearchTab('fav')">מועדפים</button>
+    <button id="fstab-mine" onclick="setFoodSearchTab('mine')">המאכלים שלי</button>
+  </div>
+  <div class="search-list" id="food-search-list"></div>
+  <div id="food-empty-state" style="display:none;text-align:center;margin-top:20px;">
+    <div class="muted">לא נמצאו תוצאות</div>
+    <button class="btn secondary" style="margin-top:10px;" onclick="goTo('screen-customfood')">+ צור מאכל חדש</button>
+  </div>
+</div>
+
+<!-- 13. FOOD ITEM DETAIL -->
+<div class="screen" id="screen-fooddetail">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-foodsearch')">&#8594;</button><h3 id="fd-name">מאכל</h3></div>
+  <div class="row">
+    <div><label>כמות</label><input id="fd-qty" type="number" value="100" oninput="renderFoodDetailTotals()"></div>
+    <div><label>יחידה</label><select id="fd-unit" onchange="renderFoodDetailTotals()"></select></div>
+  </div>
+  <div class="err" id="fd-err">יש להזין כמות חיובית</div>
+  <label>הוסף לארוחה</label>
+  <select id="fd-meal"><option value="breakfast">בוקר</option><option value="lunch">צהריים</option><option value="dinner">ערב</option><option value="snack">נשנוש</option></select>
+  <div class="card" id="fd-table"></div>
+  <button class="btn" onclick="confirmAddFood()">הוסף ליומן</button>
+</div>
+
+<!-- 14. CUSTOM FOOD CREATOR -->
+<div class="screen" id="screen-customfood">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-foodsearch')">&#8594;</button><h3>יצירת מאכל</h3></div>
+  <div class="tabbar">
+    <button class="active" id="cftab-single" onclick="setCustomFoodTab('single')">מאכל בודד</button>
+    <button id="cftab-recipe" onclick="setCustomFoodTab('recipe')">בניית מתכון</button>
+  </div>
+  <div id="cf-single">
+    <label>שם המאכל</label><input id="cf-name">
+    <div class="row">
+      <div><label>קלוריות (ל-100 גרם)</label><input id="cf-cal" type="number"></div>
+      <div><label>חלבון (גרם)</label><input id="cf-protein" type="number"></div>
+    </div>
+    <div class="row">
+      <div><label>פחמימה (גרם)</label><input id="cf-carb" type="number"></div>
+      <div><label>שומן (גרם)</label><input id="cf-fat" type="number"></div>
+    </div>
+    <button class="btn" style="margin-top:14px;" onclick="saveCustomFood()">שמור למאכלים שלי</button>
+  </div>
+  <div id="cf-recipe" style="display:none;">
+    <label>שם המתכון</label><input id="cfr-name">
+    <label>חפש והוסף מרכיב</label><input id="cfr-search" oninput="renderRecipeSearch()">
+    <div id="cfr-search-results"></div>
+    <h3>מרכיבים</h3>
+    <div id="cfr-ingredients"></div>
+    <label>מספר מנות</label><input id="cfr-servings" type="number" value="1" oninput="renderRecipeTotals()">
+    <div class="card" id="cfr-totals"></div>
+    <button class="btn" style="margin-top:10px;" onclick="saveRecipe()">שמור מתכון למאכלים שלי</button>
+  </div>
+</div>
+
+<!-- 15. NUTRITION GOALS -->
+<div class="screen" id="screen-goals">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>ניהול יעדי תזונה</h3></div>
+  <div class="row" style="align-items:center;">
+    <span>מצב AI (אוטומטי)</span>
+    <button class="toggle" id="goals-mode-toggle" onclick="toggleGoalsMode()"><span class="knob"></span></button>
+    <span>מצב ידני</span>
+  </div>
+  <div id="goals-ai-view" class="card">
+    <div class="muted">היעדים מחושבים אוטומטית על סמך ה-BMR, רמת הפעילות והמטרה שלך מהשאלון.</div>
+    <div id="goals-ai-detail" style="margin-top:10px;"></div>
+  </div>
+  <div id="goals-manual-view" class="card" style="display:none;">
+    <label>קלוריות יומיות</label>
+    <input id="goals-cal" type="number" oninput="renderGoalsManual()">
+    <div class="slider-row">
+      <div class="slider-label"><span>חלבון</span><span id="pct-protein-label">30%</span></div>
+      <input type="range" id="slider-protein" min="0" max="100" value="30" oninput="onSliderChange('protein')">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span>פחמימה</span><span id="pct-carb-label">40%</span></div>
+      <input type="range" id="slider-carb" min="0" max="100" value="40" oninput="onSliderChange('carb')">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span>שומן</span><span id="pct-fat-label">30%</span></div>
+      <input type="range" id="slider-fat" min="0" max="100" value="30" oninput="onSliderChange('fat')">
+    </div>
+    <div class="muted" id="pct-sum-label">סה"כ: 100%</div>
+    <div class="err" id="err-pct-sum">אחוזי המאקרו חייבים להסתכם ל-100% בדיוק</div>
+    <div class="card" id="goals-gram-table" style="background:var(--card2);"></div>
+    <button class="btn" style="margin-top:10px;" id="goals-save-btn" onclick="trySaveGoals()">שמור יעדים</button>
+  </div>
+</div>
+
+<div class="bottomnav" id="bottomnav">
+  <button class="navbtn active" onclick="navTo('screen-dashboard')"><span class="ic">&#127968;</span>בית</button>
+  <button class="navbtn" onclick="navTo('screen-fooddiary')"><span class="ic">&#127869;</span>יומן</button>
+  <button class="navbtn" onclick="navTo('screen-coach')"><span class="ic">&#129302;</span>מאמן</button>
+  <button class="navbtn" onclick="navTo('screen-gamify')"><span class="ic">&#127942;</span>הישגים</button>
+  <button class="navbtn" onclick="navTo('screen-weekly')"><span class="ic">&#128202;</span>שבועי</button>
+  <button class="navbtn" onclick="navTo('screen-goals')"><span class="ic">&#127919;</span>יעדים</button>
+</div>
+
+</div>
+
+<!-- Retroactive change modal -->
+<div class="modal-overlay" id="retro-modal">
+  <div class="modal-box">
+    <h3>עדכון יעדים</h3>
+    <p class="muted">האם להחיל את השינוי גם על ימים קודמים, או רק מהיום והלאה?</p>
+    <button class="btn" onclick="applyGoalsChange(true)">החל על כל ההיסטוריה</button>
+    <button class="btn secondary" style="margin-top:8px;" onclick="applyGoalsChange(false)">רק מהיום והלאה</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== STORAGE HELPERS ===================== */
+var LS = {
+  get:function(k,d){ try{ var v=localStorage.getItem('vytal_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set:function(k,v){ try{ localStorage.setItem('vytal_'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ===================== NAVIGATION ===================== */
+function goTo(id){
+  var els = document.querySelectorAll('.screen');
+  for(var i=0;i<els.length;i++){ els[i].classList.remove('active'); }
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  var bn = document.getElementById('bottomnav');
+  var hideOn = ['screen-splash','screen-onboarding','screen-register','screen-integrations','screen-questionnaire'];
+  bn.style.display = hideOn.indexOf(id)>-1 ? 'none' : 'flex';
+  document.getElementById('fab-menu').classList.remove('show');
+}
+function navTo(id){
+  goTo(id);
+  var map = {'screen-dashboard':0,'screen-fooddiary':1,'screen-coach':2,'screen-gamify':3,'screen-weekly':4,'screen-goals':5};
+  var btns = document.querySelectorAll('.navbtn');
+  for(var i=0;i<btns.length;i++){ btns[i].classList.remove('active'); }
+  if(map[id]!==undefined) btns[map[id]].classList.add('active');
+  if(id==='screen-fooddiary') renderFoodDiary();
+  if(id==='screen-gamify') renderGamify();
+  if(id==='screen-weekly') renderWeekly();
+  if(id==='screen-goals') renderGoals();
+  if(id==='screen-dashboard') renderDashboard();
+}
+function toggleFab(){ document.getElementById('fab-menu').classList.toggle('show'); }
+
+window.goTo = goTo; window.navTo = navTo; window.toggleFab = toggleFab;
+window.__VYTAL_LS = LS;
+
+/* ===================== BOOT / SPLASH ===================== */
+function boot(){
+  setTimeout(function(){
+    var onboardingSeen = LS.get('onboardingSeen', false);
+    var authToken = LS.get('authToken', null);
+    if(!onboardingSeen){ goTo('screen-onboarding'); initOnboarding(); }
+    else if(!authToken){ goTo('screen-register'); }
+    else { goTo('screen-dashboard'); renderDashboard(); }
+  }, 1200);
+}
+
+/* ===================== ONBOARDING ===================== */
+var onbData = [
+  {ic:'&#128170;', t:'ברוכים הבאים ל-Vytal OS', d:'מערכת AI לבריאות, תזונה וביצועים בזמן אמת.'},
+  {ic:'&#128202;', t:'Vytal Score', d:'ניקוד יומי אחד שמשקף שינה, פעילות ותזונה.'},
+  {ic:'&#129302;', t:'מאמן AI אישי', d:'שיחה חכמה שמכוונת אותך לפי הנתונים שלך.'},
+  {ic:'&#128247;', t:'סקאן ארוחות', d:'צלם את הצלחת וקבל פירוט תזונתי מיידי.'},
+  {ic:'&#127942;', t:'גיימיפיקציה', d:'רצפים, XP ומשימות יומיות שישמרו אותך במוטיבציה.'}
+];
+var onbIdx = 0;
+function initOnboarding(){
+  onbIdx = 0;
+  renderOnb();
+}
+function renderOnb(){
+  var p = onbData[onbIdx];
+  document.getElementById('onb-pages').innerHTML =
+    '<div style="font-size:64px;">'+p.ic+'</div><h2>'+p.t+'</h2><p class="muted">'+p.d+'</p>';
+  var dots='';
+  for(var i=0;i<onbData.length;i++){ dots += '<div class="dot'+(i===onbIdx?' active':'')+'"></div>'; }
+  document.getElementById('onb-dots').innerHTML = dots;
+  document.getElementById('onb-next').textContent = onbIdx===onbData.length-1 ? 'התחל' : 'הבא';
+}
+function onbNext(){
+  if(onbIdx < onbData.length-1){ onbIdx++; renderOnb(); }
+  else { finishOnboarding(); }
+}
+function finishOnboarding(){
+  LS.set('onboardingSeen', true);
+  goTo('screen-register');
+}
+window.onbNext = onbNext; window.finishOnboarding = finishOnboarding;
+
+boot();
+window.__vytalInit = window.__vytalInit || {};
+window.__vytalInit.LS = LS;
+window.__vytalGoTo = goTo;
+window.initOnboardingFns = {init:initOnboarding};
+
+/* expose for later parts */
+window.__vytal_part1_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var goTo = window.__vytalGoTo;
+
+/* ===================== REGISTRATION ===================== */
+function showErr(id, show){
+  var el = document.getElementById(id);
+  if(el) el.classList[show?'add':'remove']('show');
+}
+function validateRegister(){
+  var ok = true;
+  var name = document.getElementById('reg-name').value.trim();
+  if(name.length < 2){ showErr('err-name', true); ok=false; } else showErr('err-name', false);
+
+  var age = parseInt(document.getElementById('reg-age').value, 10);
+  if(isNaN(age) || age < 13 || age > 120){ showErr('err-age', true); ok=false; } else showErr('err-age', false);
+
+  var height = parseFloat(document.getElementById('reg-height').value);
+  if(isNaN(height) || height < 50 || height > 250){ showErr('err-height', true); ok=false; } else showErr('err-height', false);
+
+  var weight = parseFloat(document.getElementById('reg-weight').value);
+  if(isNaN(weight) || weight < 30 || weight > 300){ showErr('err-weight', true); ok=false; } else showErr('err-weight', false);
+
+  var email = document.getElementById('reg-email').value.trim();
+  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRe.test(email)){ showErr('err-email', true); ok=false; } else showErr('err-email', false);
+
+  var phone = document.getElementById('reg-phone').value.trim();
+  var phoneRe = /^0\d{1,2}-?\d{7}$/;
+  if(!phoneRe.test(phone)){ showErr('err-phone', true); ok=false; } else showErr('err-phone', false);
+
+  var pass = document.getElementById('reg-pass').value;
+  var passOk = pass.length >= 8 && /[A-Za-z]/.test(pass) && /\d/.test(pass);
+  if(!passOk){ showErr('err-pass', true); ok=false; } else showErr('err-pass', false);
+
+  return ok ? {name:name, age:age, height:height, weight:weight,
+    sex:document.getElementById('reg-sex').value,
+    country:document.getElementById('reg-country').value,
+    lang:document.getElementById('reg-lang').value,
+    email:email, phone:phone} : null;
+}
+function submitRegister(){
+  var data = validateRegister();
+  if(!data) return;
+  var profile = LS.get('profile', {});
+  for(var k in data){ profile[k] = data[k]; }
+  LS.set('profile', profile);
+  LS.set('authToken', 'fake-token-'+Date.now());
+  initIntegrations();
+  goTo('screen-integrations');
+}
+window.submitRegister = submitRegister;
+
+/* ===================== INTEGRATIONS ===================== */
+var WEARABLES = [
+  {id:'apple', name:'Apple Health', ic:'&#127822;'},
+  {id:'garmin', name:'Garmin', ic:'&#8986;'},
+  {id:'fitbit', name:'Fitbit', ic:'&#128302;'},
+  {id:'google', name:'Google Fit', ic:'&#127939;'}
+];
+function initIntegrations(){
+  var conns = LS.get('wearables', {});
+  var html = '';
+  for(var i=0;i<WEARABLES.length;i++){
+    var w = WEARABLES[i];
+    var on = !!conns[w.id];
+    html += '<div class="card wcard"><div><span style="font-size:22px;">'+w.ic+'</span> '+w.name+
+      (on?'<div class="muted" style="font-size:11px;">מחובר</div>':'<div class="muted" style="font-size:11px;">לא מחובר</div>')+
+      '</div><button class="toggle'+(on?' on':'')+'" id="wtoggle-'+w.id+'" onclick="toggleWearable(\''+w.id+'\')"><span class="knob"></span></button></div>';
+  }
+  document.getElementById('wearables-list').innerHTML = html;
+}
+function toggleWearable(id){
+  var conns = LS.get('wearables', {});
+  var btn = document.getElementById('wtoggle-'+id);
+  if(conns[id]){
+    conns[id] = false;
+    LS.set('wearables', conns);
+    initIntegrations();
+    return;
+  }
+  // simulate fake OAuth loading
+  btn.classList.add('on');
+  btn.innerHTML = '<span class="knob"></span>';
+  btn.disabled = true;
+  var card = btn.closest('.card');
+  var label = card.querySelector('.muted');
+  if(label) label.textContent = 'מתחבר...';
+  setTimeout(function(){
+    // simulate occasional cancel/error (10% chance) for realism
+    var failed = Math.random() < 0.1;
+    if(failed){
+      conns[id] = false;
+      LS.set('wearables', conns);
+      if(label) label.textContent = 'החיבור נכשל, נסה שוב';
+      btn.classList.remove('on'); btn.disabled = false;
+      return;
+    }
+    conns[id] = true;
+    LS.set('wearables', conns);
+    // fabricate plausible wearable data
+    var wdata = LS.get('wearableData', {});
+    wdata[id] = {
+      steps: 3000 + Math.floor(Math.random()*9000),
+      sleepHours: (5 + Math.random()*3.5).toFixed(1),
+      restingHR: 52 + Math.floor(Math.random()*30),
+      lastSync: Date.now()
+    };
+    LS.set('wearableData', wdata);
+    initIntegrations();
+  }, 1100);
+}
+window.toggleWearable = toggleWearable;
+
+/* ===================== QUESTIONNAIRE ===================== */
+var QUIZ_GOALS = [
+  {id:'lose', label:'ירידה במשקל', ic:'&#9968;'},
+  {id:'gain', label:'עליה במסת שריר', ic:'&#127947;'},
+  {id:'maintain', label:'שמירה על המשקל', ic:'&#9878;'},
+  {id:'energy', label:'יותר אנרגיה', ic:'&#9889;'},
+  {id:'sleep', label:'שינה טובה יותר', ic:'&#127769;'},
+  {id:'health', label:'בריאות כללית', ic:'&#10084;'}
+];
+var quizState = LS.get('quizCache', {page:0, goals:[], workHours:8, sleepHours:7, activity:'moderate', diabetes:null, injuries:null});
+var QUIZ_PAGES = 5;
+
+function initQuestionnaire(){
+  quizState = LS.get('quizCache', {page:0, goals:[], workHours:8, sleepHours:7, activity:'moderate', diabetes:null, injuries:null});
+  renderQuizPage();
+}
+function saveQuizCache(){ LS.set('quizCache', quizState); }
+
+function renderQuizPage(){
+  var p = quizState.page;
+  document.getElementById('quiz-progress').style.width = Math.round((p/QUIZ_PAGES)*100)+'%';
+  var html = '';
+  if(p===0){
+    html += '<h2>מה המטרה שלך?</h2><div class="muted">ניתן לבחור כמה מטרות</div><div class="goal-grid">';
+    for(var i=0;i<QUIZ_GOALS.length;i++){
+      var g = QUIZ_GOALS[i];
+      var sel = quizState.goals.indexOf(g.id)>-1;
+      html += '<div class="goal-tile'+(sel?' sel':'')+'" onclick="toggleQuizGoal(\''+g.id+'\')"><div style="font-size:26px;">'+g.ic+'</div>'+g.label+'</div>';
+    }
+    html += '</div>';
+  } else if(p===1){
+    html += '<h2>שעות עבודה ושינה</h2>'+
+      '<div class="slider-row"><div class="slider-label"><span>שעות עבודה ביום</span><span id="qz-work-val">'+quizState.workHours+'</span></div>'+
+      '<input type="range" min="0" max="16" value="'+quizState.workHours+'" oninput="quizSetWork(this.value)"></div>'+
+      '<div class="slider-row"><div class="slider-label"><span>שעות שינה בלילה</span><span id="qz-sleep-val">'+quizState.sleepHours+'</span></div>'+
+      '<input type="range" min="3" max="12" value="'+quizState.sleepHours+'" oninput="quizSetSleep(this.value)"></div>';
+  } else if(p===2){
+    var levels = [['sedentary','לא פעיל'],['light','פעילות קלה'],['moderate','פעילות מתונה'],['active','פעיל מאוד'],['athlete','ספורטאי']];
+    html += '<h2>רמת פעילות</h2>';
+    for(var j=0;j<levels.length;j++){
+      var sel2 = quizState.activity===levels[j][0];
+      html += '<div class="chip'+(sel2?' sel':'')+'" style="display:block;margin:8px 0;" onclick="quizSetActivity(\''+levels[j][0]+'\')">'+levels[j][1]+'</div>';
+    }
+  } else if(p===3){
+    html += '<h2>שאלות בריאות</h2>'+
+      '<label>האם יש לך סוכרת?</label><div><div class="chip'+(quizState.diabetes===true?' sel':'')+'" onclick="quizSetBool(\'diabetes\',true)">כן</div><div class="chip'+(quizState.diabetes===false?' sel':'')+'" onclick="quizSetBool(\'diabetes\',false)">לא</div></div>';
+    if(quizState.diabetes===true){
+      html += '<label>סוג סוכרת</label><select id="qz-diabetes-type"><option>סוג 1</option><option>סוג 2</option><option>טרום סוכרת</option></select>';
+    }
+    html += '<label>האם יש לך פציעות פעילות?</label><div><div class="chip'+(quizState.injuries===true?' sel':'')+'" onclick="quizSetBool(\'injuries\',true)">כן</div><div class="chip'+(quizState.injuries===false?' sel':'')+'" onclick="quizSetBool(\'injuries\',false)">לא</div></div>';
+    if(quizState.injuries===true){
+      html += '<label>פרט את הפציעה</label><input id="qz-injury-detail" placeholder="לדוגמה: כתף שמאל">';
+    }
+  } else if(p===4){
+    var profile = LS.get('profile', {});
+    var heightM = (profile.height||170)/100;
+    var bmi = (profile.weight||70) / (heightM*heightM);
+    var bmr = calcBMR(profile, quizState.activity);
+    html += '<h2>סיכום</h2>'+
+      '<div class="card"><div class="muted">BMI</div><div style="font-size:24px;font-weight:800;">'+bmi.toFixed(1)+'</div></div>'+
+      '<div class="card"><div class="muted">BMR (קצב מטבולי בסיסי)</div><div style="font-size:24px;font-weight:800;">'+Math.round(bmr)+' קק"ל</div></div>'+
+      '<div class="muted">החישובים הללו ישמשו לקביעת יעדי התזונה האוטומטיים שלך.</div>';
+  }
+  html += '<div class="row" style="margin-top:20px;">';
+  if(p>0) html += '<button class="btn secondary" onclick="quizPrev()">חזור</button>';
+  html += '<button class="btn" onclick="quizNext()">'+(p===QUIZ_PAGES-1?'סיום':'הבא')+'</button>';
+  html += '</div>';
+  document.getElementById('quiz-pages').innerHTML = html;
+}
+function calcBMR(profile, activityLevel){
+  var w = profile.weight||70, h = profile.height||170, a = profile.age||30;
+  var bmr;
+  if(profile.sex==='female'){ bmr = 10*w + 6.25*h - 5*a - 161; }
+  else { bmr = 10*w + 6.25*h - 5*a + 5; }
+  var mult = {sedentary:1.2, light:1.375, moderate:1.55, active:1.725, athlete:1.9}[activityLevel] || 1.55;
+  return bmr * mult;
+}
+function toggleQuizGoal(id){
+  var idx = quizState.goals.indexOf(id);
+  if(idx>-1) quizState.goals.splice(idx,1); else quizState.goals.push(id);
+  saveQuizCache(); renderQuizPage();
+}
+function quizSetWork(v){ quizState.workHours = parseInt(v,10); document.getElementById('qz-work-val').textContent=v; saveQuizCache(); }
+function quizSetSleep(v){ quizState.sleepHours = parseInt(v,10); document.getElementById('qz-sleep-val').textContent=v; saveQuizCache(); }
+function quizSetActivity(v){ quizState.activity = v; saveQuizCache(); renderQuizPage(); }
+function quizSetBool(field, val){ quizState[field] = val; saveQuizCache(); renderQuizPage(); }
+function quizPrev(){ quizState.page = Math.max(0, quizState.page-1); saveQuizCache(); renderQuizPage(); }
+function quizNext(){
+  if(quizState.page < QUIZ_PAGES-1){ quizState.page++; saveQuizCache(); renderQuizPage(); return; }
+  // finalize
+  var profile = LS.get('profile', {});
+  profile.goals = quizState.goals;
+  profile.workHours = quizState.workHours;
+  profile.sleepHoursGoal = quizState.sleepHours;
+  profile.activity = quizState.activity;
+  profile.diabetes = quizState.diabetes;
+  profile.injuries = quizState.injuries;
+  var heightM = (profile.height||170)/100;
+  profile.bmi = (profile.weight||70)/(heightM*heightM);
+  profile.bmr = calcBMR(profile, quizState.activity);
+  LS.set('profile', profile);
+  LS.set('quizCache', {page:0, goals:[], workHours:8, sleepHours:7, activity:'moderate', diabetes:null, injuries:null});
+  LS.set('onboardingSeen', true);
+  initDailyDataIfNeeded();
+  goTo('screen-dashboard');
+  renderDashboard();
+}
+window.toggleQuizGoal = toggleQuizGoal; window.quizSetWork = quizSetWork; window.quizSetSleep = quizSetSleep;
+window.quizSetActivity = quizSetActivity; window.quizSetBool = quizSetBool; window.quizPrev = quizPrev; window.quizNext = quizNext;
+window.initQuestionnaire = initQuestionnaire;
+
+window.__VYTAL_calcBMR = calcBMR;
+window.__vytal_part2_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var goTo = window.__vytalGoTo;
+var calcBMR = window.__VYTAL_calcBMR;
+
+/* ===================== DAILY DATA INIT ===================== */
+function todayKey(d){
+  d = d || new Date();
+  return d.toISOString().slice(0,10);
+}
+function initDailyDataIfNeeded(){
+  var diary = LS.get('foodDiary', {});
+  var key = todayKey();
+  if(!diary[key]){
+    diary[key] = {breakfast:[], lunch:[], dinner:[], snack:[], workoutBurn:0};
+    LS.set('foodDiary', diary);
+  }
+  var missions = LS.get('missionsByDay', {});
+  if(!missions[key]){
+    missions[key] = generateMissions();
+    LS.set('missionsByDay', missions);
+  }
+}
+function generateMissions(){
+  var pool = [
+    {id:'water', cat:'תזונה', text:'שתה 2 ליטר מים', done:false},
+    {id:'steps', cat:'פעילות', text:'הגע ל-8000 צעדים', done:false},
+    {id:'protein', cat:'תזונה', text:'אכול מקור חלבון בכל ארוחה', done:false},
+    {id:'sleep', cat:'שינה', text:'לך לישון לפני 23:00', done:false},
+    {id:'log', cat:'תזונה', text:'תעד את כל הארוחות היום', done:false},
+    {id:'stretch', cat:'פעילות', text:'10 דקות מתיחות', done:false}
+  ];
+  // pick 4 random
+  var picked = pool.slice().sort(function(){return Math.random()-0.5;}).slice(0,4);
+  return picked;
+}
+
+/* ===================== VYTAL SCORE ===================== */
+function getMockWearableSnapshot(){
+  var conns = LS.get('wearables', {});
+  var wdata = LS.get('wearableData', {});
+  var anyConnected = false;
+  for(var k in conns){ if(conns[k]) anyConnected = true; }
+  if(!anyConnected){
+    return {steps:4200, sleepHours:6.5, restingHR:65, lastSync:Date.now()-1000*60*60*30, stale:true};
+  }
+  // merge all connected sources, use most recent
+  var best = null;
+  for(var id in conns){
+    if(conns[id] && wdata[id]){
+      if(!best || wdata[id].lastSync > best.lastSync) best = wdata[id];
+    }
+  }
+  best = best || {steps:4200, sleepHours:6.5, restingHR:65, lastSync:Date.now()};
+  var ageMs = Date.now() - best.lastSync;
+  best.stale = ageMs > 1000*60*60*24; // >24h old
+  return best;
+}
+function computeVytalScore(){
+  var profile = LS.get('profile', {});
+  var snap = getMockWearableSnapshot();
+  var diary = LS.get('foodDiary', {});
+  var key = todayKey();
+  var day = diary[key] || {breakfast:[],lunch:[],dinner:[],snack:[],workoutBurn:0};
+
+  // weights: default 40 sleep/30 activity/30 nutrition. If user goal includes 'sleep', sleep weight -> 50%, rest split proportionally
+  var wSleep = 0.4, wActivity = 0.3, wNutrition = 0.3;
+  if((profile.goals||[]).indexOf('sleep') > -1){
+    wSleep = 0.5; wActivity = 0.25; wNutrition = 0.25;
+  }
+
+  var sleepGoal = profile.sleepHoursGoal || 7;
+  var sleepScore = Math.max(0, Math.min(100, (snap.sleepHours / sleepGoal) * 100));
+
+  var stepGoal = 8000;
+  var activityScore = Math.max(0, Math.min(100, (snap.steps / stepGoal) * 100));
+
+  // nutrition: deviation-based. Sum calories logged vs target
+  var totalCal = 0;
+  ['breakfast','lunch','dinner','snack'].forEach(function(m){
+    (day[m]||[]).forEach(function(item){ totalCal += item.calories || 0; });
+  });
+  var calGoal = getCalorieGoal();
+  var deviation = calGoal>0 ? Math.abs(totalCal - calGoal) / calGoal : 0;
+  var nutritionScore = Math.max(0, 100 - deviation*100);
+
+  var score = Math.round(sleepScore*wSleep + activityScore*wActivity + nutritionScore*wNutrition);
+  score = Math.max(0, Math.min(100, score));
+
+  var alerts = [];
+  if(snap.stale) alerts.push('הנתונים מהמכשיר הנייד לא עודכנו מעל 24 שעות — הניקוד עשוי להיות לא מדויק.');
+  if(snap.restingHR && (snap.restingHR > 95 || snap.restingHR < 40)) alerts.push('זוהתה חריגה בדופק המנוחה ('+snap.restingHR+' פעימות/דקה) — מומלץ להתייעץ עם איש מקצוע.');
+
+  return {score:score, sleepScore:Math.round(sleepScore), activityScore:Math.round(activityScore), nutritionScore:Math.round(nutritionScore), snap:snap, alerts:alerts, totalCal:totalCal, calGoal:calGoal};
+}
+function getCalorieGoal(){
+  var goals = LS.get('nutritionGoals', null);
+  if(goals && goals.calories) return goals.calories;
+  var profile = LS.get('profile', {});
+  var bmr = profile.bmr || calcBMR(profile, profile.activity||'moderate');
+  var goal = (profile.goals||[]).indexOf('lose')>-1 ? bmr*0.85 : ((profile.goals||[]).indexOf('gain')>-1 ? bmr*1.15 : bmr);
+  return Math.round(goal);
+}
+window.__VYTAL_getCalorieGoal = getCalorieGoal;
+window.__VYTAL_todayKey = todayKey;
+window.__VYTAL_computeVytalScore = computeVytalScore;
+
+/* ===================== DASHBOARD ===================== */
+var metricOrder = LS.get('metricOrder', ['sleep','activity','nutrition']);
+function renderDashboard(){
+  initDailyDataIfNeeded();
+  var profile = LS.get('profile', {});
+  document.getElementById('dash-greeting').textContent = 'שלום, '+(profile.name||'משתמש')+'!';
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
+
+  var result = computeVytalScore();
+  var circumference = 2*Math.PI*68;
+  var offset = circumference * (1 - result.score/100);
+  var circle = document.getElementById('score-circle');
+  circle.setAttribute('stroke-dasharray', circumference);
+  circle.setAttribute('stroke-dashoffset', offset);
+  document.getElementById('score-num').textContent = result.score;
+  document.getElementById('score-alert').innerHTML = result.alerts.map(function(a){return '<div style="color:var(--warn);font-size:12px;">&#9888; '+a+'</div>';}).join('');
+
+  var metrics = {
+    sleep: {ic:'&#127769;', label:'שינה', val:result.snap.sleepHours+' שעות', score:result.sleepScore},
+    activity: {ic:'&#128694;', label:'פעילות', val:result.snap.steps+' צעדים', score:result.activityScore},
+    nutrition: {ic:'&#127869;', label:'תזונה', val:result.totalCal+' / '+result.calGoal+' קק"ל', score:result.nutritionScore}
+  };
+  var html = '';
+  for(var i=0;i<metricOrder.length;i++){
+    var m = metrics[metricOrder[i]];
+    html += '<div class="metric-card"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+m.ic+'</span><div><div>'+m.label+'</div><div class="muted" style="font-size:12px;">'+m.val+'</div></div></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;"><b>'+m.score+'</b><div class="reorder"><button onclick="moveMetric('+i+',-1)">&#9650;</button><button onclick="moveMetric('+i+',1)">&#9660;</button></div></div></div>';
+  }
+  document.getElementById('metric-cards').innerHTML = html;
+
+  var key = todayKey();
+  var missions = (LS.get('missionsByDay', {}))[key] || [];
+  var mhtml = '';
+  for(var j=0;j<missions.length;j++){
+    var ms = missions[j];
+    mhtml += '<div class="mission-card"><div style="font-size:11px;color:var(--muted);">'+ms.cat+'</div><div style="margin:6px 0;font-size:13px;">'+ms.text+'</div>'+
+      '<button class="chip'+(ms.done?' sel':'')+'" style="width:100%;text-align:center;" onclick="toggleMissionDash('+j+')">'+(ms.done?'הושלם &#10003;':'סמן כהושלם')+'</button></div>';
+  }
+  document.getElementById('dash-missions').innerHTML = mhtml;
+}
+function moveMetric(idx, dir){
+  var newIdx = idx+dir;
+  if(newIdx<0 || newIdx>=metricOrder.length) return;
+  var tmp = metricOrder[idx]; metricOrder[idx] = metricOrder[newIdx]; metricOrder[newIdx] = tmp;
+  LS.set('metricOrder', metricOrder);
+  renderDashboard();
+}
+function toggleMissionDash(idx){
+  var key = todayKey();
+  var missions = LS.get('missionsByDay', {});
+  missions[key][idx].done = !missions[key][idx].done;
+  LS.set('missionsByDay', missions);
+  renderDashboard();
+}
+window.moveMetric = moveMetric; window.toggleMissionDash = toggleMissionDash;
+window.renderDashboard = renderDashboard;
+window.initDailyDataIfNeeded = initDailyDataIfNeeded;
+
+/* ===================== AI COACH CHAT (mocked) ===================== */
+var MEDICAL_EMERGENCY_KEYWORDS = [
+  'כאב בחזה','אובדנות','אני רוצה להתאבד','לא נושם','התקף לב','דימום חמור','איבדתי הכרה',
+  'מנסה להתאבד','לשים קץ לחיים','overdose','suicide','chest pain','can\'t breathe'
+];
+function checkMedicalGuardrail(text){
+  var lower = text.toLowerCase();
+  for(var i=0;i<MEDICAL_EMERGENCY_KEYWORDS.length;i++){
+    if(lower.indexOf(MEDICAL_EMERGENCY_KEYWORDS[i].toLowerCase()) > -1) return true;
+  }
+  return false;
+}
+window.__VYTAL_checkMedicalGuardrail = checkMedicalGuardrail;
+
+var chatHistory = LS.get('chatHistory', []);
+function initCoach(){
+  chatHistory = LS.get('chatHistory', []);
+  if(chatHistory.length===0){
+    chatHistory.push({role:'bot', text:'היי! אני המאמן הדיגיטלי שלך ב-Vytal OS. איך אני יכול לעזור היום?'});
+    LS.set('chatHistory', chatHistory);
+  }
+  renderChat();
+  renderChips();
+}
+function renderChat(){
+  var html = '';
+  for(var i=0;i<chatHistory.length;i++){
+    var m = chatHistory[i];
+    var cls = m.role==='user' ? 'user' : (m.role==='warn' ? 'warn' : 'bot');
+    html += '<div class="bubble '+cls+'">'+m.text+'</div>';
+  }
+  var el = document.getElementById('chat-msgs');
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+function renderChips(){
+  var chips = ['כמה קלוריות נשארו לי היום?','תן לי טיפ לשינה טובה יותר','אני לא מגיע ליעד הצעדים','המלץ לי על ארוחת ערב'];
+  var html='';
+  for(var i=0;i<chips.length;i++){ html += '<div class="chip" onclick="sendChatText(\''+chips[i].replace(/'/g,"\\'")+'\')">'+chips[i]+'</div>'; }
+  document.getElementById('chat-chips').innerHTML = html;
+}
+function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; }
+function attachMockImage(){
+  chatHistory.push({role:'user', text:'&#128247; [תמונה מצורפת: צלחת אוכל]'});
+  LS.set('chatHistory', chatHistory);
+  renderChat();
+  showTyping(function(){
+    var meal = MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)];
+    chatHistory.push({role:'bot', text:'זיהיתי בתמונה: <b>'+meal.name+'</b> (~'+meal.calories+' קק"ל). רוצה שאוסיף ליומן האוכל שלך?'});
+    LS.set('chatHistory', chatHistory);
+    renderChat();
+  });
+}
+function sendChatText(text){
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+function sendChat(){
+  var input = document.getElementById('chat-input');
+  var text = input.value.trim();
+  if(!text) return;
+  chatHistory.push({role:'user', text:escapeHtml(text)});
+  LS.set('chatHistory', chatHistory);
+  input.value=''; autoGrow(input);
+  renderChat();
+
+  if(checkMedicalGuardrail(text)){
+    chatHistory.push({role:'warn', text:'&#9888;&#65039; <b>זוהתה הודעה הקשורה למצב חירום רפואי.</b><br>Vytal OS אינו תחליף לטיפול רפואי. אם זהו מצב חירום, אנא פנה/י מיידית למספר החירום באזורך (בישראל: 101) או לחדר מיון. השיחה עם המאמן ה-AI נחסמה לבקשתכם, לבטיחותכם.'});
+    LS.set('chatHistory', chatHistory);
+    renderChat();
+    return;
+  }
+  showTyping(function(){
+    var reply = generateMockCoachReply(text);
+    chatHistory.push({role:'bot', text:reply});
+    LS.set('chatHistory', chatHistory);
+    renderChat();
+  });
+}
+function showTyping(cb){
+  var el = document.getElementById('chat-msgs');
+  el.innerHTML += '<div class="bubble bot" id="typing-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  el.scrollTop = el.scrollHeight;
+  setTimeout(function(){
+    var tb = document.getElementById('typing-bubble');
+    if(tb) tb.remove();
+    cb();
+  }, 900 + Math.random()*700);
+}
+function generateMockCoachReply(text){
+  var result = computeVytalScore();
+  var lower = text.toLowerCase();
+  if(lower.indexOf('קלוריות') > -1){
+    return 'נכון לעכשיו צרכת '+result.totalCal+' קק"ל מתוך יעד '+result.calGoal+' קק"ל. נשארו לך '+Math.max(0,result.calGoal-result.totalCal)+' קק"ל להיום.';
+  }
+  if(lower.indexOf('שינה') > -1){
+    return 'ישנת '+result.snap.sleepHours+' שעות הלילה. נסה/י לכבות מסכים שעה לפני השינה ולשמור על שעת שינה קבועה — זה ישפר את ה-Vytal Score שלך.';
+  }
+  if(lower.indexOf('צעדים') > -1){
+    return 'עשית '+result.snap.steps+' צעדים היום. אפילו הליכה קצרה של 10 דקות יכולה לקרב אותך ליעד של 8000 צעדים.';
+  }
+  if(lower.indexOf('ארוחת ערב') > -1 || lower.indexOf('המלץ') > -1){
+    return 'בהתבסס על היעדים שלך, אני ממליץ על ארוחה עם חלבון רזה (כמו עוף או טופו), ירקות ופחמימה מורכבת אחת. רוצה שאחשב לך כמויות מדויקות?';
+  }
+  var generic = ['מבין אותך. בהמשך ליעדים שלך, אני ממליץ להתמקד בעקביות יומית.','מעולה ששאלת — ככל שתתעד יותר נתונים, אוכל לתת לך תובנות מדויקות יותר.','זה נושא טוב. תרצה שאבדוק את הנתונים האחרונים שלך לגביו?'];
+  return generic[Math.floor(Math.random()*generic.length)];
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window.initCoach = initCoach; window.autoGrow = autoGrow; window.attachMockImage = attachMockImage;
+window.sendChat = sendChat; window.sendChatText = sendChatText;
+
+/* ===================== VISION AI ===================== */
+var MOCK_MEALS = [
+  {name:'סלט עוף עם קינואה', calories:420, protein:38, carb:32, fat:14},
+  {name:'פסטה עם רוטין עגבניות', calories:560, protein:18, carb:84, fat:14},
+  {name:'סלמון עם ירקות אפויים', calories:480, protein:42, carb:18, fat:24},
+  {name:'אורז עם טופו מוקפץ', calories:390, protein:22, carb:52, fat:10},
+  {name:'כריך חביתה וגבינה', calories:340, protein:20, carb:30, fat:16}
+];
+var MOCK_BARCODES = [
+  {name:'יוגורט טבעי 3%', calories:120, protein:6, carb:9, fat:6, code:'7290001234567'},
+  {name:'במבה אגוז', calories:540, protein:18, carb:46, fat:32, code:'7290000111111'},
+  {name:'חלב 1%', calories:46, protein:3.4, carb:5, fat:1, code:'7290000222222'}
+];
+var visionTab = 'meal';
+var cameraStream = null;
+function setVisionTab(tab){
+  visionTab = tab;
+  document.getElementById('vtab-meal').classList.toggle('active', tab==='meal');
+  document.getElementById('vtab-barcode').classList.toggle('active', tab==='barcode');
+  document.getElementById('vision-result').innerHTML='';
+}
+function initVision(){
+  setVisionTab('meal');
+  var vf = document.getElementById('viewfinder');
+  var statusEl = document.getElementById('vision-status');
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream){
+      cameraStream = stream;
+      var video = document.createElement('video');
+      video.autoplay = true; video.muted = true; video.playsInline = true;
+      video.srcObject = stream;
+      vf.innerHTML = '<div class="scan-line"></div>';
+      vf.insertBefore(video, vf.firstChild);
+      statusEl.textContent = 'מצלמה פעילה — מקם את הארוחה במרכז';
+    }).catch(function(){
+      degradeViewfinder();
+    });
+  } else {
+    degradeViewfinder();
+  }
+}
+function degradeViewfinder(){
+  var vf = document.getElementById('viewfinder');
+  vf.innerHTML = '<div class="scan-line"></div><div style="font-size:50px;">&#127859;</div>';
+  document.getElementById('vision-status').textContent = 'אין גישה למצלמה — מצב הדגמה (תמונה סטטית)';
+}
+function performScan(){
+  var statusEl = document.getElementById('vision-status');
+  var resultEl = document.getElementById('vision-result');
+  statusEl.textContent = 'סורק...';
+  resultEl.innerHTML = '';
+  setTimeout(function(){
+    var edge = Math.random();
+    if(edge < 0.12){
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; תאורה חלשה מדי — נסה לסרוק במקום מואר יותר.</div>';
+      statusEl.textContent='סריקה נכשלה';
+      return;
+    }
+    if(edge < 0.22){
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; התמונה מטושטשת — נסה לייצב את המצלמה ולסרוק שוב.</div>';
+      statusEl.textContent='סריקה נכשלה';
+      return;
+    }
+    if(visionTab==='barcode' && edge < 0.32){
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; בר-קוד לא נמצא במאגר. ניתן להוסיף את המוצר ידנית.</div>'+
+        '<button class="btn secondary" onclick="goTo(\'screen-customfood\')">+ הוסף מוצר ידנית</button>';
+      statusEl.textContent='לא נמצא';
+      return;
+    }
+    statusEl.textContent = 'זוהה בהצלחה';
+    var item, confidence;
+    if(visionTab==='meal'){
+      item = MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)];
+      confidence = 72 + Math.floor(Math.random()*24);
+      resultEl.innerHTML = renderVisionResult(item, confidence, true);
+    } else {
+      item = MOCK_BARCODES[Math.floor(Math.random()*MOCK_BARCODES.length)];
+      confidence = 95 + Math.floor(Math.random()*5);
+      resultEl.innerHTML = renderVisionResult(item, confidence, false);
+    }
+  }, 1400);
+}
+function renderVisionResult(item, confidence, withBox){
+  var boxHtml = withBox ? '<div class="bbox" style="top:30%;left:20%;width:60%;height:40%;"></div>' : '';
+  var vf = document.getElementById('viewfinder');
+  // inject a bbox overlay briefly
+  var existing = vf.querySelector('.bbox');
+  if(existing) existing.remove();
+  if(withBox){
+    var b = document.createElement('div');
+    b.className='bbox'; b.style.top='30%'; b.style.left='20%'; b.style.width='60%'; b.style.height='40%';
+    vf.appendChild(b);
+  }
+  return '<div class="card">'+
+    '<div class="row" style="justify-content:space-between;"><b>'+item.name+'</b><span class="muted">ביטחון: '+confidence+'%</span></div>'+
+    '<div class="food-row"><span>קלוריות</span><span>'+item.calories+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון</span><span>'+item.protein+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה</span><span>'+item.carb+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן</span><span>'+item.fat+' ג\'</span></div>'+
+    '<button class="btn" style="margin-top:10px;" onclick="confirmVisionAdd(\''+item.name.replace(/'/g,"\\'")+'\','+item.calories+','+item.protein+','+item.carb+','+item.fat+')">אישור והוספה ליומן</button>'+
+    '</div>';
+}
+function confirmVisionAdd(name, cal, protein, carb, fat){
+  var diary = LS.get('foodDiary', {});
+  var key = todayKey();
+  if(!diary[key]) diary[key] = {breakfast:[], lunch:[], dinner:[], snack:[], workoutBurn:0};
+  diary[key].lunch.push({name:name, calories:cal, protein:protein, carb:carb, fat:fat, qty:1});
+  LS.set('foodDiary', diary);
+  document.getElementById('vision-result').innerHTML = '<div class="card center" style="color:var(--accent);">נוסף ליומן האוכל בהצלחה! &#10003;</div>';
+}
+window.setVisionTab = setVisionTab; window.initVision = initVision; window.performScan = performScan; window.confirmVisionAdd = confirmVisionAdd;
+window.MOCK_MEALS = MOCK_MEALS;
+
+window.__vytal_part3_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var todayKey = window.__VYTAL_todayKey;
+
+/* ===================== GAMIFICATION ===================== */
+function renderGamify(){
+  var key = todayKey();
+  var gam = LS.get('gamify', {streak:3, xp:40, level:1, freeze:false});
+  document.getElementById('streak-num').textContent = gam.streak+' ימים';
+  document.getElementById('xp-level').textContent = gam.level;
+  var xpForLevel = gam.level*100;
+  document.getElementById('xp-text').textContent = gam.xp+'/'+xpForLevel+' XP';
+  document.getElementById('xp-fill').style.width = Math.min(100,(gam.xp/xpForLevel)*100)+'%';
+  document.getElementById('streak-freeze-toggle').classList.toggle('on', !!gam.freeze);
+
+  var missions = (LS.get('missionsByDay', {}))[key] || [];
+  var cats = {};
+  missions.forEach(function(m, idx){
+    if(!cats[m.cat]) cats[m.cat]=[];
+    cats[m.cat].push({m:m, idx:idx});
+  });
+  var html='';
+  for(var c in cats){
+    html += '<div class="card"><h3 style="margin-top:0;">'+c+'</h3>';
+    cats[c].forEach(function(entry){
+      html += '<label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;"><input type="checkbox" '+(entry.m.done?'checked':'')+' onchange="toggleGamifyMission('+entry.idx+')" style="width:auto;"> '+entry.m.text+'</label>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('mission-categories').innerHTML = html;
+
+  var doneCount = missions.filter(function(m){return m.done;}).length;
+  var pct = missions.length ? Math.round((doneCount/missions.length)*100) : 0;
+  document.getElementById('daily-progress-pct').textContent = pct+'%';
+  document.getElementById('daily-progress-fill').style.width = pct+'%';
+  if(pct===100 && !gam.confettiShownToday){
+    fireConfetti();
+    gam.confettiShownToday = true;
+    LS.set('gamify', gam);
+  }
+}
+function toggleGamifyMission(idx){
+  var key = todayKey();
+  var missions = LS.get('missionsByDay', {});
+  missions[key][idx].done = !missions[key][idx].done;
+  LS.set('missionsByDay', missions);
+  var gam = LS.get('gamify', {streak:3, xp:40, level:1, freeze:false});
+  gam.xp += missions[key][idx].done ? 10 : -10;
+  if(gam.xp >= gam.level*100){ gam.xp -= gam.level*100; gam.level++; }
+  if(gam.xp < 0) gam.xp = 0;
+  LS.set('gamify', gam);
+  renderGamify();
+}
+function toggleStreakFreeze(){
+  var gam = LS.get('gamify', {streak:3, xp:40, level:1, freeze:false});
+  gam.freeze = !gam.freeze;
+  LS.set('gamify', gam);
+  renderGamify();
+}
+function fireConfetti(){
+  var el = document.getElementById('confetti');
+  var emojis = ['&#127881;','&#11088;','&#127882;','&#128081;'];
+  var html='';
+  for(var i=0;i<24;i++){
+    var left = Math.random()*100;
+    var delay = Math.random()*0.6;
+    html += '<span style="left:'+left+'%;animation-delay:'+delay+'s;">'+emojis[Math.floor(Math.random()*emojis.length)]+'</span>';
+  }
+  el.innerHTML = html;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); el.innerHTML=''; }, 2600);
+}
+window.renderGamify = renderGamify; window.toggleGamifyMission = toggleGamifyMission;
+window.toggleStreakFreeze = toggleStreakFreeze; window.fireConfetti = fireConfetti;
+
+/* ===================== WEEKLY SUMMARY ===================== */
+function getOrCreateWeeklyHistory(){
+  var hist = LS.get('weeklyHistory', null);
+  if(!hist){
+    hist = {firstWeek:true, days:[]};
+    var today = new Date();
+    for(var i=6;i>=0;i--){
+      var d = new Date(today); d.setDate(today.getDate()-i);
+      hist.days.push({date:todayKey(d), score: 50+Math.floor(Math.random()*45), hasData: i<5});
+    }
+    LS.set('weeklyHistory', hist);
+  }
+  return hist;
+}
+var selectedWeeklyDay = null;
+function renderWeekly(){
+  var hist = getOrCreateWeeklyHistory();
+  var validDays = hist.days.filter(function(d){return d.hasData;});
+  var avgScore = validDays.length ? Math.round(validDays.reduce(function(a,d){return a+d.score;},0)/validDays.length) : 0;
+  document.getElementById('weekly-score').textContent = avgScore;
+
+  var prevAvg = LS.get('prevWeekAvg', avgScore - (5-Math.floor(Math.random()*10)));
+  var delta = avgScore - prevAvg;
+  var deltaHtml = delta>=0 ? '<span class="delta-up">&#9650; +'+delta+' מהשבוע שעבר</span>' : '<span class="delta-down">&#9660; '+delta+' מהשבוע שעבר</span>';
+  document.getElementById('weekly-delta').innerHTML = deltaHtml;
+
+  if(hist.firstWeek){
+    document.getElementById('weekly-badge').innerHTML = '<div class="badge">&#11088; השבוע הראשון שלך ב-Vytal OS!</div>';
+  } else {
+    document.getElementById('weekly-badge').innerHTML = '';
+  }
+
+  var maxScore = Math.max(1, Math.max.apply(null, hist.days.map(function(d){return d.score;})));
+  var dayNames = ['א','ב','ג','ד','ה','ו','ש'];
+  var barsHtml = '';
+  hist.days.forEach(function(d, idx){
+    var h = d.hasData ? Math.max(6,(d.score/maxScore)*100) : 4;
+    var dow = new Date(d.date).getDay();
+    barsHtml += '<div class="bar-col'+(selectedWeeklyDay===idx?' sel':'')+'" onclick="selectWeeklyDay('+idx+')">'+
+      '<div class="bar" style="height:'+h+'%;opacity:'+(d.hasData?1:0.3)+';"></div>'+
+      '<div class="muted" style="font-size:11px;margin-top:4px;">'+dayNames[dow]+'</div></div>';
+  });
+  document.getElementById('weekly-bars').innerHTML = barsHtml;
+
+  if(selectedWeeklyDay!==null){
+    var d = hist.days[selectedWeeklyDay];
+    document.getElementById('weekly-day-detail').textContent = d.hasData ?
+      (d.date+': ניקוד '+d.score) : (d.date+': אין מספיק נתונים ליום זה');
+  } else {
+    document.getElementById('weekly-day-detail').textContent = 'לחץ על עמודה לפרטים';
+  }
+
+  var missingDays = hist.days.filter(function(d){return !d.hasData;}).length;
+  var insightsHtml = '';
+  if(missingDays > 0){
+    insightsHtml += '<div class="card" style="border:1px solid var(--gold);">&#9888; חלק מהימים בשבוע זה חסרים נתונים מלאים ('+missingDays+' ימים). התובנות עשויות להיות חלקיות.</div>';
+  }
+  insightsHtml += generateCorrelationInsights();
+  document.getElementById('weekly-insights').innerHTML = insightsHtml;
+}
+function selectWeeklyDay(idx){ selectedWeeklyDay = idx; renderWeekly(); }
+function generateCorrelationInsights(){
+  var profile = LS.get('profile', {});
+  var diary = LS.get('foodDiary', {});
+  var keys = Object.keys(diary);
+  var insights = [];
+  var proteinDays = 0, totalDays = Math.max(1, keys.length);
+  keys.forEach(function(k){
+    var day = diary[k];
+    var protein = 0;
+    ['breakfast','lunch','dinner','snack'].forEach(function(m){ (day[m]||[]).forEach(function(it){ protein += it.protein||0; }); });
+    if(protein > 80) proteinDays++;
+  });
+  if(proteinDays > 0){
+    insights.push('שמנו לב שבימים בהם צריכת החלבון שלך גבוהה (מעל 80 גרם), ה-Vytal Score שלך נוטה להיות גבוה יותר בכ-8 נקודות בממוצע.');
+  }
+  var conns = LS.get('wearables', {});
+  var anyConn = Object.keys(conns).some(function(k){return conns[k];});
+  if(anyConn){
+    insights.push('בלילות עם פחות מ-6 שעות שינה נראית ירידה קלה ברמת הפעילות למחרת. נסה/י לשפר את שגרת השינה.');
+  } else {
+    insights.push('חיבור שעון חכם יאפשר לנו לזהות קשרים מדויקים יותר בין שינה, פעילות ותזונה.');
+  }
+  return insights.map(function(t){ return '<div class="card">&#128161; '+t+'</div>'; }).join('');
+}
+window.renderWeekly = renderWeekly; window.selectWeeklyDay = selectWeeklyDay;
+
+window.__vytal_part4_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var goTo = window.__vytalGoTo;
+var todayKey = window.__VYTAL_todayKey;
+var getCalorieGoal = window.__VYTAL_getCalorieGoal;
+
+/* ===================== MOCK FOOD DATABASE (per 100g) ===================== */
+var FOOD_DB = [
+  {id:1, name:'חזה עוף צלוי', cal:165, protein:31, carb:0, fat:3.6, verified:true, tag:'lunch'},
+  {id:2, name:'אורז לבן מבושל', cal:130, protein:2.7, carb:28, fat:0.3, verified:true, tag:'lunch'},
+  {id:3, name:'אורז מלא מבושל', cal:111, protein:2.6, carb:23, fat:0.9, verified:true, tag:'lunch'},
+  {id:4, name:'ביצה קשה', cal:155, protein:13, carb:1.1, fat:11, verified:true, tag:'breakfast'},
+  {id:5, name:'חביתה', cal:154, protein:11, carb:1, fat:11, verified:true, tag:'breakfast'},
+  {id:6, name:'יוגורט טבעי 3%', cal:60, protein:3.5, carb:4.7, fat:3, verified:true, tag:'breakfast'},
+  {id:7, name:'קוטג\' 5%', cal:98, protein:11, carb:3.5, fat:5, verified:true, tag:'breakfast'},
+  {id:8, name:'לחם מלא', cal:247, protein:13, carb:41, fat:3.4, verified:true, tag:'breakfast'},
+  {id:9, name:'לחם לבן', cal:265, protein:9, carb:49, fat:3.2, verified:false, tag:'breakfast'},
+  {id:10, name:'אבוקדו', cal:160, protein:2, carb:9, fat:15, verified:true, tag:'breakfast'},
+  {id:11, name:'בננה', cal:89, protein:1.1, carb:23, fat:0.3, verified:true, tag:'snack'},
+  {id:12, name:'תפוח', cal:52, protein:0.3, carb:14, fat:0.2, verified:true, tag:'snack'},
+  {id:13, name:'שקדים', cal:579, protein:21, carb:22, fat:50, verified:true, tag:'snack'},
+  {id:14, name:'אגוזי מלך', cal:654, protein:15, carb:14, fat:65, verified:false, tag:'snack'},
+  {id:15, name:'סלמון', cal:208, protein:20, carb:0, fat:13, verified:true, tag:'dinner'},
+  {id:16, name:'טונה משומרת במים', cal:116, protein:26, carb:0, fat:1, verified:true, tag:'lunch'},
+  {id:17, name:'טופו', cal:76, protein:8, carb:1.9, fat:4.8, verified:true, tag:'dinner'},
+  {id:18, name:'עדשים מבושלות', cal:116, protein:9, carb:20, fat:0.4, verified:true, tag:'lunch'},
+  {id:19, name:'חומוס מבושל', cal:164, protein:9, carb:27, fat:2.6, verified:true, tag:'lunch'},
+  {id:20, name:'במבה', cal:534, protein:16, carb:48, fat:32, verified:false, tag:'snack'},
+  {id:21, name:'שוקולד חלב', cal:535, protein:7.6, carb:59, fat:30, verified:false, tag:'snack'},
+  {id:22, name:'גבינה צהובה 28%', cal:350, protein:25, carb:1.3, fat:28, verified:true, tag:'breakfast'},
+  {id:23, name:'חלב 3%', cal:60, protein:3.2, carb:4.8, fat:3.3, verified:true, tag:'breakfast'},
+  {id:24, name:'פסטה מבושלת', cal:158, protein:5.8, carb:31, fat:0.9, verified:true, tag:'dinner'},
+  {id:25, name:'בטטה אפויה', cal:90, protein:2, carb:21, fat:0.1, verified:true, tag:'dinner'},
+  {id:26, name:'ברוקולי מבושל', cal:35, protein:2.4, carb:7, fat:0.4, verified:true, tag:'dinner'},
+  {id:27, name:'עגבניה', cal:18, protein:0.9, carb:3.9, fat:0.2, verified:true, tag:'lunch'},
+  {id:28, name:'מלפפון', cal:15, protein:0.7, carb:3.6, fat:0.1, verified:true, tag:'lunch'},
+  {id:29, name:'שמן זית', cal:884, protein:0, carb:0, fat:100, verified:true, tag:'dinner'},
+  {id:30, name:'יין אדום', cal:85, protein:0.1, carb:2.6, fat:0, verified:false, tag:'snack'},
+  {id:31, name:'קפה שחור', cal:1, protein:0.1, carb:0, fat:0, verified:true, tag:'breakfast'},
+  {id:32, name:'גרנולה', cal:471, protein:10, carb:64, fat:18, verified:false, tag:'breakfast'},
+  {id:33, name:'תירס מבושל', cal:96, protein:3.4, carb:21, fat:1.5, verified:true, tag:'lunch'},
+  {id:34, name:'אבטיח', cal:30, protein:0.6, carb:7.6, fat:0.2, verified:true, tag:'snack'},
+  {id:35, name:'דג טונה טרי', cal:144, protein:23, carb:0, fat:5, verified:true, tag:'dinner'}
+];
+var UNIT_TO_GRAMS = {
+  'גרם':1, 'כוס':150, 'כף':15, 'כפית':5, 'יחידה':100, 'פרוסה':30, 'חופן':30
+};
+
+function getMyFoods(){ return LS.get('myFoods', []); }
+function getAllFoodsForSearch(){ return FOOD_DB.concat(getMyFoods()); }
+
+/* ===================== FOOD DIARY ===================== */
+var diarySelectedDate = todayKey();
+function getDateOffsetKey(offset){
+  var d = new Date(); d.setDate(d.getDate()+offset);
+  return todayKey(d);
+}
+function renderFoodDiary(){
+  var diary = LS.get('foodDiary', {});
+  if(!diary[diarySelectedDate]){
+    diary[diarySelectedDate] = {breakfast:[], lunch:[], dinner:[], snack:[], workoutBurn:0};
+    LS.set('foodDiary', diary);
+  }
+  var html='';
+  for(var i=-1;i<=7;i++){
+    var key = getDateOffsetKey(i);
+    var label = i===0?'היום':(i===-1?'אתמול':new Date(key).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'}));
+    html += '<button class="chip'+(key===diarySelectedDate?' sel':'')+'" style="flex-shrink:0;" onclick="selectDiaryDate(\''+key+'\')">'+label+'</button>';
+  }
+  document.getElementById('date-carousel').innerHTML = html;
+
+  var day = diary[diarySelectedDate];
+  var calGoal = getCalorieGoal();
+  var eaten = 0;
+  ['breakfast','lunch','dinner','snack'].forEach(function(m){ (day[m]||[]).forEach(function(it){ eaten += it.calories||0; }); });
+  var isFuture = diarySelectedDate > todayKey();
+  var workout = isFuture ? 0 : (day.workoutBurn||0);
+  if(isFuture) day.workoutBurn = 0;
+  var remaining = calGoal - eaten + workout;
+  document.getElementById('budget-equation').textContent = calGoal+' - '+eaten+' + '+workout+' = '+remaining;
+
+  var mealNames = {breakfast:'בוקר', lunch:'צהריים', dinner:'ערב', snack:'נשנושים'};
+  var mhtml = '';
+  ['breakfast','lunch','dinner','snack'].forEach(function(m){
+    mhtml += '<div class="meal-section"><div class="row" style="justify-content:space-between;"><h3 style="margin:0;">'+mealNames[m]+'</h3><button class="chip" onclick="goToFoodSearch(\''+m+'\')">+ הוסף</button></div>';
+    (day[m]||[]).forEach(function(item, idx){
+      mhtml += '<div class="food-row"><span>'+item.name+' ('+(item.qty||1)+'x)</span><span>'+Math.round(item.calories)+' קק"ל <button onclick="deleteFoodEntry(\''+m+'\','+idx+')" style="background:none;border:none;color:var(--warn);">&#10005;</button></span></div>';
+    });
+    if((day[m]||[]).length===0) mhtml += '<div class="muted" style="font-size:13px;">אין פריטים</div>';
+    mhtml += '</div>';
+  });
+  document.getElementById('meal-sections').innerHTML = mhtml;
+}
+function selectDiaryDate(key){ diarySelectedDate = key; renderFoodDiary(); }
+function deleteFoodEntry(meal, idx){
+  var diary = LS.get('foodDiary', {});
+  diary[diarySelectedDate][meal].splice(idx,1);
+  LS.set('foodDiary', diary);
+  renderFoodDiary();
+}
+var targetMealForSearch = 'breakfast';
+function goToFoodSearch(meal){
+  targetMealForSearch = meal;
+  goTo('screen-foodsearch');
+  document.getElementById('food-search-input').value='';
+  setFoodSearchTab('all');
+}
+window.renderFoodDiary = renderFoodDiary; window.selectDiaryDate = selectDiaryDate;
+window.deleteFoodEntry = deleteFoodEntry; window.goToFoodSearch = goToFoodSearch;
+window.__VYTAL_diarySelectedDate = function(){ return diarySelectedDate; };
+
+/* ===================== FOOD SEARCH ===================== */
+var foodSearchTab = 'all';
+function setFoodSearchTab(tab){
+  foodSearchTab = tab;
+  ['all','history','fav','mine'].forEach(function(t){
+    document.getElementById('fstab-'+t).classList.toggle('active', t===tab);
+  });
+  renderFoodSearch();
+}
+function getTimeOfDayMealTag(){
+  var h = new Date().getHours();
+  if(h < 11) return 'breakfast';
+  if(h < 16) return 'lunch';
+  if(h < 21) return 'dinner';
+  return 'snack';
+}
+function renderFoodSearch(){
+  var q = (document.getElementById('food-search-input').value||'').trim().toLowerCase();
+  var history = LS.get('foodHistory', []);
+  var favs = LS.get('foodFavorites', []);
+  var pool;
+  if(foodSearchTab==='history') pool = getAllFoodsForSearch().filter(function(f){ return history.indexOf(f.id)>-1; });
+  else if(foodSearchTab==='fav') pool = getAllFoodsForSearch().filter(function(f){ return favs.indexOf(f.id)>-1; });
+  else if(foodSearchTab==='mine') pool = getMyFoods();
+  else pool = getAllFoodsForSearch();
+
+  if(q){ pool = pool.filter(function(f){ return f.name.toLowerCase().indexOf(q)>-1; }); }
+
+  var currentTag = getTimeOfDayMealTag();
+  pool = pool.slice().sort(function(a,b){
+    var aBoost = (a.tag===currentTag)?1:0, bBoost = (b.tag===currentTag)?1:0;
+    return bBoost-aBoost;
+  });
+
+  var listEl = document.getElementById('food-search-list');
+  var emptyEl = document.getElementById('food-empty-state');
+  if(pool.length===0){
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display='none';
+  var html='';
+  pool.forEach(function(f){
+    var isFav = favs.indexOf(f.id)>-1;
+    html += '<div class="search-item"><div onclick="openFoodDetail('+f.id+')" style="flex:1;cursor:pointer;">'+
+      (f.verified?'<span class="verified">&#10003;</span>':'')+f.name+
+      '<div class="muted" style="font-size:12px;">'+f.cal+' קק"ל / 100 גרם</div></div>'+
+      '<button onclick="toggleFavorite('+f.id+')" style="background:none;border:none;font-size:18px;color:'+(isFav?'var(--gold)':'var(--muted)')+';">&#9733;</button></div>';
+  });
+  listEl.innerHTML = html;
+}
+function toggleFavorite(id){
+  var favs = LS.get('foodFavorites', []);
+  var idx = favs.indexOf(id);
+  if(idx>-1) favs.splice(idx,1); else favs.push(id);
+  LS.set('foodFavorites', favs);
+  renderFoodSearch();
+}
+window.setFoodSearchTab = setFoodSearchTab; window.renderFoodSearch = renderFoodSearch; window.toggleFavorite = toggleFavorite;
+
+/* ===================== FOOD ITEM DETAIL ===================== */
+var currentFoodDetail = null;
+function openFoodDetail(id){
+  var all = getAllFoodsForSearch();
+  currentFoodDetail = all.filter(function(f){return f.id===id;})[0];
+  if(!currentFoodDetail) return;
+  var history = LS.get('foodHistory', []);
+  if(history.indexOf(id)===-1){ history.push(id); LS.set('foodHistory', history); }
+
+  document.getElementById('fd-name').textContent = currentFoodDetail.name;
+  document.getElementById('fd-qty').value = 100;
+  var unitSel = document.getElementById('fd-unit');
+  var opts='';
+  for(var u in UNIT_TO_GRAMS){ opts += '<option value="'+u+'">'+u+'</option>'; }
+  unitSel.innerHTML = opts;
+  unitSel.value = 'גרם';
+  document.getElementById('fd-meal').value = targetMealForSearch;
+  renderFoodDetailTotals();
+  goTo('screen-fooddetail');
+}
+function renderFoodDetailTotals(){
+  var qtyVal = parseFloat(document.getElementById('fd-qty').value);
+  var unit = document.getElementById('fd-unit').value;
+  var errEl = document.getElementById('fd-err');
+  if(isNaN(qtyVal) || qtyVal <= 0){
+    errEl.classList.add('show');
+    document.getElementById('fd-table').innerHTML = '';
+    return;
+  }
+  errEl.classList.remove('show');
+  var grams = qtyVal * (UNIT_TO_GRAMS[unit]||1);
+  var factor = grams/100;
+  var f = currentFoodDetail;
+  var totals = {
+    cal: f.cal*factor, protein: f.protein*factor, carb: f.carb*factor, fat: f.fat*factor
+  };
+  document.getElementById('fd-table').innerHTML =
+    '<div class="food-row"><span>קלוריות</span><span>'+Math.round(totals.cal)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון</span><span>'+totals.protein.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה</span><span>'+totals.carb.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן</span><span>'+totals.fat.toFixed(1)+' ג\'</span></div>';
+}
+function confirmAddFood(){
+  var qtyVal = parseFloat(document.getElementById('fd-qty').value);
+  if(isNaN(qtyVal) || qtyVal <= 0){
+    document.getElementById('fd-err').classList.add('show');
+    return;
+  }
+  var unit = document.getElementById('fd-unit').value;
+  var grams = qtyVal * (UNIT_TO_GRAMS[unit]||1);
+  var factor = grams/100;
+  var f = currentFoodDetail;
+  var meal = document.getElementById('fd-meal').value;
+  var diary = LS.get('foodDiary', {});
+  var key = window.__VYTAL_diarySelectedDate ? window.__VYTAL_diarySelectedDate() : todayKey();
+  if(!diary[key]) diary[key] = {breakfast:[], lunch:[], dinner:[], snack:[], workoutBurn:0};
+  diary[key][meal].push({
+    name:f.name, qty:qtyVal+' '+unit, calories:f.cal*factor, protein:f.protein*factor, carb:f.carb*factor, fat:f.fat*factor
+  });
+  LS.set('foodDiary', diary);
+  goTo('screen-fooddiary');
+  renderFoodDiary();
+}
+window.openFoodDetail = openFoodDetail; window.renderFoodDetailTotals = renderFoodDetailTotals; window.confirmAddFood = confirmAddFood;
+
+/* ===================== CUSTOM FOOD CREATOR ===================== */
+function setCustomFoodTab(tab){
+  document.getElementById('cftab-single').classList.toggle('active', tab==='single');
+  document.getElementById('cftab-recipe').classList.toggle('active', tab==='recipe');
+  document.getElementById('cf-single').style.display = tab==='single'?'block':'none';
+  document.getElementById('cf-recipe').style.display = tab==='recipe'?'block':'none';
+}
+function saveCustomFood(){
+  var name = document.getElementById('cf-name').value.trim();
+  if(!name) { alert('יש להזין שם מאכל'); return; }
+  var myFoods = getMyFoods();
+  var newId = 9000 + myFoods.length;
+  myFoods.push({
+    id:newId, name:name,
+    cal: parseFloat(document.getElementById('cf-cal').value)||0,
+    protein: parseFloat(document.getElementById('cf-protein').value)||0,
+    carb: parseFloat(document.getElementById('cf-carb').value)||0,
+    fat: parseFloat(document.getElementById('cf-fat').value)||0,
+    verified:false, tag:'snack', custom:true
+  });
+  LS.set('myFoods', myFoods);
+  goTo('screen-foodsearch');
+  setFoodSearchTab('mine');
+}
+window.setCustomFoodTab = setCustomFoodTab; window.saveCustomFood = saveCustomFood;
+
+var recipeIngredients = [];
+function renderRecipeSearch(){
+  var q = (document.getElementById('cfr-search').value||'').trim().toLowerCase();
+  var resEl = document.getElementById('cfr-search-results');
+  if(!q){ resEl.innerHTML=''; return; }
+  var matches = getAllFoodsForSearch().filter(function(f){ return f.name.toLowerCase().indexOf(q)>-1; }).slice(0,6);
+  resEl.innerHTML = matches.map(function(f){
+    return '<div class="search-item"><span>'+f.name+'</span><button class="chip" onclick="addRecipeIngredient('+f.id+')">+ הוסף</button></div>';
+  }).join('');
+}
+function addRecipeIngredient(id){
+  var f = getAllFoodsForSearch().filter(function(x){return x.id===id;})[0];
+  if(!f) return;
+  recipeIngredients.push({food:f, grams:100});
+  document.getElementById('cfr-search').value='';
+  document.getElementById('cfr-search-results').innerHTML='';
+  renderRecipeIngredients();
+}
+function renderRecipeIngredients(){
+  var html = recipeIngredients.map(function(ing, idx){
+    return '<div class="card" style="display:flex;justify-content:space-between;align-items:center;">'+
+      '<span>'+ing.food.name+'</span>'+
+      '<input type="number" value="'+ing.grams+'" style="width:80px;" onchange="updateRecipeGrams('+idx+',this.value)"> גרם'+
+      '<button onclick="removeRecipeIngredient('+idx+')" style="background:none;border:none;color:var(--warn);">&#10005;</button></div>';
+  }).join('');
+  document.getElementById('cfr-ingredients').innerHTML = html;
+  renderRecipeTotals();
+}
+function updateRecipeGrams(idx, val){
+  recipeIngredients[idx].grams = parseFloat(val)||0;
+  renderRecipeTotals();
+}
+function removeRecipeIngredient(idx){
+  recipeIngredients.splice(idx,1);
+  renderRecipeIngredients();
+}
+function renderRecipeTotals(){
+  var servings = parseFloat(document.getElementById('cfr-servings').value)||1;
+  var totals = {cal:0, protein:0, carb:0, fat:0};
+  recipeIngredients.forEach(function(ing){
+    var factor = ing.grams/100;
+    totals.cal += ing.food.cal*factor; totals.protein += ing.food.protein*factor;
+    totals.carb += ing.food.carb*factor; totals.fat += ing.food.fat*factor;
+  });
+  var perServing = {
+    cal: totals.cal/servings, protein: totals.protein/servings, carb: totals.carb/servings, fat: totals.fat/servings
+  };
+  document.getElementById('cfr-totals').innerHTML =
+    '<b>לכל מנה (מתוך '+servings+' מנות):</b>'+
+    '<div class="food-row"><span>קלוריות</span><span>'+Math.round(perServing.cal)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>חלבון</span><span>'+perServing.protein.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>פחמימה</span><span>'+perServing.carb.toFixed(1)+' ג\'</span></div>'+
+    '<div class="food-row"><span>שומן</span><span>'+perServing.fat.toFixed(1)+' ג\'</span></div>';
+}
+function saveRecipe(){
+  var name = document.getElementById('cfr-name').value.trim();
+  if(!name || recipeIngredients.length===0){ alert('הזן שם והוסף לפחות מרכיב אחד'); return; }
+  var servings = parseFloat(document.getElementById('cfr-servings').value)||1;
+  var totals = {cal:0, protein:0, carb:0, fat:0};
+  recipeIngredients.forEach(function(ing){
+    var factor = ing.grams/100;
+    totals.cal += ing.food.cal*factor; totals.protein += ing.food.protein*factor;
+    totals.carb += ing.food.carb*factor; totals.fat += ing.food.fat*factor;
+  });
+  var myFoods = getMyFoods();
+  var newId = 9000 + myFoods.length;
+  myFoods.push({
+    id:newId, name:name,
+    cal: totals.cal/servings, protein: totals.protein/servings, carb: totals.carb/servings, fat: totals.fat/servings,
+    verified:false, tag:'lunch', custom:true, recipe:true
+  });
+  LS.set('myFoods', myFoods);
+  recipeIngredients = [];
+  goTo('screen-foodsearch');
+  setFoodSearchTab('mine');
+}
+window.renderRecipeSearch = renderRecipeSearch; window.addRecipeIngredient = addRecipeIngredient;
+window.updateRecipeGrams = updateRecipeGrams; window.removeRecipeIngredient = removeRecipeIngredient;
+window.renderRecipeTotals = renderRecipeTotals; window.saveRecipe = saveRecipe;
+
+window.__vytal_part5_loaded = true;
+})();
+</script>
+<script>
+(function(){
+"use strict";
+var LS = window.__VYTAL_LS;
+var calcBMR = window.__VYTAL_calcBMR;
+var todayKey = window.__VYTAL_todayKey;
+
+/* ===================== NUTRITION GOALS ===================== */
+function renderGoals(){
+  var goals = LS.get('nutritionGoals', null);
+  var mode = goals ? (goals.mode||'ai') : 'ai';
+  document.getElementById('goals-mode-toggle').classList.toggle('on', mode==='manual');
+  document.getElementById('goals-ai-view').style.display = mode==='ai' ? 'block':'none';
+  document.getElementById('goals-manual-view').style.display = mode==='manual' ? 'block':'none';
+
+  var profile = LS.get('profile', {});
+  var bmr = profile.bmr || calcBMR(profile, profile.activity||'moderate');
+  var goalAdj = (profile.goals||[]).indexOf('lose')>-1 ? 0.85 : ((profile.goals||[]).indexOf('gain')>-1 ? 1.15 : 1);
+  var autoCal = Math.round(bmr*goalAdj);
+  document.getElementById('goals-ai-detail').innerHTML =
+    '<div class="food-row"><span>BMR בסיסי</span><span>'+Math.round(bmr)+' קק"ל</span></div>'+
+    '<div class="food-row"><span>מטרה</span><span>'+((profile.goals||[]).join(', ')||'שמירה')+'</span></div>'+
+    '<div class="food-row"><span><b>יעד קלוריות יומי</b></span><span><b>'+autoCal+' קק"ל</b></span></div>'+
+    '<div class="muted" style="margin-top:8px;">חלוקת מאקרו אוטומטית: 30% חלבון, 40% פחמימה, 30% שומן.</div>';
+
+  if(mode==='manual'){
+    document.getElementById('goals-cal').value = goals && goals.calories ? goals.calories : autoCal;
+    document.getElementById('slider-protein').value = goals && goals.pctProtein!=null ? goals.pctProtein : 30;
+    document.getElementById('slider-carb').value = goals && goals.pctCarb!=null ? goals.pctCarb : 40;
+    document.getElementById('slider-fat').value = goals && goals.pctFat!=null ? goals.pctFat : 30;
+    renderGoalsManual();
+  }
+}
+function toggleGoalsMode(){
+  var goals = LS.get('nutritionGoals', {});
+  goals.mode = (goals.mode==='manual') ? 'ai' : 'manual';
+  LS.set('nutritionGoals', goals);
+  renderGoals();
+}
+function onSliderChange(which){
+  // keep simple: just re-render labels/grams; sum validated on save
+  renderGoalsManual();
+}
+function renderGoalsManual(){
+  var p = parseInt(document.getElementById('slider-protein').value,10);
+  var c = parseInt(document.getElementById('slider-carb').value,10);
+  var f = parseInt(document.getElementById('slider-fat').value,10);
+  document.getElementById('pct-protein-label').textContent = p+'%';
+  document.getElementById('pct-carb-label').textContent = c+'%';
+  document.getElementById('pct-fat-label').textContent = f+'%';
+  var sum = p+c+f;
+  document.getElementById('pct-sum-label').textContent = 'סה"כ: '+sum+'%';
+
+  var cal = parseFloat(document.getElementById('goals-cal').value)||0;
+  var gProtein = (cal*(p/100))/4;
+  var gCarb = (cal*(c/100))/4;
+  var gFat = (cal*(f/100))/9;
+  document.getElementById('goals-gram-table').innerHTML =
+    '<div class="food-row"><span>חלבון</span><span>'+gProtein.toFixed(0)+' גרם</span></div>'+
+    '<div class="food-row"><span>פחמימה</span><span>'+gCarb.toFixed(0)+' גרם</span></div>'+
+    '<div class="food-row"><span>שומן</span><span>'+gFat.toFixed(0)+' גרם</span></div>';
+
+  var errEl = document.getElementById('err-pct-sum');
+  var saveBtn = document.getElementById('goals-save-btn');
+  if(sum !== 100){
+    errEl.classList.add('show');
+    saveBtn.disabled = true;
+  } else {
+    errEl.classList.remove('show');
+    saveBtn.disabled = false;
+  }
+}
+var pendingGoalsSave = null;
+function trySaveGoals(){
+  var p = parseInt(document.getElementById('slider-protein').value,10);
+  var c = parseInt(document.getElementById('slider-carb').value,10);
+  var f = parseInt(document.getElementById('slider-fat').value,10);
+  if(p+c+f !== 100){
+    document.getElementById('err-pct-sum').classList.add('show');
+    return;
+  }
+  var cal = parseFloat(document.getElementById('goals-cal').value)||0;
+  pendingGoalsSave = {mode:'manual', calories:cal, pctProtein:p, pctCarb:c, pctFat:f};
+  // ask retroactive question only if goals already existed before (i.e. this is a change)
+  var existing = LS.get('nutritionGoals', null);
+  if(existing && existing.calories){
+    document.getElementById('retro-modal').classList.add('show');
+  } else {
+    applyGoalsChange(true);
+  }
+}
+function applyGoalsChange(applyToHistory){
+  document.getElementById('retro-modal').classList.remove('show');
+  if(!pendingGoalsSave) return;
+  pendingGoalsSave.effectiveDate = applyToHistory ? null : todayKey();
+  pendingGoalsSave.appliedToHistory = !!applyToHistory;
+  LS.set('nutritionGoals', pendingGoalsSave);
+  pendingGoalsSave = null;
+  renderGoals();
+}
+window.renderGoals = renderGoals; window.toggleGoalsMode = toggleGoalsMode;
+window.onSliderChange = onSliderChange; window.renderGoalsManual = renderGoalsManual;
+window.trySaveGoals = trySaveGoals; window.applyGoalsChange = applyGoalsChange;
+
+window.__vytal_part6_loaded = true;
+
+/* global error visibility for debugging */
+window.addEventListener('error', function(e){
+  console.error('Vytal OS error:', e.message, e.filename, e.lineno);
+});
+})();
+</script>
+</body>
+</html>
