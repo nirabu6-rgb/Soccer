@@ -502,7 +502,9 @@ function goTo(id){
   window.scrollTo(0,0);
   var bn = document.getElementById('bottomnav');
   var hideOn = ['screen-splash','screen-onboarding','screen-register','screen-integrations','screen-questionnaire'];
-  bn.style.display = hideOn.indexOf(id)>-1 ? 'none' : 'flex';
+  var hide = hideOn.indexOf(id)>-1;
+  bn.style.display = hide ? 'none' : 'flex';
+  document.querySelector('.fab').style.display = hide ? 'none' : '';
   document.getElementById('fab-menu').classList.remove('show');
 }
 function navTo(id){
