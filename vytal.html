@@ -236,6 +236,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div class="fab-menu" id="fab-menu">
   <button onclick="goTo('screen-fooddiary');renderFoodDiary();">&#127869; יומן אוכל</button>
   <button onclick="goTo('screen-vision');initVision();">&#128247; סקאן ארוחה</button>
+  <button onclick="goTo('screen-workouts');renderWorkouts();">&#127939; יומן אימונים</button>
   <button onclick="goTo('screen-coach');initCoach();">&#129302; מאמן AI</button>
 </div>
 
@@ -315,6 +316,34 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   </div>
   <h3>תובנות AI</h3>
   <div id="weekly-insights"></div>
+</div>
+
+<!-- WORKOUT LOG (linked to smart watch / health-app, simulated) -->
+<div class="screen" id="screen-workouts">
+  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>יומן אימונים</h3></div>
+  <div class="card" id="workouts-watch-status"></div>
+  <button class="btn secondary" onclick="openManualWorkoutForm()">+ הוסף אימון ידנית</button>
+  <div id="manual-workout-form" style="display:none;margin-top:10px;" class="card">
+    <label>סוג אימון</label>
+    <select id="wo-type">
+      <option value="ריצה">ריצה</option>
+      <option value="הליכה">הליכה</option>
+      <option value="אופניים">אופניים</option>
+      <option value="כוח/חדר כושר">כוח/חדר כושר</option>
+      <option value="שחייה">שחייה</option>
+      <option value="יוגה">יוגה</option>
+      <option value="אחר">אחר</option>
+    </select>
+    <label>משך (דקות)</label>
+    <input id="wo-duration" type="number" value="30" oninput="estimateWorkoutCalories()">
+    <label>קלוריות (משוער, ניתן לערוך)</label>
+    <input id="wo-calories" type="number" value="200">
+    <button class="btn" style="margin-top:10px;" onclick="saveManualWorkout()">שמור אימון</button>
+  </div>
+  <h3>היום</h3>
+  <div id="workouts-today-list"></div>
+  <h3>היסטוריה (14 ימים אחרונים)</h3>
+  <div id="workouts-history-list"></div>
 </div>
 
 <!-- 11. FOOD DIARY -->
@@ -905,7 +934,8 @@ function renderDashboard(){
   var html = '';
   for(var i=0;i<metricOrder.length;i++){
     var m = metrics[metricOrder[i]];
-    html += '<div class="metric-card"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+m.ic+'</span><div><div>'+m.label+'</div><div class="muted" style="font-size:12px;">'+m.val+'</div></div></div>'+
+    var clickAttr = metricOrder[i]==='activity' ? ' onclick="goTo(\'screen-workouts\');renderWorkouts();" style="cursor:pointer;"' : '';
+    html += '<div class="metric-card"'+clickAttr+'><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+m.ic+'</span><div><div>'+m.label+'</div><div class="muted" style="font-size:12px;">'+m.val+'</div></div></div>'+
       '<div style="display:flex;align-items:center;gap:8px;"><b>'+m.score+'</b><div class="reorder"><button onclick="moveMetric('+i+',-1)">&#9650;</button><button onclick="moveMetric('+i+',1)">&#9660;</button></div></div></div>';
   }
   document.getElementById('metric-cards').innerHTML = html;
@@ -937,6 +967,115 @@ function toggleMissionDash(idx){
 window.moveMetric = moveMetric; window.toggleMissionDash = toggleMissionDash;
 window.renderDashboard = renderDashboard;
 window.initDailyDataIfNeeded = initDailyDataIfNeeded;
+
+/* ===================== WORKOUT LOG (linked to simulated smart-watch / health app) ===================== */
+var WORKOUT_CAL_PER_MIN = {
+  'ריצה':10, 'הליכה':5, 'אופניים':8, 'כוח/חדר כושר':7, 'שחייה':9, 'יוגה':3, 'אחר':6
+};
+function getWorkoutLog(){ return LS.get('workoutLog', {}); }
+function saveWorkoutLog(log){ LS.set('workoutLog', log); }
+function recomputeWorkoutBurn(dateKey){
+  var log = getWorkoutLog();
+  var entries = log[dateKey] || [];
+  var total = 0;
+  for(var i=0;i<entries.length;i++){ total += entries[i].calories||0; }
+  var diary = LS.get('foodDiary', {});
+  if(!diary[dateKey]) diary[dateKey] = {breakfast:[], lunch:[], dinner:[], snack:[], workoutBurn:0};
+  diary[dateKey].workoutBurn = total;
+  LS.set('foodDiary', diary);
+  return total;
+}
+function syncWatchWorkoutsIfNeeded(){
+  var conns = LS.get('wearables', {});
+  var anyConnected = false;
+  for(var k in conns){ if(conns[k]) anyConnected = true; }
+  if(!anyConnected) return;
+  var key = todayKey();
+  var log = getWorkoutLog();
+  log[key] = log[key] || [];
+  var alreadySynced = log[key].some(function(e){ return e.source==='watch'; });
+  if(alreadySynced) return;
+  // simulate one auto-synced workout from the connected wearable
+  var types = Object.keys(WORKOUT_CAL_PER_MIN);
+  var type = types[Math.floor(Math.random()*types.length)];
+  var duration = 15 + Math.floor(Math.random()*45);
+  var calories = Math.round(duration * WORKOUT_CAL_PER_MIN[type]);
+  log[key].push({type:type, duration:duration, calories:calories, source:'watch', ts:Date.now()});
+  saveWorkoutLog(log);
+  recomputeWorkoutBurn(key);
+}
+function renderWorkouts(){
+  syncWatchWorkoutsIfNeeded();
+  var conns = LS.get('wearables', {});
+  var anyConnected = false;
+  for(var k in conns){ if(conns[k]) anyConnected = true; }
+  var statusEl = document.getElementById('workouts-watch-status');
+  if(anyConnected){
+    statusEl.innerHTML = '<div style="color:var(--ok,#1a9e57);">&#9989; מחובר לשעון חכם / אפליקציית בריאות (מדומה) — אימונים מסונכרנים אוטומטית.</div>';
+  } else {
+    statusEl.innerHTML = '<div class="muted">לא מחובר לשעון חכם או לאפליקציית בריאות. ניתן להתחבר במסך "אינטגרציות", או להוסיף אימונים ידנית למטה.</div>';
+  }
+  var key = todayKey();
+  var log = getWorkoutLog();
+  var todayEntries = log[key] || [];
+  var todayHtml = todayEntries.length ? '' : '<div class="muted">אין אימונים מתועדים להיום.</div>';
+  for(var i=0;i<todayEntries.length;i++){
+    var e = todayEntries[i];
+    todayHtml += '<div class="card" style="display:flex;justify-content:space-between;align-items:center;">'+
+      '<div><b>'+e.type+'</b><div class="muted" style="font-size:12px;">'+e.duration+' דקות &middot; '+(e.source==='watch'?'סונכרן מהשעון/אפליקציית הבריאות':'הוזן ידנית')+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;"><b>'+e.calories+' קק"ל</b><button class="icon-btn" onclick="deleteWorkout(\''+key+'\','+i+')">&#128465;</button></div></div>';
+  }
+  document.getElementById('workouts-today-list').innerHTML = todayHtml;
+
+  var histHtml = '';
+  var hasHistory = false;
+  for(var d=1; d<=14; d++){
+    var date = new Date(); date.setDate(date.getDate()-d);
+    var dk = todayKey(date);
+    var entries = log[dk] || [];
+    if(!entries.length) continue;
+    hasHistory = true;
+    var dayTotal = 0;
+    entries.forEach(function(e){ dayTotal += e.calories||0; });
+    histHtml += '<div class="card"><div style="display:flex;justify-content:space-between;"><b>'+date.toLocaleDateString('he-IL',{day:'numeric',month:'long'})+'</b><b>'+dayTotal+' קק"ל</b></div>'+
+      '<div class="muted" style="font-size:12px;">'+entries.map(function(e){return e.type+' ('+e.duration+' דק׳)';}).join(', ')+'</div></div>';
+  }
+  document.getElementById('workouts-history-list').innerHTML = hasHistory ? histHtml : '<div class="muted">אין היסטוריית אימונים בשבועיים האחרונים.</div>';
+}
+function deleteWorkout(dateKey, idx){
+  var log = getWorkoutLog();
+  if(log[dateKey]) log[dateKey].splice(idx,1);
+  saveWorkoutLog(log);
+  recomputeWorkoutBurn(dateKey);
+  renderWorkouts();
+}
+function openManualWorkoutForm(){
+  var form = document.getElementById('manual-workout-form');
+  form.style.display = form.style.display==='none' ? 'block' : 'none';
+  estimateWorkoutCalories();
+}
+function estimateWorkoutCalories(){
+  var type = document.getElementById('wo-type').value;
+  var duration = parseInt(document.getElementById('wo-duration').value,10) || 0;
+  var perMin = WORKOUT_CAL_PER_MIN[type] || 6;
+  document.getElementById('wo-calories').value = Math.round(duration * perMin);
+}
+function saveManualWorkout(){
+  var type = document.getElementById('wo-type').value;
+  var duration = parseInt(document.getElementById('wo-duration').value,10) || 0;
+  var calories = parseInt(document.getElementById('wo-calories').value,10) || 0;
+  var key = todayKey();
+  var log = getWorkoutLog();
+  log[key] = log[key] || [];
+  log[key].push({type:type, duration:duration, calories:calories, source:'manual', ts:Date.now()});
+  saveWorkoutLog(log);
+  recomputeWorkoutBurn(key);
+  document.getElementById('manual-workout-form').style.display = 'none';
+  renderWorkouts();
+}
+window.renderWorkouts = renderWorkouts; window.openManualWorkoutForm = openManualWorkoutForm;
+window.estimateWorkoutCalories = estimateWorkoutCalories; window.saveManualWorkout = saveManualWorkout;
+window.deleteWorkout = deleteWorkout;
 
 /* ===================== AI COACH CHAT (mocked) ===================== */
 var MEDICAL_EMERGENCY_KEYWORDS = [
