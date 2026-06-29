@@ -1332,15 +1332,21 @@ function performScan(){
       statusEl.textContent='לא נמצא';
       return;
     }
+    if(visionTab!=='barcode' && edge < 0.4){
+      resultEl.innerHTML = '<div class="card center" style="border:1px solid var(--warn);">&#9888; לא הצלחנו לזהות בביטחון מספק מה מופיע בתמונה, ולכן לא נרשם דבר ליומן. אפשר לצלם שוב מזווית/תאורה אחרת, או להוסיף את הפריט ידנית.</div>'+
+        '<button class="btn secondary" onclick="goTo(\'screen-customfood\')">+ הוסף ידנית</button>';
+      statusEl.textContent='לא זוהה בביטחון מספק';
+      return;
+    }
     statusEl.textContent = 'זוהה בהצלחה';
     var item, confidence;
     if(visionTab==='meal'){
       item = MOCK_MEALS[Math.floor(Math.random()*MOCK_MEALS.length)];
-      confidence = 72 + Math.floor(Math.random()*24);
+      confidence = 80 + Math.floor(Math.random()*18);
       resultEl.innerHTML = renderVisionResult(item, confidence, true);
     } else if(visionTab==='drink'){
       item = MOCK_DRINKS[Math.floor(Math.random()*MOCK_DRINKS.length)];
-      confidence = 72 + Math.floor(Math.random()*24);
+      confidence = 80 + Math.floor(Math.random()*18);
       resultEl.innerHTML = renderVisionResult(item, confidence, true);
     } else {
       item = MOCK_BARCODES[Math.floor(Math.random()*MOCK_BARCODES.length)];
