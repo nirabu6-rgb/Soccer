@@ -549,6 +549,29 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   </div>
 </div>
 
+<!-- New event modal (long-press on empty slot) -->
+<div class="modal-overlay" id="planner-new-modal">
+  <div class="modal-box info-box">
+    <button class="modal-close" onclick="document.getElementById('planner-new-modal').classList.remove('show')">&#10005;</button>
+    <h3>&#43; אירוע חדש</h3>
+    <div class="muted" id="pn-meta" style="margin-bottom:14px;"></div>
+    <label>שם האירוע</label><input id="pn-label" placeholder="למשל: ריצה, ארוחת צהריים...">
+    <label>סוג</label>
+    <select id="pn-type">
+      <option value="external">&#128197; כללי</option>
+      <option value="workout">&#127939; אימון</option>
+      <option value="meal">&#127869; ארוחה</option>
+    </select>
+    <label>שעת התחלה</label>
+    <div class="row">
+      <div><input id="pn-hour" type="number" min="0" max="23" style="width:60px;"> <span class="muted">שעה</span></div>
+      <div><input id="pn-minute" type="number" min="0" max="59" step="15" style="width:60px;"> <span class="muted">דקות</span></div>
+    </div>
+    <label>משך (דקות)</label><input id="pn-dur" type="number" min="5" max="480" value="60">
+    <button class="btn" style="margin-top:14px;" onclick="saveNewPlannerEvent()">&#10003; הוסף</button>
+  </div>
+</div>
+
 <!-- 17. ACTIVE WORKOUT TRACKER -->
 <div class="screen" id="screen-activeworkout">
   <div class="top-nav"><button class="back-btn" onclick="endActiveWorkoutPrompt()">&#8594;</button><h3>אימון פעיל</h3></div>
@@ -2645,6 +2668,10 @@ function renderPlanner(){
   html += '</div></div></div>';
   document.getElementById('planner-cal-body').innerHTML = html;
 
+  // Long-press on empty area to add event
+  var inner2 = document.getElementById('planner-inner');
+  if(inner2) bindPlannerLongPress(inner2);
+
   // Position blocks correctly after DOM is rendered (so we know real column widths)
   setTimeout(positionPlannerBlocks, 0);
 
@@ -2810,6 +2837,92 @@ function savePlannerDetail(){
   document.getElementById('planner-detail-modal').classList.remove('show');
   renderPlanner();
 }
+
+/* ── Long-press on empty calendar area to create new event ── */
+var pdNewDayIdx = 0, pdNewHour = 8, pdNewMinute = 0;
+var pdLongPressTimer = null;
+var pdLongPressStartX = 0, pdLongPressStartY = 0;
+var LONG_PRESS_MS = 500;
+
+function calcSlotFromEvent(e, inner, scroll){
+  var pt = e.touches ? e.touches[0] : e;
+  var calRect = scroll.getBoundingClientRect();
+  var totalW = inner.offsetWidth;
+  var colW = (totalW - 40) / 7;
+  var xInCal = pt.clientX - calRect.left;
+  var yInCal = pt.clientY - calRect.top + scroll.scrollTop;
+  var dayIdx = Math.max(0, Math.min(6, Math.floor((xInCal - 40) / colW)));
+  var hourF = CAL_START_H + yInCal / HOUR_H;
+  var hour = Math.max(CAL_START_H, Math.min(CAL_END_H - 1, Math.floor(hourF)));
+  var minute = Math.round(((hourF - Math.floor(hourF)) * 60) / 15) * 15;
+  if(minute >= 60){ hour++; minute = 0; }
+  return {dayIdx:dayIdx, hour:hour, minute:minute};
+}
+
+function bindPlannerLongPress(inner){
+  var scroll = document.getElementById('planner-scroll');
+  if(!scroll) return;
+
+  function onDown(e){
+    // only fire on inner background (not on blocks)
+    if(e.target !== inner && e.target.closest && e.target.closest('[id^="pb-"]')) return;
+    var pt = e.touches ? e.touches[0] : e;
+    pdLongPressStartX = pt.clientX;
+    pdLongPressStartY = pt.clientY;
+    clearTimeout(pdLongPressTimer);
+    pdLongPressTimer = setTimeout(function(){
+      if(pdDragBi >= 0) return; // block drag in progress
+      var slot = calcSlotFromEvent(e, inner, scroll);
+      openNewPlannerModal(slot.dayIdx, slot.hour, slot.minute);
+    }, LONG_PRESS_MS);
+  }
+  function onMove(e){
+    if(!pdLongPressTimer) return;
+    var pt = e.touches ? e.touches[0] : e;
+    var dx = pt.clientX - pdLongPressStartX, dy = pt.clientY - pdLongPressStartY;
+    if(Math.sqrt(dx*dx+dy*dy) > 10){ clearTimeout(pdLongPressTimer); pdLongPressTimer = null; }
+  }
+  function onUp(){ clearTimeout(pdLongPressTimer); pdLongPressTimer = null; }
+
+  inner.addEventListener('touchstart', onDown, {passive:true});
+  inner.addEventListener('touchmove', onMove, {passive:true});
+  inner.addEventListener('touchend', onUp);
+  inner.addEventListener('mousedown', onDown);
+  inner.addEventListener('mousemove', onMove);
+  inner.addEventListener('mouseup', onUp);
+}
+
+function openNewPlannerModal(dayIdx, hour, minute){
+  pdNewDayIdx = dayIdx; pdNewHour = hour; pdNewMinute = minute;
+  var start = plannerWeekStart();
+  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var d = new Date(start); d.setDate(d.getDate()+dayIdx);
+  var dateStr = days[dayIdx]+' '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+  var timeStr = String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+  document.getElementById('pn-meta').textContent = dateStr+' · '+timeStr;
+  document.getElementById('pn-label').value = '';
+  document.getElementById('pn-type').value = 'external';
+  document.getElementById('pn-hour').value = hour;
+  document.getElementById('pn-minute').value = minute;
+  document.getElementById('pn-dur').value = 60;
+  document.getElementById('planner-new-modal').classList.add('show');
+  setTimeout(function(){ var el=document.getElementById('pn-label'); if(el) el.focus(); },100);
+}
+
+function saveNewPlannerEvent(){
+  var label = document.getElementById('pn-label').value.trim();
+  if(!label){ alert('יש להזין שם לאירוע'); return; }
+  var type = document.getElementById('pn-type').value;
+  var hour = parseInt(document.getElementById('pn-hour').value,10);
+  var minute = parseInt(document.getElementById('pn-minute').value,10)||0;
+  var dur = parseInt(document.getElementById('pn-dur').value,10)||60;
+  var colors = {workout:'#4a90e2', meal:'#3ddc97', external:'#7d8597'};
+  plannerBlocks.push({dayIdx:pdNewDayIdx, hour:hour, minute:minute, dur:dur, label:label, type:type, color:colors[type]||'#7d8597'});
+  document.getElementById('planner-new-modal').classList.remove('show');
+  renderPlanner();
+}
+window.openNewPlannerModal = openNewPlannerModal;
+window.saveNewPlannerEvent = saveNewPlannerEvent;
 
 /* wire global touch/mouse move+up on document so drag works outside block */
 document.addEventListener('touchmove', function(e){ if(pdDragBi>=0||pdDragging) plannerBlockMove(e); }, {passive:false});
