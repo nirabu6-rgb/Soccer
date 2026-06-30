@@ -504,8 +504,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <button class="icon-btn" onclick="plannerShiftWeek(1)">&#8592;</button>
   </div>
   <div id="planner-grid" style="margin-top:10px;"></div>
-  <div class="muted" style="font-size:11px;margin-top:6px;">לחיצה ארוכה על בלוק ירוק/כחול מאפשרת להזיז אותו לשעה אחרת. בלוקים אפורים הם פגישות חיצוניות מדומות וחסומים לעריכה.</div>
+  <div class="muted" style="font-size:11px;margin-top:6px;">לחיצה ארוכה על בלוק ירוק/כחול מאפשרת להזיז אותו ליום אחר. בלוקים אפורים הם פגישות חיצוניות וחסומים לעריכה.</div>
   <button class="fab" style="position:fixed;" onclick="goTo('screen-coach');initCoach();">&#129302;</button>
+</div>
+
+<!-- Planner move modal -->
+<div class="modal-overlay" id="planner-move-modal">
+  <div class="modal-box info-box">
+    <button class="modal-close" onclick="document.getElementById('planner-move-modal').classList.remove('show')">&#10005;</button>
+    <h3>&#128205; הזז בלוק</h3>
+    <div class="muted" id="planner-move-label" style="margin-bottom:12px;"></div>
+    <div id="planner-move-days" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
 </div>
 
 <!-- 17. ACTIVE WORKOUT TRACKER -->
@@ -2439,13 +2449,16 @@ function plannerWeekStart(){
   d.setHours(0,0,0,0);
   return d;
 }
+var plannerBlocks = [];
+var plannerLongPressHandle = null;
+
 function renderPlanner(){
   var calendarConnected = LS.get('calendarConnected', true);
   var banner = document.getElementById('planner-sync-banner');
   var icon = document.getElementById('planner-sync-icon');
   if(!calendarConnected){
     banner.style.display='block';
-    banner.innerHTML = '&#9888; סנכרון היומן הופסק. כדי למנוע התנגשויות עם פגישות העבודה שלך, אנא אשר גישה ליומן בהגדרות המכשיר. <button class="btn secondary" style="margin-top:6px;" onclick="goTo(\'screen-integrations\')">פתח הגדרות</button>';
+    banner.innerHTML = '&#9888; סנכרון היומן הופסק. <button class="btn secondary" style="margin-top:6px;" onclick="goTo(\'screen-integrations\')">פתח הגדרות</button>';
     icon.style.display='none';
   } else {
     banner.style.display='none';
@@ -2457,28 +2470,98 @@ function renderPlanner(){
 
   var workoutLog = LS.get('workoutLog', {});
   var days = ['א','ב','ג','ד','ה','ו','שבת'];
+  plannerBlocks = [];
   var html = '';
   for(var i=0;i<7;i++){
     var d = new Date(start); d.setDate(d.getDate()+i);
     var dk = todayKey(d);
-    var blocks = [];
-    blocks.push({color:'#3ddc97', label:'ארוחת צהריים - לפי התוכנית', type:'meal'});
-    var wEntries = workoutLog[dk] || [];
-    if(wEntries.length){
-      wEntries.forEach(function(e){ blocks.push({color:'#4a90e2', label:e.type+' - '+e.duration+' דק׳', type:'workout'}); });
-    }
-    if(calendarConnected && (i===1 || i===3)){
-      blocks.push({color:'#7d8597', label:MOCK_EXTERNAL_EVENTS[i % MOCK_EXTERNAL_EVENTS.length], type:'external'});
-    }
     html += '<div class="card" style="padding:10px;"><b>'+days[i]+' &middot; '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+'</b>';
-    blocks.forEach(function(b){
-      html += '<div onmousedown="this.setAttribute(\'data-press\',Date.now())" oncontextmenu="return false;" style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;'+(b.type==='external'?'opacity:0.75;':'cursor:grab;')+'">'+b.label+(b.type==='external'?' <span class="muted">(חסום לעריכה)</span>':'')+'</div>';
+    var dayBlocks = [];
+    dayBlocks.push({color:'#3ddc97', label:'ארוחת צהריים - לפי התוכנית', type:'meal', dayIdx:i, dk:dk});
+    var wEntries = workoutLog[dk] || [];
+    wEntries.forEach(function(e){ dayBlocks.push({color:'#4a90e2', label:e.type+' - '+e.duration+' דק׳', type:'workout', dayIdx:i, dk:dk}); });
+    if(calendarConnected && (i===1 || i===3)){
+      dayBlocks.push({color:'#7d8597', label:MOCK_EXTERNAL_EVENTS[i % MOCK_EXTERNAL_EVENTS.length], type:'external', dayIdx:i, dk:dk});
+    }
+    dayBlocks.forEach(function(b){
+      var bi = plannerBlocks.length;
+      plannerBlocks.push(b);
+      if(b.type==='external'){
+        html += '<div style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;opacity:0.75;">'+b.label+' <span class="muted">(חסום לעריכה)</span></div>';
+      } else {
+        html += '<div id="pb-'+bi+'" style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;user-select:none;-webkit-user-select:none;cursor:pointer;" '
+          +'ontouchstart="plannerLongPressStart('+bi+',this)" ontouchend="plannerLongPressCancel()" ontouchmove="plannerLongPressCancel()" '
+          +'onmousedown="plannerLongPressStart('+bi+',this)" onmouseup="plannerLongPressCancel()" onmouseleave="plannerLongPressCancel()">'
+          +b.label+'<span class="muted" style="font-size:11px;display:block;margin-top:2px;">לחץ והחזק להזזה</span></div>';
+      }
     });
     html += '</div>';
   }
   document.getElementById('planner-grid').innerHTML = html;
 }
+
+function plannerLongPressStart(bi, el){
+  plannerLongPressCancel();
+  el.style.opacity = '0.6';
+  var elRef = el;
+  plannerLongPressHandle = setTimeout(function(){
+    elRef.style.opacity = '';
+    openPlannerMoveModal(bi);
+  }, 600);
+}
+function plannerLongPressCancel(){
+  if(plannerLongPressHandle){ clearTimeout(plannerLongPressHandle); plannerLongPressHandle = null; }
+  var els = document.querySelectorAll('[id^="pb-"]');
+  for(var i=0;i<els.length;i++) els[i].style.opacity='';
+}
+function openPlannerMoveModal(bi){
+  var block = plannerBlocks[bi];
+  if(!block || block.type==='external') return;
+  document.getElementById('planner-move-label').textContent = 'הזזת: '+block.label;
+  var start = plannerWeekStart();
+  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var html = '';
+  for(var i=0;i<7;i++){
+    if(i===block.dayIdx){ continue; }
+    (function(dayI){
+      var d = new Date(start); d.setDate(d.getDate()+dayI);
+      var label = days[dayI]+' '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+      html += '<button class="btn secondary" onclick="executePlannerMove('+bi+','+dayI+')">&#8594; '+label+'</button>';
+    })(i);
+  }
+  document.getElementById('planner-move-days').innerHTML = html;
+  document.getElementById('planner-move-modal').classList.add('show');
+}
+function executePlannerMove(bi, targetDayIdx){
+  var block = plannerBlocks[bi];
+  if(!block) return;
+  var start = plannerWeekStart();
+  var fromD = new Date(start); fromD.setDate(fromD.getDate()+block.dayIdx);
+  var toD = new Date(start); toD.setDate(toD.getDate()+targetDayIdx);
+  var fromDk = todayKey(fromD), toDk = todayKey(toD);
+
+  if(block.type==='workout'){
+    var log = LS.get('workoutLog', {});
+    var fromEntries = log[fromDk] || [];
+    var match = -1;
+    for(var i=0;i<fromEntries.length;i++){
+      if(block.label.indexOf(fromEntries[i].type)>-1){ match=i; break; }
+    }
+    if(match>-1){
+      var entry = fromEntries.splice(match,1)[0];
+      log[fromDk] = fromEntries;
+      log[toDk] = log[toDk] || [];
+      log[toDk].push(entry);
+      LS.set('workoutLog', log);
+    }
+  }
+  block.dayIdx = targetDayIdx;
+  document.getElementById('planner-move-modal').classList.remove('show');
+  renderPlanner();
+}
 window.plannerShiftWeek = plannerShiftWeek; window.renderPlanner = renderPlanner;
+window.plannerLongPressStart = plannerLongPressStart; window.plannerLongPressCancel = plannerLongPressCancel;
+window.openPlannerMoveModal = openPlannerMoveModal; window.executePlannerMove = executePlannerMove;
 
 /* ===================== ACTIVE WORKOUT TRACKER ===================== */
 var activeWorkout = null;
