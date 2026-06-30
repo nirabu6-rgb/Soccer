@@ -648,6 +648,14 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     </div>
     <label>אימייל</label><input id="pm-email">
     <label>טלפון</label><input id="pm-phone">
+    <label>&#127760; שפה</label>
+    <select id="pm-lang" style="max-width:200px;">
+      <option value="he">&#x1F1EE;&#x1F1F1; עברית</option>
+      <option value="en">&#x1F1FA;&#x1F1F8; English</option>
+      <option value="es">&#x1F1EA;&#x1F1F8; Español</option>
+      <option value="pt">&#x1F1E7;&#x1F1F7; Português</option>
+      <option value="ar">&#x1F1F8;&#x1F1E6; العربية</option>
+    </select>
     <button class="btn" style="margin-top:14px;" onclick="saveProfileModal()">שמור שינויים</button>
   </div>
 </div>
@@ -741,6 +749,7 @@ window.__VYTAL_LS = LS;
 
 /* ===================== BOOT / SPLASH ===================== */
 function boot(){
+  applyLanguage(LS.get('appLang', 'he'));
   setTimeout(function(){
     var onboardingSeen = LS.get('onboardingSeen', false);
     var authToken = LS.get('authToken', null);
@@ -899,6 +908,15 @@ function renderProfileAvatar(){
   if(!btn) return;
   btn.innerHTML = profile.photo ? '<img src="'+profile.photo+'" style="width:100%;height:100%;object-fit:cover;">' : '&#128100;';
 }
+var RTL_LANGS = {he:true, ar:true};
+function applyLanguage(lang){
+  if(!lang) lang = LS.get('appLang', 'he');
+  document.documentElement.dir = RTL_LANGS[lang] ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  LS.set('appLang', lang);
+}
+window.applyLanguage = applyLanguage;
+
 function openProfileModal(){
   var profile = LS.get('profile', {});
   document.getElementById('pm-photo-preview').innerHTML = profile.photo ? '<img src="'+profile.photo+'" style="width:100%;height:100%;object-fit:cover;">' : '&#128100;';
@@ -909,6 +927,7 @@ function openProfileModal(){
   document.getElementById('pm-weight').value = profile.weight || '';
   document.getElementById('pm-email').value = profile.email || '';
   document.getElementById('pm-phone').value = profile.phone || '';
+  document.getElementById('pm-lang').value = LS.get('appLang', 'he');
   document.getElementById('profile-modal').classList.add('show');
 }
 function closeProfileModal(){
@@ -944,6 +963,7 @@ function saveProfileModal(){
   profile.sex = document.getElementById('pm-sex').value;
   profile.height = height; profile.weight = weight;
   profile.email = email; profile.phone = phone;
+  applyLanguage(document.getElementById('pm-lang').value);
   var heightM = height/100;
   profile.bmi = weight/(heightM*heightM);
   profile.bmr = calcBMR(profile, profile.activity||'moderate');
