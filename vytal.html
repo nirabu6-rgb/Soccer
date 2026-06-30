@@ -241,7 +241,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <button onclick="goTo('screen-vision');initVision();">&#128247; סקאן ארוחה</button>
   <button onclick="goTo('screen-workouts');renderWorkouts();">&#127939; יומן אימונים</button>
   <button onclick="goTo('screen-coach');initCoach();">&#129302; מאמן AI</button>
-  <button onclick="goTo('screen-planner');renderPlanner();">&#128197; מתכנן שבועי</button>
   <button onclick="goTo('screen-sleep');renderSleepScreen();">&#128564; שינה והתאוששות</button>
 </div>
 
@@ -606,7 +605,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <div class="bottomnav" id="bottomnav">
   <button class="navbtn active" onclick="navTo('screen-dashboard')"><span class="ic">&#127968;</span>בית</button>
-  <button class="navbtn" onclick="navTo('screen-fooddiary')"><span class="ic">&#127869;</span>יומן</button>
+  <button class="navbtn" onclick="navTo('screen-planner')"><span class="ic">&#128197;</span>יומן</button>
   <button class="navbtn" onclick="navTo('screen-coach')"><span class="ic">&#129302;</span>מאמן</button>
   <button class="navbtn" onclick="navTo('screen-gamify')"><span class="ic">&#127942;</span>הישגים</button>
   <button class="navbtn" onclick="navTo('screen-weekly')"><span class="ic">&#128202;</span>שבועי</button>
@@ -717,10 +716,11 @@ function goTo(id){
 }
 function navTo(id){
   goTo(id);
-  var map = {'screen-dashboard':0,'screen-fooddiary':1,'screen-coach':2,'screen-gamify':3,'screen-weekly':4,'screen-goals':5};
+  var map = {'screen-dashboard':0,'screen-planner':1,'screen-coach':2,'screen-gamify':3,'screen-weekly':4,'screen-goals':5};
   var btns = document.querySelectorAll('.navbtn');
   for(var i=0;i<btns.length;i++){ btns[i].classList.remove('active'); }
   if(map[id]!==undefined) btns[map[id]].classList.add('active');
+  if(id==='screen-planner') renderPlanner();
   if(id==='screen-fooddiary') renderFoodDiary();
   if(id==='screen-gamify') renderGamify();
   if(id==='screen-weekly') renderWeekly();
