@@ -335,7 +335,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div class="screen" id="screen-workouts">
   <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>יומן אימונים</h3></div>
   <div class="card" id="workouts-watch-status"></div>
-  <button class="btn" onclick="startActiveWorkout()">&#9654; התחל אימון פעיל (מעקב סטים)</button>
+  <button class="btn" onclick="startWorkoutOnboarding()">&#9654; התחל אימון פעיל</button>
   <button class="btn secondary" onclick="openManualWorkoutForm()">+ הוסף אימון ידנית</button>
   <div id="manual-workout-form" style="display:none;margin-top:10px;" class="card">
     <label>סוג אימון</label>
@@ -573,6 +573,31 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 </div>
 
 <!-- 17. ACTIVE WORKOUT TRACKER -->
+<!-- Return user workout confirm modal -->
+<div class="modal-overlay" id="wo-return-modal">
+  <div class="modal-box info-box">
+    <h3>&#127939; נמשיך מאותו פרופיל?</h3>
+    <div class="muted" id="wo-return-summary" style="margin:10px 0 16px;"></div>
+    <button class="btn" onclick="continueWithSavedProfile()">&#9654; המשך עם הפרופיל הקיים</button>
+    <button class="btn secondary" style="margin-top:8px;" onclick="resetWorkoutProfile()">&#128260; שנה העדפות</button>
+  </div>
+</div>
+
+<!-- WORKOUT ONBOARDING WIZARD -->
+<div class="screen" id="screen-workout-onboard" style="padding:0;">
+  <div class="top-nav" style="padding:12px 16px;">
+    <button class="back-btn" id="wob-back-btn" onclick="wobBack()">&#8594;</button>
+    <h3 style="flex:1;text-align:center;" id="wob-title">בואנו נכיר אותך</h3>
+  </div>
+  <div style="padding:0 16px;">
+    <div class="progress-bar" style="margin-bottom:20px;"><div class="progress-fill" id="wob-progress" style="width:20%;"></div></div>
+  </div>
+  <div id="wob-content" style="padding:0 16px 24px;"></div>
+  <div style="padding:0 16px;">
+    <button class="btn" id="wob-next-btn" onclick="wobNext()" style="width:100%;">המשך &#8592;</button>
+  </div>
+</div>
+
 <div class="screen" id="screen-activeworkout">
   <div class="top-nav"><button class="back-btn" onclick="endActiveWorkoutPrompt()">&#8594;</button><h3>אימון פעיל</h3></div>
   <div class="card center">
@@ -2944,6 +2969,298 @@ window.positionPlannerBlocks = positionPlannerBlocks;
 window.plannerBlockDown = plannerBlockDown; window.confirmPlannerDrop = confirmPlannerDrop;
 window.openPlannerDetail = openPlannerDetail; window.savePlannerDetail = savePlannerDetail;
 
+/* ===================== WORKOUT ONBOARDING WIZARD ===================== */
+var wobStep = 0;
+var wobAnswers = {};
+
+var WOB_STEPS = [
+  {
+    id: 'experience',
+    title: 'רמת הניסיון שלך',
+    q: 'כמה זמן אתה מתאמן?',
+    type: 'choice',
+    choices: [
+      {v:'beginner', ic:'🌱', label:'מתחיל', desc:'פחות משנה, או חוזר אחרי הפסקה'},
+      {v:'intermediate', ic:'💪', label:'בינוני', desc:'שנה עד 3 שנים של אימונים'},
+      {v:'advanced', ic:'🏆', label:'מנוסה', desc:'מעל 3 שנים, מכיר את הטכניקות'}
+    ]
+  },
+  {
+    id: 'goal',
+    title: 'המטרה שלך',
+    q: 'מה הכי חשוב לך עכשיו?',
+    type: 'choice',
+    choices: [
+      {v:'weight_loss', ic:'🔥', label:'ירידה במשקל', desc:'שריפת קלוריות ופיזור שומן'},
+      {v:'muscle', ic:'🏋', label:'בניית שריר', desc:'הגדלת מסת שריר וכוח'},
+      {v:'fitness', ic:'🏃', label:'כושר כללי', desc:'אנרגיה, גמישות ובריאות'},
+      {v:'strength', ic:'⚡', label:'כוח מקסימלי', desc:'הרמת משקל גבוה ככל האפשר'}
+    ]
+  },
+  {
+    id: 'equipment',
+    title: 'ציוד זמין',
+    q: 'איזה ציוד יש לך?',
+    type: 'choice',
+    choices: [
+      {v:'none', ic:'🏠', label:'ללא ציוד', desc:'רק משקל גוף, בבית'},
+      {v:'dumbbells', ic:'🏋', label:'משקולות יד', desc:'דמבלים ו/או גומיות'},
+      {v:'gym', ic:'🏟', label:'חדר כושר', desc:'גישה לכל הציוד'}
+    ]
+  },
+  {
+    id: 'time',
+    title: 'זמן האימון',
+    q: 'כמה זמן יש לך לאימון?',
+    type: 'choice',
+    choices: [
+      {v:20, ic:'⏱', label:'עד 20 דק׳', desc:'אימון קצר ואינטנסיבי'},
+      {v:45, ic:'⏰', label:'כ-45 דק׳', desc:'אימון מאוזן'},
+      {v:60, ic:'🕐', label:'שעה+', desc:'אימון מקיף עם חימום'}
+    ]
+  },
+  {
+    id: 'injuries',
+    title: 'מגבלות ופציעות',
+    q: 'יש משהו שחשוב שנדע? (אפשר לבחור כמה)',
+    type: 'multi',
+    choices: [
+      {v:'back', ic:'🦴', label:'כאבי גב'},
+      {v:'knee', ic:'🦵', label:'כאבי ברכיים'},
+      {v:'shoulder', ic:'💪', label:'כאב בכתף'},
+      {v:'wrist', ic:'🤚', label:'כאב בשורש כף יד'},
+      {v:'none', ic:'✅', label:'אין מגבלות'}
+    ]
+  }
+];
+
+function startWorkoutOnboarding(){
+  var saved = LS.get('workoutProfile', null);
+  if(saved && saved.experience){
+    // Already profiled — confirm or re-do
+    openReturnWorkoutModal(saved);
+    return;
+  }
+  wobStep = 0;
+  wobAnswers = {};
+  goTo('screen-workout-onboard');
+  renderWobStep();
+}
+
+function renderWobStep(){
+  var step = WOB_STEPS[wobStep];
+  var pct = Math.round(((wobStep+1)/WOB_STEPS.length)*100);
+  document.getElementById('wob-progress').style.width = pct+'%';
+  document.getElementById('wob-title').textContent = step.title;
+
+  var profile = LS.get('profile', {});
+  var greeting = profile.name ? '👋 היי '+profile.name.split(' ')[0]+'! ' : '';
+
+  var html = '<p style="margin-bottom:16px;font-size:15px;">'+greeting+step.q+'</p>';
+
+  if(step.type === 'choice'){
+    step.choices.forEach(function(c){
+      var sel = wobAnswers[step.id] === c.v;
+      html += '<div onclick="wobSelect(\''+step.id+'\',\''+c.v+'\')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;margin-bottom:10px;border:2px solid '+(sel?'var(--accent)':'var(--card2)')+';background:'+(sel?'rgba(61,220,151,0.1)':'var(--card)')+';cursor:pointer;">'+
+        '<span style="font-size:28px;">'+c.ic+'</span>'+
+        '<div><div style="font-weight:700;">'+c.label+'</div><div class="muted" style="font-size:12px;">'+c.desc+'</div></div>'+
+        (sel?'<span style="margin-right:auto;color:var(--accent);font-size:20px;">✓</span>':'')+
+        '</div>';
+    });
+  } else if(step.type === 'multi'){
+    var curArr = wobAnswers[step.id] || [];
+    step.choices.forEach(function(c){
+      var sel = curArr.indexOf(c.v) >= 0;
+      html += '<div onclick="wobToggle(\''+step.id+'\',\''+c.v+'\')" style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;margin-bottom:8px;border:2px solid '+(sel?'var(--accent)':'var(--card2)')+';background:'+(sel?'rgba(61,220,151,0.1)':'var(--card)')+';cursor:pointer;">'+
+        '<span style="font-size:24px;">'+c.ic+'</span>'+
+        '<div style="font-weight:700;">'+c.label+'</div>'+
+        (sel?'<span style="margin-right:auto;color:var(--accent);">✓</span>':'')+
+        '</div>';
+    });
+  }
+
+  document.getElementById('wob-content').innerHTML = html;
+  document.getElementById('wob-back-btn').style.display = wobStep === 0 ? 'none' : '';
+  document.getElementById('wob-next-btn').textContent = wobStep === WOB_STEPS.length-1 ? '🏋 בוא נתחיל!' : 'המשך ←';
+}
+
+function wobSelect(id, val){
+  wobAnswers[id] = val;
+  renderWobStep();
+}
+
+function wobToggle(id, val){
+  var arr = wobAnswers[id] || [];
+  if(val === 'none'){ wobAnswers[id] = arr.indexOf('none')>=0 ? [] : ['none']; }
+  else {
+    var idx = arr.indexOf(val);
+    arr = arr.filter(function(v){ return v!=='none'; });
+    if(idx>=0) arr.splice(arr.indexOf(val),1); else arr.push(val);
+    wobAnswers[id] = arr;
+  }
+  renderWobStep();
+}
+
+function wobBack(){
+  if(wobStep > 0){ wobStep--; renderWobStep(); }
+  else { goTo('screen-workouts'); }
+}
+
+function wobNext(){
+  var step = WOB_STEPS[wobStep];
+  var val = wobAnswers[step.id];
+  if(!val || (Array.isArray(val) && val.length === 0)){
+    // auto-select "none" for injuries if skipped
+    if(step.id === 'injuries'){ wobAnswers[step.id] = ['none']; }
+    else { alert('אנא בחר אפשרות'); return; }
+  }
+  if(wobStep < WOB_STEPS.length - 1){
+    wobStep++;
+    renderWobStep();
+  } else {
+    finishWorkoutOnboarding();
+  }
+}
+
+function finishWorkoutOnboarding(){
+  var profile = LS.get('profile', {});
+  wobAnswers.name = profile.name || '';
+  wobAnswers.age = profile.age || 25;
+  wobAnswers.sex = profile.sex || 'male';
+  wobAnswers.weight = profile.weight || 70;
+  LS.set('workoutProfile', wobAnswers);
+  launchWorkoutFromProfile(wobAnswers);
+}
+
+/* ── Return user: quick confirm ── */
+function openReturnWorkoutModal(saved){
+  var exp = {beginner:'מתחיל', intermediate:'בינוני', advanced:'מנוסה'}[saved.experience] || saved.experience;
+  var goal = {weight_loss:'ירידה במשקל', muscle:'בניית שריר', fitness:'כושר כללי', strength:'כוח מקסימלי'}[saved.goal] || saved.goal;
+  document.getElementById('wo-return-summary').textContent = exp+' · '+goal+' · '+saved.time+' דק׳';
+  document.getElementById('wo-return-modal').classList.add('show');
+}
+
+function continueWithSavedProfile(){
+  document.getElementById('wo-return-modal').classList.remove('show');
+  var saved = LS.get('workoutProfile', {});
+  // Refresh age/weight from current profile
+  var profile = LS.get('profile', {});
+  saved.age = profile.age || saved.age || 25;
+  saved.weight = profile.weight || saved.weight || 70;
+  launchWorkoutFromProfile(saved);
+}
+
+function resetWorkoutProfile(){
+  document.getElementById('wo-return-modal').classList.remove('show');
+  LS.set('workoutProfile', null);
+  wobStep = 0; wobAnswers = {};
+  goTo('screen-workout-onboard');
+  renderWobStep();
+}
+
+/* ── Exercise library ── */
+var EXERCISES = {
+  /* Bodyweight – safe for all levels, no equipment */
+  pushup:        {name:'שכיבות סמיכה',        ic:'💪', min:'beginner', equip:['none','dumbbells','gym'], muscles:'חזה, כתפיים, טריצפס', injuries_avoid:['shoulder','wrist']},
+  squat_bw:      {name:'סקוואט משקל גוף',      ic:'🦵', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ירכיים, ישבן', injuries_avoid:['knee']},
+  lunge:         {name:'פסיעה',                 ic:'🚶', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ירכיים, ישבן', injuries_avoid:['knee']},
+  glute_bridge:  {name:'גשר ישבן',             ic:'🍑', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ישבן, גב תחתון', injuries_avoid:[]},
+  plank:         {name:'פלאנק',                ic:'⚡', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ליבה, כתפיים', injuries_avoid:['shoulder','wrist','back']},
+  mountain:      {name:'Mountain Climbers',      ic:'🧗', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ליבה, קרדיו', injuries_avoid:['wrist','back']},
+  wall_sit:      {name:'ישיבת קיר',            ic:'🪑', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ירכיים', injuries_avoid:['knee']},
+  hip_thrust_bw: {name:'היפ תראסט',            ic:'🏋', min:'beginner', equip:['none','dumbbells','gym'], muscles:'ישבן', injuries_avoid:[]},
+  superman:      {name:'סופרמן (גב)',           ic:'🦸', min:'beginner', equip:['none','dumbbells','gym'], muscles:'גב תחתון', injuries_avoid:['back']},
+  calf_raise:    {name:'עלייה על קצות אצבעות', ic:'🦶', min:'beginner', equip:['none','dumbbells','gym'], muscles:'שוקיים', injuries_avoid:[]},
+  /* Dumbbell */
+  db_press:      {name:'לחיצת חזה דמבלים',    ic:'🏋', min:'beginner', equip:['dumbbells','gym'], muscles:'חזה, טריצפס', injuries_avoid:['shoulder']},
+  db_row:        {name:'חתירה דמבל',            ic:'💪', min:'beginner', equip:['dumbbells','gym'], muscles:'גב, ביצפס', injuries_avoid:['back','wrist']},
+  db_squat:      {name:'סקוואט דמבלים',        ic:'🦵', min:'beginner', equip:['dumbbells','gym'], muscles:'ירכיים, ישבן', injuries_avoid:['knee','back']},
+  db_shoulder:   {name:'לחיצת כתפיים דמבלים', ic:'💪', min:'beginner', equip:['dumbbells','gym'], muscles:'כתפיים, טריצפס', injuries_avoid:['shoulder','wrist']},
+  db_curl:       {name:'כפיפת מרפק דמבלים',   ic:'💪', min:'beginner', equip:['dumbbells','gym'], muscles:'ביצפס', injuries_avoid:['wrist']},
+  db_lateral:    {name:'הרחקה צדדית',          ic:'🏋', min:'beginner', equip:['dumbbells','gym'], muscles:'כתפיים', injuries_avoid:['shoulder']},
+  db_rdl:        {name:'RDL (רגל ישרה) דמבלים',ic:'🦵', min:'intermediate', equip:['dumbbells','gym'], muscles:'ירכיים אחוריות, גב', injuries_avoid:['back','knee']},
+  /* Gym – intermediate */
+  barbell_squat: {name:'סקוואט מוט',           ic:'🏋', min:'intermediate', equip:['gym'], muscles:'ירכיים, ישבן, גב', injuries_avoid:['knee','back','shoulder']},
+  bench_press:   {name:'לחיצת חזה מוט',        ic:'🏋', min:'intermediate', equip:['gym'], muscles:'חזה, טריצפס', injuries_avoid:['shoulder','wrist']},
+  ohp:           {name:'לחיצת כתפיים מוט',     ic:'🏋', min:'intermediate', equip:['gym'], muscles:'כתפיים, טריצפס', injuries_avoid:['shoulder','back']},
+  pullup:        {name:'מתח',                   ic:'💪', min:'intermediate', equip:['gym'], muscles:'גב, ביצפס', injuries_avoid:['shoulder','wrist']},
+  cable_row:     {name:'חתירה בכבל',            ic:'💪', min:'intermediate', equip:['gym'], muscles:'גב, ביצפס', injuries_avoid:['back']},
+  lat_pulldown:  {name:'משיכה לחזה',           ic:'💪', min:'intermediate', equip:['gym'], muscles:'גב, ביצפס', injuries_avoid:['shoulder']},
+  leg_press:     {name:'לחיצת רגליים במכונה',  ic:'🦵', min:'beginner', equip:['gym'], muscles:'ירכיים, ישבן', injuries_avoid:['knee','back']},
+  chest_fly:     {name:'פרפר חזה (פלי)',        ic:'🏋', min:'beginner', equip:['gym'], muscles:'חזה', injuries_avoid:['shoulder']},
+  /* Advanced only */
+  deadlift:      {name:'דדליפט',               ic:'🏆', min:'advanced', equip:['gym'], muscles:'גב שלם, ירכיים, ישבן', injuries_avoid:['back','knee','wrist']},
+  power_clean:   {name:'כוח נקי (Power Clean)',ic:'🏆', min:'advanced', equip:['gym'], muscles:'גוף שלם', injuries_avoid:['back','shoulder','wrist','knee']}
+};
+
+var LEVEL_ORDER = ['beginner','intermediate','advanced'];
+
+function buildWorkoutPlan(wp){
+  var injuries = wp.injuries || ['none'];
+  var levelIdx = LEVEL_ORDER.indexOf(wp.experience);
+
+  // Filter exercises
+  var pool = Object.keys(EXERCISES).filter(function(k){
+    var ex = EXERCISES[k];
+    // Must match equipment
+    if(ex.equip.indexOf(wp.equipment) < 0) return false;
+    // Must not exceed level
+    if(LEVEL_ORDER.indexOf(ex.min) > levelIdx) return false;
+    // Must avoid injury zones
+    if(injuries.indexOf('none') < 0){
+      for(var i=0;i<injuries.length;i++){
+        if(ex.injuries_avoid.indexOf(injuries[i]) >= 0) return false;
+      }
+    }
+    return true;
+  });
+
+  // Pick exercises based on goal
+  var goalGroups = {
+    weight_loss:  ['squat_bw','lunge','glute_bridge','mountain','pushup','plank','db_squat','db_row','calf_raise'],
+    muscle:       ['db_press','db_row','db_squat','db_shoulder','db_curl','barbell_squat','bench_press','ohp','lat_pulldown','pullup','leg_press'],
+    fitness:      ['squat_bw','pushup','lunge','plank','db_press','db_row','db_squat','cable_row','lat_pulldown'],
+    strength:     ['barbell_squat','bench_press','ohp','deadlift','pullup','cable_row','db_rdl']
+  };
+
+  var preferred = (goalGroups[wp.goal] || goalGroups.fitness).filter(function(k){
+    return pool.indexOf(k) >= 0;
+  });
+
+  // Fill to quota from remaining pool
+  var rest = pool.filter(function(k){ return preferred.indexOf(k) < 0; });
+  var quota = wp.time <= 20 ? 3 : wp.time <= 45 ? 5 : 7;
+  var picks = preferred.slice(0, quota);
+  if(picks.length < quota) picks = picks.concat(rest.slice(0, quota - picks.length));
+
+  var setsPerEx = wp.goal === 'strength' ? 4 : (wp.experience === 'beginner' ? 2 : 3);
+  var repsPerSet = wp.goal === 'strength' ? 5 : (wp.goal === 'muscle' ? 10 : 12);
+  var restSec = wp.goal === 'strength' ? 180 : (wp.goal === 'muscle' ? 90 : 60);
+
+  return picks.map(function(k){
+    var ex = EXERCISES[k];
+    var sets = [];
+    for(var i=0;i<setsPerEx;i++) sets.push({target_w:0, target_r:repsPerSet, w:0, r:0, done:false});
+    return {key:k, name:ex.name, ic:ex.ic, muscles:ex.muscles, sets:sets, restSec:restSec};
+  });
+}
+
+function launchWorkoutFromProfile(wp){
+  var plan = buildWorkoutPlan(wp);
+  activeWorkout = { startedAt: Date.now(), exercises: plan, profile: wp };
+  LS.set('activeWorkoutDraft', activeWorkout);
+  goTo('screen-activeworkout');
+  renderActiveWorkout();
+  if(activeWorkoutTimerHandle) clearInterval(activeWorkoutTimerHandle);
+  activeWorkoutTimerHandle = setInterval(updateActiveWorkoutTimer, 1000);
+}
+
+window.startWorkoutOnboarding = startWorkoutOnboarding;
+window.wobBack = wobBack; window.wobNext = wobNext;
+window.wobSelect = wobSelect; window.wobToggle = wobToggle;
+window.continueWithSavedProfile = continueWithSavedProfile;
+window.resetWorkoutProfile = resetWorkoutProfile;
+
 /* ===================== ACTIVE WORKOUT TRACKER ===================== */
 var activeWorkout = null;
 var activeWorkoutTimerHandle = null;
@@ -2973,17 +3290,23 @@ function renderActiveWorkout(){
   if(!activeWorkout) return;
   var html = '';
   activeWorkout.exercises.forEach(function(ex, ei){
-    html += '<div class="card"><div class="row" style="justify-content:space-between;"><b>'+ex.name+'</b><button class="btn secondary" style="padding:4px 10px;font-size:12px;" onclick="swapExercise('+ei+')">החלף תרגיל</button></div>';
+    var ic = ex.ic || '💪';
+    var muscles = ex.muscles ? '<span class="muted" style="font-size:11px;"> · '+ex.muscles+'</span>' : '';
+    html += '<div class="card">'+
+      '<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px;">'+
+        '<div><span style="font-size:20px;margin-left:6px;">'+ic+'</span><b>'+ex.name+'</b>'+muscles+'</div>'+
+        '<button class="btn secondary" style="padding:4px 10px;font-size:12px;flex-shrink:0;" onclick="swapExercise('+ei+')">החלף</button>'+
+      '</div>';
     ex.sets.forEach(function(s, si){
       html += '<div class="row" style="align-items:center;gap:6px;background:'+(s.done?'rgba(61,220,151,0.12)':'transparent')+';border-radius:8px;padding:4px;">'+
-        '<span style="flex:0 0 30px;">סט '+(si+1)+'</span>'+
-        '<input type="number" placeholder="ק"ג" value="'+(s.w||'')+'" oninput="updateSetField('+ei+','+si+',\'w\',this.value)" style="flex:1;">'+
+        '<span style="flex:0 0 30px;font-size:13px;">סט '+(si+1)+'</span>'+
+        '<input type="number" placeholder="ק״ג" value="'+(s.w||'')+'" oninput="updateSetField('+ei+','+si+',\'w\',this.value)" style="flex:1;">'+
         '<input type="number" placeholder="חזרות" value="'+(s.r||'')+'" oninput="updateSetField('+ei+','+si+',\'r\',this.value)" style="flex:1;">'+
         '<button class="icon-btn" onclick="toggleSetDone('+ei+','+si+')">'+(s.done?'&#9989;':'&#9744;')+'</button>'+
         '</div>';
     });
     var est1rm = ex.sets.reduce(function(max,s){ return s.w&&s.r ? Math.max(max, epley1RM(s.w,s.r)) : max; }, 0);
-    if(est1rm) html += '<div class="muted" style="font-size:12px;margin-top:4px;">1RM משוער: '+Math.round(est1rm)+' ק"ג</div>';
+    if(est1rm) html += '<div class="muted" style="font-size:12px;margin-top:4px;">1RM משוער: '+Math.round(est1rm)+' ק״ג</div>';
     html += '</div>';
   });
   document.getElementById('aw-exercise-list').innerHTML = html;
@@ -3000,10 +3323,26 @@ function toggleSetDone(ei, si){
   if(s.done) openRestTimer();
 }
 function swapExercise(ei){
-  var current = activeWorkout.exercises[ei].name;
-  var alternatives = EXERCISE_PRESETS.filter(function(n){ return n!==current; });
-  var pick = alternatives[Math.floor(Math.random()*alternatives.length)];
-  activeWorkout.exercises[ei].name = pick;
+  var wp = activeWorkout.profile || LS.get('workoutProfile', {experience:'beginner',equipment:'none',injuries:['none']});
+  var injuries = wp.injuries || ['none'];
+  var levelIdx = LEVEL_ORDER.indexOf(wp.experience || 'beginner');
+  var currentKey = activeWorkout.exercises[ei].key;
+  var usedKeys = activeWorkout.exercises.map(function(e){ return e.key; });
+  var pool = Object.keys(EXERCISES).filter(function(k){
+    if(k === currentKey || usedKeys.indexOf(k) >= 0) return false;
+    var ex = EXERCISES[k];
+    if(ex.equip.indexOf(wp.equipment || 'none') < 0) return false;
+    if(LEVEL_ORDER.indexOf(ex.min) > levelIdx) return false;
+    if(injuries.indexOf('none') < 0){
+      for(var i=0;i<injuries.length;i++){ if(ex.injuries_avoid.indexOf(injuries[i])>=0) return false; }
+    }
+    return true;
+  });
+  if(!pool.length) return;
+  var k = pool[Math.floor(Math.random()*pool.length)];
+  var ex = EXERCISES[k];
+  var oldSets = activeWorkout.exercises[ei].sets;
+  activeWorkout.exercises[ei] = {key:k, name:ex.name, ic:ex.ic, muscles:ex.muscles, sets:oldSets, restSec:activeWorkout.exercises[ei].restSec};
   LS.set('activeWorkoutDraft', activeWorkout);
   renderActiveWorkout();
 }
