@@ -1802,7 +1802,7 @@ function performScan(){
       statusEl.textContent='לא נמצא';
       return;
     }
-    var MIN_CONFIDENCE = 90;
+    var MIN_CONFIDENCE = 85;
     if(visionTab==='meal' || visionTab==='drink'){
       analyzeImageFoodScore(photoForAnalysis).then(function(foodScore){
         /* confidence is derived from the actual photo content, not a pure dice roll —
