@@ -18,6 +18,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 #app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;overflow-x:hidden;padding-bottom:70px;}
 .screen{display:none;padding:18px;animation:fadein .25s ease;}
 .screen.active{display:block;}
+#screen-planner.active{display:flex;}
 @keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 h1,h2,h3{margin:.2em 0;}
 button{cursor:pointer;font-family:inherit;}
@@ -155,7 +156,12 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div class="err" id="err-name">השם חייב להכיל לפחות 2 תווים</div>
 
   <label>תאריך לידה</label>
-  <input id="reg-birthdate" type="date" style="max-width:100%;">
+  <div class="row" style="gap:6px;">
+    <select id="reg-bday" style="flex:1;" onchange="syncBirthdate()"></select>
+    <select id="reg-bmonth" style="flex:1.4;" onchange="syncBirthdate()"></select>
+    <select id="reg-byear" style="flex:1.6;" onchange="syncBirthdate()"></select>
+  </div>
+  <input type="hidden" id="reg-birthdate">
   <div class="err" id="err-age">התאריך חייב לשקף גיל בין 13 ל-120</div>
   <label>מין</label>
   <select id="reg-sex" style="max-width:160px;"><option value="male">זכר</option><option value="female">נקבה</option></select>
@@ -494,7 +500,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 </div>
 
 <!-- 16. WEEKLY PLANNER -->
-<div class="screen" id="screen-planner" style="padding:0;display:flex;flex-direction:column;">
+<div class="screen" id="screen-planner" style="padding:0;flex-direction:column;">
   <div class="top-nav" style="padding:12px 16px;flex-shrink:0;">
     <button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button>
     <h3 style="flex:1;text-align:center;">לו"ז שבועי</h3>
@@ -606,7 +612,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div class="bottomnav" id="bottomnav">
   <button class="navbtn active" onclick="navTo('screen-dashboard')"><span class="ic">&#127968;</span>בית</button>
   <button class="navbtn" onclick="navTo('screen-planner')"><span class="ic">&#128197;</span>יומן</button>
-  <button class="navbtn" onclick="navTo('screen-coach')"><span class="ic">&#129302;</span>מאמן</button>
+  <button class="navbtn" onclick="navTo('screen-workouts')"><span class="ic">&#127939;</span>אימונים</button>
   <button class="navbtn" onclick="navTo('screen-gamify')"><span class="ic">&#127942;</span>הישגים</button>
   <button class="navbtn" onclick="navTo('screen-weekly')"><span class="ic">&#128202;</span>שבועי</button>
   <button class="navbtn" onclick="navTo('screen-goals')"><span class="ic">&#127919;</span>יעדים</button>
@@ -716,11 +722,12 @@ function goTo(id){
 }
 function navTo(id){
   goTo(id);
-  var map = {'screen-dashboard':0,'screen-planner':1,'screen-coach':2,'screen-gamify':3,'screen-weekly':4,'screen-goals':5};
+  var map = {'screen-dashboard':0,'screen-planner':1,'screen-workouts':2,'screen-gamify':3,'screen-weekly':4,'screen-goals':5};
   var btns = document.querySelectorAll('.navbtn');
   for(var i=0;i<btns.length;i++){ btns[i].classList.remove('active'); }
   if(map[id]!==undefined) btns[map[id]].classList.add('active');
   if(id==='screen-planner') renderPlanner();
+  if(id==='screen-workouts') renderWorkouts();
   if(id==='screen-fooddiary') renderFoodDiary();
   if(id==='screen-gamify') renderGamify();
   if(id==='screen-weekly') renderWeekly();
@@ -738,7 +745,7 @@ function boot(){
     var onboardingSeen = LS.get('onboardingSeen', false);
     var authToken = LS.get('authToken', null);
     if(!onboardingSeen){ goTo('screen-onboarding'); initOnboarding(); }
-    else if(!authToken){ goTo('screen-register'); }
+    else if(!authToken){ goTo('screen-register'); setTimeout(function(){ if(window.initBirthdateSelects) window.initBirthdateSelects(); },0); }
     else { goTo('screen-dashboard'); renderDashboard(); }
   }, 1200);
 }
@@ -771,7 +778,7 @@ function onbNext(){
 }
 function finishOnboarding(){
   LS.set('onboardingSeen', true);
-  goTo('screen-register');
+  goTo('screen-register'); setTimeout(function(){ if(window.initBirthdateSelects) window.initBirthdateSelects(); },0);
 }
 window.onbNext = onbNext; window.finishOnboarding = finishOnboarding;
 
@@ -839,6 +846,39 @@ function validateRegister(){
     lang:document.getElementById('reg-lang').value,
     email:email, phone:phone} : null;
 }
+var MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function initBirthdateSelects(prefill){
+  var now = new Date();
+  var curYear = now.getFullYear();
+  var dayEl = document.getElementById('reg-bday');
+  var monthEl = document.getElementById('reg-bmonth');
+  var yearEl = document.getElementById('reg-byear');
+  if(!dayEl) return;
+  var dHtml='<option value="">יום</option>';
+  for(var d=1;d<=31;d++) dHtml+='<option>'+d+'</option>';
+  dayEl.innerHTML = dHtml;
+  var mHtml='<option value="">חודש</option>';
+  MONTHS_HE.forEach(function(m,i){ mHtml+='<option value="'+(i+1)+'">'+m+'</option>'; });
+  monthEl.innerHTML = mHtml;
+  var yHtml='<option value="">שנה</option>';
+  for(var y=curYear-10;y>=curYear-100;y--) yHtml+='<option>'+y+'</option>';
+  yearEl.innerHTML = yHtml;
+  if(prefill){
+    var parts = prefill.split('-');
+    yearEl.value = parseInt(parts[0],10);
+    monthEl.value = parseInt(parts[1],10);
+    dayEl.value = parseInt(parts[2],10);
+    syncBirthdate();
+  }
+}
+function syncBirthdate(){
+  var d = document.getElementById('reg-bday').value;
+  var m = document.getElementById('reg-bmonth').value;
+  var y = document.getElementById('reg-byear').value;
+  var hidden = document.getElementById('reg-birthdate');
+  if(d && m && y) hidden.value = y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  else hidden.value = '';
+}
 function submitRegister(){
   var data = validateRegister();
   if(!data) return;
@@ -850,6 +890,7 @@ function submitRegister(){
   goTo('screen-integrations');
 }
 window.submitRegister = submitRegister;
+window.initBirthdateSelects = initBirthdateSelects; window.syncBirthdate = syncBirthdate;
 
 /* ===================== PROFILE MODAL ===================== */
 function renderProfileAvatar(){
