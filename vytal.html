@@ -495,17 +495,23 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 </div>
 
 <!-- 16. WEEKLY PLANNER -->
-<div class="screen" id="screen-planner">
-  <div class="top-nav"><button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button><h3>מתכנן שבועי</h3></div>
-  <div class="muted" id="planner-sync-banner" style="display:none;background:var(--card2);padding:8px;border-radius:10px;margin-bottom:8px;"></div>
-  <div class="row" style="justify-content:space-between;align-items:center;">
-    <button class="icon-btn" onclick="plannerShiftWeek(-1)">&#8594;</button>
-    <div><b id="planner-week-label">שבוע</b> <span id="planner-sync-icon" class="muted" style="font-size:12px;">&#128260; מסונכרן (מדומה)</span></div>
-    <button class="icon-btn" onclick="plannerShiftWeek(1)">&#8592;</button>
+<div class="screen" id="screen-planner" style="padding:0;display:flex;flex-direction:column;">
+  <div class="top-nav" style="padding:12px 16px;flex-shrink:0;">
+    <button class="back-btn" onclick="goTo('screen-dashboard')">&#8594;</button>
+    <h3 style="flex:1;text-align:center;">לו"ז שבועי</h3>
   </div>
-  <div id="planner-grid" style="margin-top:10px;"></div>
-  <div class="muted" style="font-size:11px;margin-top:6px;">לחיצה ארוכה על בלוק ירוק/כחול מאפשרת להזיז אותו ליום אחר. בלוקים אפורים הם פגישות חיצוניות וחסומים לעריכה.</div>
-  <button class="fab" style="position:fixed;" onclick="goTo('screen-coach');initCoach();">&#129302;</button>
+  <!-- week strip -->
+  <div style="flex-shrink:0;padding:0 8px 6px;border-bottom:1px solid var(--card2);">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <button class="icon-btn" onclick="plannerShiftWeek(-1)" style="flex:0 0 34px;">&#8594;</button>
+      <span style="font-size:13px;font-weight:700;" id="planner-week-label"></span>
+      <button class="icon-btn" onclick="plannerShiftWeek(1)" style="flex:0 0 34px;">&#8592;</button>
+    </div>
+    <div id="planner-day-strip" style="display:grid;grid-template-columns:40px repeat(7,1fr);gap:2px;"></div>
+  </div>
+  <!-- calendar body -->
+  <div id="planner-cal-body" style="flex:1;overflow-y:auto;position:relative;"></div>
+  <button class="fab" style="position:fixed;bottom:80px;left:16px;" onclick="goTo('screen-coach');initCoach();">&#129302;</button>
 </div>
 
 <!-- Planner move modal -->
@@ -2451,53 +2457,109 @@ function plannerWeekStart(){
 }
 var plannerBlocks = [];
 var plannerLongPressHandle = null;
+var HOUR_H = 56; // px per hour slot
+var CAL_START_H = 6; // 06:00
+var CAL_END_H = 23;  // 23:00
 
 function renderPlanner(){
-  var calendarConnected = LS.get('calendarConnected', true);
-  var banner = document.getElementById('planner-sync-banner');
-  var icon = document.getElementById('planner-sync-icon');
-  if(!calendarConnected){
-    banner.style.display='block';
-    banner.innerHTML = '&#9888; סנכרון היומן הופסק. <button class="btn secondary" style="margin-top:6px;" onclick="goTo(\'screen-integrations\')">פתח הגדרות</button>';
-    icon.style.display='none';
-  } else {
-    banner.style.display='none';
-    icon.style.display='inline';
-  }
   var start = plannerWeekStart();
   var end = new Date(start); end.setDate(end.getDate()+6);
-  document.getElementById('planner-week-label').textContent = start.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' - '+end.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('planner-week-label').textContent =
+    start.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+
+    ' – '+end.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
 
-  var workoutLog = LS.get('workoutLog', {});
-  var days = ['א','ב','ג','ד','ה','ו','שבת'];
-  plannerBlocks = [];
-  var html = '';
+  var today = new Date();
+  var days = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+
+  // Day header strip
+  var stripHtml = '<div></div>'; // empty corner above time column
   for(var i=0;i<7;i++){
     var d = new Date(start); d.setDate(d.getDate()+i);
-    var dk = todayKey(d);
-    html += '<div class="card" style="padding:10px;"><b>'+days[i]+' &middot; '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+'</b>';
-    var dayBlocks = [];
-    dayBlocks.push({color:'#3ddc97', label:'ארוחת צהריים - לפי התוכנית', type:'meal', dayIdx:i, dk:dk});
+    var isToday = (d.toDateString()===today.toDateString());
+    stripHtml += '<div style="text-align:center;padding:4px 0;font-size:12px;'+(isToday?'color:var(--accent);font-weight:800;':'color:var(--muted);')+'">'+
+      days[i]+'<br><span style="font-size:11px;">'+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+'</span></div>';
+  }
+  document.getElementById('planner-day-strip').innerHTML = stripHtml;
+
+  // Build blocks list
+  var workoutLog = LS.get('workoutLog', {});
+  plannerBlocks = [];
+  var MEAL_SCHEDULE = [
+    {label:'ארוחת בוקר', hour:8, dur:30, color:'#3ddc97'},
+    {label:'ארוחת צהריים', hour:13, dur:45, color:'#3ddc97'},
+    {label:'ארוחת ערב', hour:19, dur:45, color:'#3ddc97'}
+  ];
+  var EXTERNAL = [
+    {label:'ישיבת צוות', hour:10, dur:60, dayMask:[1,3]},
+    {label:'פגישת לקוח', hour:15, dur:60, dayMask:[2]},
+    {label:'איסוף ילדים', hour:16, dur:30, dayMask:[0,3]}
+  ];
+  for(var di=0;di<7;di++){
+    var dd = new Date(start); dd.setDate(dd.getDate()+di);
+    var dk = todayKey(dd);
+    MEAL_SCHEDULE.forEach(function(m){
+      plannerBlocks.push({dayIdx:di, hour:m.hour, minute:0, dur:m.dur, label:m.label, type:'meal', color:m.color, dk:dk});
+    });
     var wEntries = workoutLog[dk] || [];
-    wEntries.forEach(function(e){ dayBlocks.push({color:'#4a90e2', label:e.type+' - '+e.duration+' דק׳', type:'workout', dayIdx:i, dk:dk}); });
-    if(calendarConnected && (i===1 || i===3)){
-      dayBlocks.push({color:'#7d8597', label:MOCK_EXTERNAL_EVENTS[i % MOCK_EXTERNAL_EVENTS.length], type:'external', dayIdx:i, dk:dk});
-    }
-    dayBlocks.forEach(function(b){
-      var bi = plannerBlocks.length;
-      plannerBlocks.push(b);
-      if(b.type==='external'){
-        html += '<div style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;opacity:0.75;">'+b.label+' <span class="muted">(חסום לעריכה)</span></div>';
-      } else {
-        html += '<div id="pb-'+bi+'" style="background:'+b.color+'22;border-right:3px solid '+b.color+';border-radius:8px;padding:6px 8px;margin-top:6px;font-size:13px;user-select:none;-webkit-user-select:none;cursor:pointer;" '
-          +'ontouchstart="plannerLongPressStart('+bi+',this)" ontouchend="plannerLongPressCancel()" ontouchmove="plannerLongPressCancel()" '
-          +'onmousedown="plannerLongPressStart('+bi+',this)" onmouseup="plannerLongPressCancel()" onmouseleave="plannerLongPressCancel()">'
-          +b.label+'<span class="muted" style="font-size:11px;display:block;margin-top:2px;">לחץ והחזק להזזה</span></div>';
+    wEntries.forEach(function(e){
+      plannerBlocks.push({dayIdx:di, hour:7, minute:0, dur:e.duration||45, label:e.type, type:'workout', color:'#4a90e2', dk:dk});
+    });
+    EXTERNAL.forEach(function(ex){
+      if(ex.dayMask.indexOf(di)>-1){
+        plannerBlocks.push({dayIdx:di, hour:ex.hour, minute:0, dur:ex.dur, label:ex.label, type:'external', color:'#7d8597', dk:dk});
       }
     });
-    html += '</div>';
   }
-  document.getElementById('planner-grid').innerHTML = html;
+
+  // Calendar grid
+  var totalH = (CAL_END_H - CAL_START_H) * HOUR_H;
+  var bodyHtml = '<div style="display:grid;grid-template-columns:40px repeat(7,1fr);position:relative;min-height:'+totalH+'px;">';
+
+  // Time labels + horizontal lines
+  for(var h=CAL_START_H; h<CAL_END_H; h++){
+    var top = (h-CAL_START_H)*HOUR_H;
+    bodyHtml += '<div style="position:absolute;top:'+top+'px;left:0;right:0;border-top:1px solid rgba(255,255,255,0.06);height:'+HOUR_H+'px;grid-column:1/-1;"></div>';
+    bodyHtml += '<div style="position:absolute;top:'+(top+2)+'px;right:4px;width:36px;font-size:10px;color:var(--muted);text-align:left;">'+String(h).padStart(2,'0')+':00</div>';
+  }
+
+  // Column separators
+  for(var ci=0;ci<7;ci++){
+    bodyHtml += '<div style="position:absolute;top:0;bottom:0;border-right:1px solid rgba(255,255,255,0.04);left:'+(40+(ci*(100/7)))+'%;width:0;"></div>';
+  }
+
+  // Now-line
+  var nowH = today.getHours() + today.getMinutes()/60;
+  if(nowH>=CAL_START_H && nowH<CAL_END_H){
+    var nowTop = (nowH-CAL_START_H)*HOUR_H;
+    bodyHtml += '<div style="position:absolute;top:'+nowTop+'px;right:36px;left:0;height:2px;background:var(--accent);z-index:5;border-radius:1px;"></div>';
+  }
+
+  // Event blocks
+  plannerBlocks.forEach(function(b,bi){
+    var col = b.dayIdx; // 0-6
+    var topPct = (b.hour + (b.minute||0)/60 - CAL_START_H) * HOUR_H;
+    var heightPx = Math.max(22, (b.dur/60)*HOUR_H - 3);
+    var colW = (100-40/window.innerWidth*100)/7; // rough
+    var leftOffset = 40 + col*(window.innerWidth-40)/7;
+    var widthPx = (window.innerWidth-40)/7 - 3;
+    var isExternal = b.type==='external';
+    bodyHtml += '<div id="pb-'+bi+'" style="position:absolute;top:'+topPct+'px;left:'+leftOffset+'px;width:'+widthPx+'px;height:'+heightPx+'px;'+
+      'background:'+b.color+(isExternal?'44':'33')+';border-right:3px solid '+b.color+';border-radius:6px;padding:2px 5px;font-size:10px;overflow:hidden;'+
+      'box-sizing:border-box;cursor:'+(isExternal?'default':'pointer')+';user-select:none;-webkit-user-select:none;z-index:4;" '+
+      (isExternal ? '' :
+        'ontouchstart="plannerLongPressStart('+bi+',this)" ontouchend="plannerLongPressCancel()" ontouchmove="plannerLongPressCancel()" '+
+        'onmousedown="plannerLongPressStart('+bi+',this)" onmouseup="plannerLongPressCancel()" onmouseleave="plannerLongPressCancel()" ')+
+      '><b style="font-size:10px;line-height:1.2;color:'+b.color+';">'+b.label+'</b>'+
+      (isExternal ? '' : '<span style="display:block;font-size:9px;color:var(--muted);">&#9679; החזק להזזה</span>')+
+      '</div>';
+  });
+
+  bodyHtml += '</div>';
+  document.getElementById('planner-cal-body').innerHTML = bodyHtml;
+
+  // Scroll to 7:00
+  var calBody = document.getElementById('planner-cal-body');
+  setTimeout(function(){ calBody.scrollTop = (7-CAL_START_H)*HOUR_H; }, 50);
 }
 
 function plannerLongPressStart(bi, el){
