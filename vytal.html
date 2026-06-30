@@ -154,17 +154,11 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <input id="reg-name" placeholder="לדוגמה: דנה כהן">
   <div class="err" id="err-name">השם חייב להכיל לפחות 2 תווים</div>
 
-  <div class="row">
-    <div>
-      <label>תאריך לידה</label>
-      <input id="reg-birthdate" type="date">
-      <div class="err" id="err-age">התאריך חייב לשקף גיל בין 13 ל-120</div>
-    </div>
-    <div>
-      <label>מין</label>
-      <select id="reg-sex"><option value="male">זכר</option><option value="female">נקבה</option></select>
-    </div>
-  </div>
+  <label>תאריך לידה</label>
+  <input id="reg-birthdate" type="date" style="max-width:100%;">
+  <div class="err" id="err-age">התאריך חייב לשקף גיל בין 13 ל-120</div>
+  <label>מין</label>
+  <select id="reg-sex" style="max-width:160px;"><option value="male">זכר</option><option value="female">נקבה</option></select>
 
   <div class="row">
     <div>
@@ -605,10 +599,8 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <input type="file" id="pm-photo-input" accept="image/*" style="display:none" onchange="onProfilePhotoChange(event)">
     </div>
     <label>שם מלא</label><input id="pm-name">
-    <div class="row">
-      <div><label>תאריך לידה</label><input id="pm-birthdate" type="date"></div>
-      <div><label>מין</label><select id="pm-sex"><option value="male">זכר</option><option value="female">נקבה</option></select></div>
-    </div>
+    <label>תאריך לידה</label><input id="pm-birthdate" type="date" style="max-width:100%;">
+    <label>מין</label><select id="pm-sex" style="max-width:160px;"><option value="male">זכר</option><option value="female">נקבה</option></select>
     <div class="row">
       <div><label>גובה (ס"מ)</label><input id="pm-height" type="number"></div>
       <div><label>משקל (ק"ג)</label><input id="pm-weight" type="number"></div>
