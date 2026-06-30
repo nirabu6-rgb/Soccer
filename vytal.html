@@ -513,13 +513,22 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div id="planner-cal-body" style="flex:1;overflow-y:auto;position:relative;"></div>
 </div>
 
-<!-- Planner move modal -->
-<div class="modal-overlay" id="planner-move-modal">
+<!-- Planner block detail modal -->
+<div class="modal-overlay" id="planner-detail-modal">
   <div class="modal-box info-box">
-    <button class="modal-close" onclick="document.getElementById('planner-move-modal').classList.remove('show')">&#10005;</button>
-    <h3>&#128205; הזז בלוק</h3>
-    <div class="muted" id="planner-move-label" style="margin-bottom:12px;"></div>
-    <div id="planner-move-days" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <button class="modal-close" onclick="document.getElementById('planner-detail-modal').classList.remove('show')">&#10005;</button>
+    <h3 id="pd-title"></h3>
+    <div class="muted" id="pd-meta" style="margin-bottom:14px;"></div>
+    <div id="pd-edit-form">
+      <label>שם</label><input id="pd-label-input">
+      <label>שעת התחלה</label>
+      <div class="row">
+        <div><input id="pd-hour" type="number" min="0" max="23" style="width:60px;"> <span class="muted">שעה</span></div>
+        <div><input id="pd-minute" type="number" min="0" max="59" step="15" style="width:60px;"> <span class="muted">דקות</span></div>
+      </div>
+      <label>משך (דקות)</label><input id="pd-dur" type="number" min="5" max="480">
+    </div>
+    <button class="btn" style="margin-top:12px;" onclick="savePlannerDetail()">שמור שינויים</button>
   </div>
 </div>
 
@@ -2544,12 +2553,11 @@ function renderPlanner(){
     var isExternal = b.type==='external';
     bodyHtml += '<div id="pb-'+bi+'" style="position:absolute;top:'+topPct+'px;left:'+leftOffset+'px;width:'+widthPx+'px;height:'+heightPx+'px;'+
       'background:'+b.color+(isExternal?'44':'33')+';border-right:3px solid '+b.color+';border-radius:6px;padding:2px 5px;font-size:10px;overflow:hidden;'+
-      'box-sizing:border-box;cursor:'+(isExternal?'default':'pointer')+';user-select:none;-webkit-user-select:none;z-index:4;" '+
-      (isExternal ? '' :
-        'ontouchstart="plannerLongPressStart('+bi+',this)" ontouchend="plannerLongPressCancel()" ontouchmove="plannerLongPressCancel()" '+
-        'onmousedown="plannerLongPressStart('+bi+',this)" onmouseup="plannerLongPressCancel()" onmouseleave="plannerLongPressCancel()" ')+
+      'box-sizing:border-box;cursor:'+(isExternal?'default':'grab')+';user-select:none;-webkit-user-select:none;z-index:4;touch-action:none;" '+
+      (isExternal ? 'onclick="openPlannerDetail('+bi+')"' :
+        'ontouchstart="plannerBlockDown('+bi+',event)" onmousedown="plannerBlockDown('+bi+',event)"')+
       '><b style="font-size:10px;line-height:1.2;color:'+b.color+';">'+b.label+'</b>'+
-      (isExternal ? '' : '<span style="display:block;font-size:9px;color:var(--muted);">&#9679; החזק להזזה</span>')+
+      '<span style="display:block;font-size:9px;color:var(--muted);">'+String(b.hour).padStart(2,'0')+':'+(b.minute?String(b.minute).padStart(2,'0'):'00')+'</span>'+
       '</div>';
   });
 
@@ -2561,68 +2569,143 @@ function renderPlanner(){
   setTimeout(function(){ calBody.scrollTop = (7-CAL_START_H)*HOUR_H; }, 50);
 }
 
-function plannerLongPressStart(bi, el){
-  plannerLongPressCancel();
-  el.style.opacity = '0.6';
-  var elRef = el;
-  plannerLongPressHandle = setTimeout(function(){
-    elRef.style.opacity = '';
-    openPlannerMoveModal(bi);
-  }, 600);
+/* ---- drag state ---- */
+var pdDragging = false;
+var pdDragBi = -1;
+var pdDragClone = null;
+var pdDragStartX = 0, pdDragStartY = 0;
+var pdDragThreshold = 8; // px before drag starts
+var pdTouchMoved = false;
+var pdDetailBi = -1;
+
+function plannerBlockDown(bi, e){
+  if(plannerBlocks[bi] && plannerBlocks[bi].type==='external') return;
+  pdDragBi = bi;
+  pdDragging = false;
+  pdTouchMoved = false;
+  var pt = e.touches ? e.touches[0] : e;
+  pdDragStartX = pt.clientX;
+  pdDragStartY = pt.clientY;
+  e.preventDefault();
 }
-function plannerLongPressCancel(){
-  if(plannerLongPressHandle){ clearTimeout(plannerLongPressHandle); plannerLongPressHandle = null; }
-  var els = document.querySelectorAll('[id^="pb-"]');
-  for(var i=0;i<els.length;i++) els[i].style.opacity='';
-}
-function openPlannerMoveModal(bi){
-  var block = plannerBlocks[bi];
-  if(!block || block.type==='external') return;
-  document.getElementById('planner-move-label').textContent = 'הזזת: '+block.label;
-  var start = plannerWeekStart();
-  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  var html = '';
-  for(var i=0;i<7;i++){
-    if(i===block.dayIdx){ continue; }
-    (function(dayI){
-      var d = new Date(start); d.setDate(d.getDate()+dayI);
-      var label = days[dayI]+' '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
-      html += '<button class="btn secondary" onclick="executePlannerMove('+bi+','+dayI+')">&#8594; '+label+'</button>';
-    })(i);
+
+function plannerBlockMove(e){
+  if(pdDragBi < 0) return;
+  var pt = e.touches ? e.touches[0] : e;
+  var dx = pt.clientX - pdDragStartX, dy = pt.clientY - pdDragStartY;
+  if(!pdDragging && Math.sqrt(dx*dx+dy*dy) < pdDragThreshold) return;
+  pdTouchMoved = true;
+  if(!pdDragging){
+    pdDragging = true;
+    var src = document.getElementById('pb-'+pdDragBi);
+    if(!src) return;
+    pdDragClone = src.cloneNode(true);
+    pdDragClone.id = 'pd-drag-clone';
+    var r = src.getBoundingClientRect();
+    pdDragClone.style.cssText = src.style.cssText;
+    pdDragClone.style.position = 'fixed';
+    pdDragClone.style.left = r.left+'px';
+    pdDragClone.style.top = r.top+'px';
+    pdDragClone.style.width = r.width+'px';
+    pdDragClone.style.height = r.height+'px';
+    pdDragClone.style.opacity = '0.85';
+    pdDragClone.style.zIndex = '200';
+    pdDragClone.style.pointerEvents = 'none';
+    pdDragClone.style.boxShadow = '0 6px 24px rgba(0,0,0,0.6)';
+    pdDragClone.style.transform = 'scale(1.04)';
+    document.body.appendChild(pdDragClone);
+    src.style.opacity = '0.25';
   }
-  document.getElementById('planner-move-days').innerHTML = html;
-  document.getElementById('planner-move-modal').classList.add('show');
+  if(pdDragClone){
+    var r2 = document.getElementById('pb-'+pdDragBi).getBoundingClientRect();
+    pdDragClone.style.left = (r2.left + dx)+'px';
+    pdDragClone.style.top = (r2.top + dy)+'px';
+  }
+  e.preventDefault();
 }
-function executePlannerMove(bi, targetDayIdx){
+
+function plannerBlockUp(e){
+  if(pdDragBi < 0) return;
+  var bi = pdDragBi;
+  pdDragBi = -1;
+
+  if(pdDragClone){ pdDragClone.remove(); pdDragClone = null; }
+  var src = document.getElementById('pb-'+bi);
+  if(src) src.style.opacity = '';
+
+  if(!pdTouchMoved && !pdDragging){
+    // tap
+    openPlannerDetail(bi);
+    pdDragging = false;
+    return;
+  }
+  if(!pdDragging){ pdDragging=false; return; }
+  pdDragging = false;
+
+  var pt = e.changedTouches ? e.changedTouches[0] : e;
+  var calBody = document.getElementById('planner-cal-body');
+  var calRect = calBody.getBoundingClientRect();
+  var scrollTop = calBody.scrollTop;
+
+  var xInCal = pt.clientX - calRect.left;
+  var yInCal = pt.clientY - calRect.top + scrollTop;
+
+  var colW = (calRect.width - 40) / 7;
+  var dayIdx = Math.floor((xInCal - 40) / colW);
+  dayIdx = Math.max(0, Math.min(6, dayIdx));
+  var hourF = CAL_START_H + yInCal / HOUR_H;
+  var hour = Math.max(CAL_START_H, Math.min(CAL_END_H-1, Math.round(hourF)));
+  var minute = Math.round(((hourF - Math.floor(hourF)) * 60) / 15) * 15;
+  if(minute >= 60){ hour++; minute = 0; }
+
   var block = plannerBlocks[bi];
   if(!block) return;
-  var start = plannerWeekStart();
-  var fromD = new Date(start); fromD.setDate(fromD.getDate()+block.dayIdx);
-  var toD = new Date(start); toD.setDate(toD.getDate()+targetDayIdx);
-  var fromDk = todayKey(fromD), toDk = todayKey(toD);
-
-  if(block.type==='workout'){
-    var log = LS.get('workoutLog', {});
-    var fromEntries = log[fromDk] || [];
-    var match = -1;
-    for(var i=0;i<fromEntries.length;i++){
-      if(block.label.indexOf(fromEntries[i].type)>-1){ match=i; break; }
-    }
-    if(match>-1){
-      var entry = fromEntries.splice(match,1)[0];
-      log[fromDk] = fromEntries;
-      log[toDk] = log[toDk] || [];
-      log[toDk].push(entry);
-      LS.set('workoutLog', log);
-    }
-  }
-  block.dayIdx = targetDayIdx;
-  document.getElementById('planner-move-modal').classList.remove('show');
+  block.hour = hour;
+  block.minute = minute;
+  block.dayIdx = dayIdx;
   renderPlanner();
 }
+
+function openPlannerDetail(bi){
+  var block = plannerBlocks[bi];
+  if(!block) return;
+  pdDetailBi = bi;
+  var start = plannerWeekStart();
+  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var d = new Date(start); d.setDate(d.getDate()+block.dayIdx);
+  var typeLabel = block.type==='meal'?'ארוחה':block.type==='workout'?'אימון':'פגישה';
+  document.getElementById('pd-title').textContent = block.label;
+  document.getElementById('pd-meta').textContent = typeLabel+' · '+days[block.dayIdx]+' '+d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' · '+String(block.hour).padStart(2,'0')+':'+String(block.minute||0).padStart(2,'0')+' · '+block.dur+' דק׳';
+  document.getElementById('pd-label-input').value = block.label;
+  document.getElementById('pd-hour').value = block.hour;
+  document.getElementById('pd-minute').value = block.minute||0;
+  document.getElementById('pd-dur').value = block.dur;
+  var isExternal = block.type==='external';
+  document.getElementById('pd-edit-form').style.display = isExternal ? 'none' : 'block';
+  document.querySelector('#planner-detail-modal .btn').style.display = isExternal ? 'none' : 'block';
+  document.getElementById('planner-detail-modal').classList.add('show');
+}
+
+function savePlannerDetail(){
+  var block = plannerBlocks[pdDetailBi];
+  if(!block) return;
+  block.label = document.getElementById('pd-label-input').value || block.label;
+  block.hour = parseInt(document.getElementById('pd-hour').value,10)||block.hour;
+  block.minute = parseInt(document.getElementById('pd-minute').value,10)||0;
+  block.dur = parseInt(document.getElementById('pd-dur').value,10)||block.dur;
+  document.getElementById('planner-detail-modal').classList.remove('show');
+  renderPlanner();
+}
+
+/* wire global touch/mouse move+up on document so drag works outside block */
+document.addEventListener('touchmove', function(e){ if(pdDragBi>=0||pdDragging) plannerBlockMove(e); }, {passive:false});
+document.addEventListener('touchend', function(e){ if(pdDragBi>=0||pdDragging) plannerBlockUp(e); }, {passive:false});
+document.addEventListener('mousemove', function(e){ if(pdDragBi>=0||pdDragging) plannerBlockMove(e); });
+document.addEventListener('mouseup', function(e){ if(pdDragBi>=0||pdDragging) plannerBlockUp(e); });
+
 window.plannerShiftWeek = plannerShiftWeek; window.renderPlanner = renderPlanner;
-window.plannerLongPressStart = plannerLongPressStart; window.plannerLongPressCancel = plannerLongPressCancel;
-window.openPlannerMoveModal = openPlannerMoveModal; window.executePlannerMove = executePlannerMove;
+window.plannerBlockDown = plannerBlockDown;
+window.openPlannerDetail = openPlannerDetail; window.savePlannerDetail = savePlannerDetail;
 
 /* ===================== ACTIVE WORKOUT TRACKER ===================== */
 var activeWorkout = null;
