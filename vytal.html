@@ -1838,7 +1838,7 @@ function renderVisionResult(item, confidence, withBox){
   var photoHtml = capturedPhotoData ? '<img src="'+capturedPhotoData+'" style="width:100%;border-radius:10px;margin-bottom:8px;max-height:160px;object-fit:cover;">' : '';
   return '<div class="card">'+
     photoHtml+
-    '<div class="row" style="justify-content:space-between;"><b>'+item.name+'</b><span class="muted">ביטחון: '+confidence+'%</span></div>'+
+    '<div class="row" style="justify-content:flex-end;"><span class="muted">ביטחון: '+confidence+'%</span></div>'+
     '<div class="food-row"><span>קלוריות<button class="info-btn" type="button" onclick="showInfo(\'calories\')">?</button></span><span>'+item.calories+' קק"ל</span></div>'+
     '<div class="food-row"><span>חלבון<button class="info-btn" type="button" onclick="showInfo(\'protein\')">?</button></span><span>'+item.protein+' ג\'</span></div>'+
     '<div class="food-row"><span>פחמימה<button class="info-btn" type="button" onclick="showInfo(\'carb\')">?</button></span><span>'+item.carb+' ג\'</span></div>'+
