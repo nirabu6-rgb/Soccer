@@ -464,6 +464,47 @@ function Director({ onSaveClip, onCancel }) {
 
 /* ------------------------ Video (Shoots) tab ------------------------ */
 
+function LibraryCarousel({ items, onSelect }) {
+  const scrollerRef = useRef(null);
+  const itemRefs = useRef([]);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      itemRefs.current.forEach((node) => {
+        if (!node) return;
+        const r = node.getBoundingClientRect();
+        const dist = Math.abs(r.left + r.width / 2 - center);
+        node.style.transform = `scale(${Math.max(0.82, 1 - dist / 700)})`;
+        node.style.opacity = Math.max(0.5, 1 - dist / 420);
+      });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [items.length]);
+
+  return (
+    <div className="carousel" ref={scrollerRef}>
+      {items.map((clip, i) => (
+        <div key={clip.id} className="carousel-item" ref={(node) => (itemRefs.current[i] = node)}>
+          <div className="lib-card" onClick={() => onSelect(clip.id)}>
+            <MediaFrame src={clip.url} />
+            <div className="lib-meta">
+              <div className="t">{clip.label}</div>
+              <div className="status-badge">{clip.status}</div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VideoTab({ library, onSaveClip, onEditClip }) {
   const [capturing, setCapturing] = useState(false);
   if (capturing) return <Director onSaveClip={(url) => { onSaveClip(url); setCapturing(false); }} onCancel={() => setCapturing(false)} />;
@@ -478,17 +519,7 @@ function VideoTab({ library, onSaveClip, onEditClip }) {
         <Plus size={13} /> צלם סרטון חדש
       </button>
 
-      <div className="lib-grid">
-        {library.map((clip) => (
-          <div key={clip.id} className="lib-card" onClick={() => onEditClip(clip.id)}>
-            <MediaFrame src={clip.url} />
-            <div className="lib-meta">
-              <div className="t">{clip.label}</div>
-              <div className="status-badge">{clip.status}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <LibraryCarousel items={library} onSelect={onEditClip} />
     </div>
   );
 }
