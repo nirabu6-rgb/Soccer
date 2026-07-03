@@ -134,6 +134,17 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .lead-name{font-size:12px;font-weight:600;}
 .lead-status{font-size:10px;color:var(--muted);margin-top:2px;}
 
+.post-card{background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:10px;}
+.post-media{width:100%;aspect-ratio:9/16;max-height:220px;object-fit:cover;display:block;}
+.post-body{padding:10px 11px;}
+.post-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.post-platform{font-size:10px;color:var(--gold-bright);letter-spacing:.4px;}
+.post-date{font-size:10px;color:var(--muted);}
+.post-caption{font-size:12px;font-weight:600;margin-bottom:9px;}
+.post-metrics{display:flex;gap:16px;}
+.post-metric{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.post-metric .mono{color:var(--text);}
+
 .chat-scroll{display:flex;flex-direction:column;gap:8px;min-height:180px;}
 .bubble{max-width:78%;padding:8px 11px;border-radius:12px;font-size:12px;line-height:1.45;}
 .bubble.lead{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:3px;}
@@ -177,6 +188,9 @@ const TrendingDown = (p) => <Icon {...p}><polyline points="3,6 10,13 14,9 21,17"
 const MessageCircle = (p) => <Icon {...p}><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.6 8.6 0 0 1-3.7-.8L3 20l1-4.6a8.3 8.3 0 0 1-.9-3.8A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z" /></Icon>;
 const Bell = (p) => <Icon {...p}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></Icon>;
 const Calendar = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Icon>;
+const Heart = (p) => <Icon {...p}><path d="M12 20.5s-7.5-4.6-10-9.3C0.3 7.8 2 4.5 5.4 4c2.1-0.3 4 0.8 6.6 3.4C14.6 4.8 16.5 3.7 18.6 4c3.4 0.5 5.1 3.8 3.4 7.2-2.5 4.7-10 9.3-10 9.3z" /></Icon>;
+const Eye = (p) => <Icon {...p}><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></Icon>;
+const PlaySquare = (p) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="3" /><polyline points="10,9 10,15 15,12" fill="currentColor" stroke="none" /></Icon>;
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 const Home = (p) => <Icon {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></Icon>;
 const Scissors = (p) => <Icon {...p}><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.5" y2="15.5" /><line x1="8.5" y1="8.5" x2="20" y2="20" /></Icon>;
@@ -249,6 +263,7 @@ function BottomNav({ active, onChange }) {
     { id: "video", label: "צילומים", Icon: Video },
     { id: "editing", label: "עריכה", Icon: Scissors },
     { id: "campaigns", label: "קמפיינים", Icon: Megaphone },
+    { id: "publications", label: "פרסומים", Icon: PlaySquare },
     { id: "bot", label: "בוט", Icon: MessageCircle },
   ];
   return (
@@ -265,10 +280,11 @@ function BottomNav({ active, onChange }) {
 
 /* ------------------------------ Dashboard --------------------------- */
 
-function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, weekStats, onNavigate, onOpenLead }) {
+function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, posts, weekStats, onNavigate, onOpenLead }) {
   const topCampaigns = campaigns.filter((c) => c.status === "פעיל").slice(0, 2);
   const recentLeads = leads.slice(0, 3);
   const recentClips = library.slice(0, 4);
+  const topPost = posts.reduce((best, p) => (!best || p.views > best.views ? p : best), null);
 
   return (
     <div className="screen">
@@ -295,6 +311,10 @@ function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campa
         <div className="action-icon"><Megaphone size={15} /></div>
         <div className="action-text"><div className="t">קמפיינים</div><div className="d">פיזור תקציב ואופטימיזציה חיה</div></div>
       </div>
+      <div className="action-card" onClick={() => onNavigate("publications")}>
+        <div className="action-icon"><PlaySquare size={15} /></div>
+        <div className="action-text"><div className="t">פרסומים</div><div className="d">מה פורסם וכמה ביצועים זה עשה</div></div>
+      </div>
       <div className="action-card" onClick={() => onNavigate("bot")}>
         <div className="action-icon"><MessageCircle size={15} /></div>
         <div className="action-text"><div className="t">סוכן המכירות</div><div className="d">לידים שממתינים למענה</div></div>
@@ -319,6 +339,27 @@ function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campa
           <span className="mono" style={{ color: "var(--good)", display: "flex", alignItems: "center", gap: 4 }}><TrendingDown size={12} /> ₪{weekStats.avgCpl}</span>
         </div>
       </div>
+
+      {topPost && (
+        <>
+          <div className="eyebrow" style={{ marginTop: 4 }}>הפוסט המוביל השבוע</div>
+          <div className="post-card" onClick={() => onNavigate("publications")} style={{ cursor: "pointer" }}>
+            <MediaFrame src={topPost.url} style={{ width: "100%", aspectRatio: "9/16", maxHeight: 180, objectFit: "cover" }} />
+            <div className="post-body">
+              <div className="post-top">
+                <span className="post-platform">{topPost.platform}</span>
+                <span className="post-date">{topPost.date}</span>
+              </div>
+              <div className="post-caption">{topPost.caption}</div>
+              <div className="post-metrics">
+                <span className="post-metric"><Eye size={12} /> <span className="mono">{fmtCount(topPost.views)}</span></span>
+                <span className="post-metric"><Heart size={12} /> <span className="mono">{fmtCount(topPost.likes)}</span></span>
+                <span className="post-metric"><MessageCircle size={12} /> <span className="mono">{fmtCount(topPost.comments)}</span></span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {topCampaigns.length > 0 && (
         <>
@@ -979,6 +1020,53 @@ function BotTab({ leads, activeLeadId, onOpenLead, onBack }) {
   );
 }
 
+/* ------------------------ Publications tab ------------------------ */
+
+function fmtCount(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
+
+function PublicationsTab({ posts }) {
+  const totals = posts.reduce(
+    (acc, p) => ({ views: acc.views + p.views, likes: acc.likes + p.likes, comments: acc.comments + p.comments }),
+    { views: 0, likes: 0, comments: 0 }
+  );
+
+  return (
+    <div className="screen">
+      <div className="eyebrow">פרסומים</div>
+      <h1 className="h1">מה שהלקוח מקבל בפועל</h1>
+      <p className="sub">כל תוצר שפורסם ברשתות, עם הביצועים שלו.</p>
+
+      <div className="stat-grid">
+        <div className="stat-card"><div className="stat-num mono">{fmtCount(totals.views)}</div><div className="stat-label">צפיות החודש</div></div>
+        <div className="stat-card"><div className="stat-num mono">{fmtCount(totals.likes)}</div><div className="stat-label">לייקים החודש</div></div>
+        <div className="stat-card"><div className="stat-num mono">{fmtCount(totals.comments)}</div><div className="stat-label">תגובות החודש</div></div>
+        <div className="stat-card"><div className="stat-num mono">{posts.length}</div><div className="stat-label">פוסטים פעילים</div></div>
+      </div>
+
+      {posts.map((p) => (
+        <div className="post-card" key={p.id}>
+          <MediaFrame src={p.url} style={{ width: "100%", aspectRatio: "9/16", maxHeight: 220, objectFit: "cover" }} />
+          <div className="post-body">
+            <div className="post-top">
+              <span className="post-platform">{p.platform}</span>
+              <span className="post-date">{p.date}</span>
+            </div>
+            <div className="post-caption">{p.caption}</div>
+            <div className="post-metrics">
+              <span className="post-metric"><Eye size={12} /> <span className="mono">{fmtCount(p.views)}</span></span>
+              <span className="post-metric"><Heart size={12} /> <span className="mono">{fmtCount(p.likes)}</span></span>
+              <span className="post-metric"><MessageCircle size={12} /> <span className="mono">{fmtCount(p.comments)}</span></span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------- App -------------------------------- */
 
 function App() {
@@ -1003,6 +1091,12 @@ function App() {
   ]);
   const [activeLeadId, setActiveLeadId] = useState(null);
   const [weekStats] = useState({ spend: 2860, budget: 4000, impressions: "128.4K", clicks: 2940, avgCpl: 34 });
+  const [posts] = useState([
+    { id: "p1", url: null, platform: "טיקטוק", date: "לפני יומיים", caption: "פרסומת השקה — קיץ 2026", views: 48200, likes: 3140, comments: 186 },
+    { id: "p2", url: null, platform: "אינסטגרם · סטורי", date: "לפני 4 ימים", caption: "סטורי מבצע סוף עונה", views: 12400, likes: 890, comments: 42 },
+    { id: "p3", url: null, platform: "טיקטוק", date: "לפני שבוע", caption: "ריל לפני/אחרי — לקוח מרוצה", views: 91500, likes: 7420, comments: 310 },
+    { id: "p4", url: null, platform: "פייסבוק", date: "לפני שבועיים", caption: "מבצע סוף עונה — קמפיין ראשי", views: 6300, likes: 210, comments: 18 },
+  ]);
   const [splashPhase, setSplashPhase] = useState("visible");
 
   useEffect(() => {
@@ -1024,7 +1118,7 @@ function App() {
 
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
-  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", bot: "בוט מכירות" };
+  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות" };
 
   return (
     <div className="apex-root">
@@ -1040,6 +1134,7 @@ function App() {
           campaigns={campaigns}
           leads={leads}
           library={library}
+          posts={posts}
           weekStats={weekStats}
           onNavigate={setTab}
           onOpenLead={openLead}
@@ -1055,6 +1150,7 @@ function App() {
         />
       )}
       {tab === "campaigns" && <CampaignsTab campaigns={campaigns} onAddCampaign={addCampaign} />}
+      {tab === "publications" && <PublicationsTab posts={posts} />}
       {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
 
       <BottomNav active={tab} onChange={setTab} />
