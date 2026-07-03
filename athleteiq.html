@@ -475,12 +475,11 @@ document.getElementById('hdrMenuBtn').onclick = openHeaderMenu;
 /* splash → app */
 (function showSplash(){
   var splash = document.getElementById('splash');
-  var login  = document.getElementById('login');
   var uid    = localStorage.getItem('ath_uid');
-  setTimeout(function(){
+  function afterSplash(){
     splash.style.opacity = '0';
     setTimeout(function(){
-      splash.style.display = 'none';
+      splash.remove();
       if(uid){
         ME.uid  = uid;
         ME.name = localStorage.getItem('ath_name') || 'שחקן';
@@ -488,10 +487,11 @@ document.getElementById('hdrMenuBtn').onclick = openHeaderMenu;
         ME.mode = localStorage.getItem('ath_mode') || 'player';
         enterApp();
       } else {
-        login.style.display = 'flex';
+        document.getElementById('login').style.cssText = 'display:flex!important';
       }
     }, 600);
-  }, 1800);
+  }
+  setTimeout(afterSplash, 1800);
 })();
 
 /* ---------------- Nav (click wiring happens inside buildNav) ---------------- */
