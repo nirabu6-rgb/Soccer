@@ -130,9 +130,11 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .carousel-item .lib-card video, .carousel-item .lib-card .video-placeholder{aspect-ratio:3/4;}
 .carousel-item .lib-meta .t{font-size:12.5px;}
 
-.view-switch{display:flex;gap:6px;margin-bottom:12px;}
-.view-switch button{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:10.5px;cursor:pointer;font-family:'Inter',sans-serif;}
-.view-switch button.active{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,162,76,.08);}
+.view-switch-row{display:flex;justify-content:flex-end;margin-bottom:10px;}
+.view-switch-wrap{position:relative;}
+.view-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:15;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:5px;box-shadow:0 12px 26px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:2px;min-width:118px;}
+.view-menu-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;border:none;background:none;color:var(--muted);font-size:11.5px;cursor:pointer;text-align:right;font-family:'Inter',sans-serif;}
+.view-menu-item.active{color:var(--gold-bright);background:rgba(201,162,76,.1);}
 
 .lib-list-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;cursor:pointer;}
 .lib-list-row .thumb{width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;}
@@ -621,8 +623,16 @@ function Director({ onSaveClip, onCancel }) {
 
 /* ------------------------ Video (Shoots) tab ------------------------ */
 
+const LIBRARY_VIEWS = [
+  { id: "carousel", label: "קרוסלה", Icon: Columns },
+  { id: "grid", label: "קוביות", Icon: LayoutGrid },
+  { id: "list", label: "רשימה", Icon: ListIcon },
+];
+
 function LibraryBrowser({ items, onSelect, defaultView = "carousel" }) {
   const [view, setView] = useState(defaultView);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const scrollerRef = useRef(null);
   const itemRefs = useRef([]);
 
@@ -647,12 +657,32 @@ function LibraryBrowser({ items, onSelect, defaultView = "carousel" }) {
     return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
   }, [view, items.length]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onOutside = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [menuOpen]);
+
+  const current = LIBRARY_VIEWS.find((v) => v.id === view);
+
   return (
     <>
-      <div className="view-switch">
-        <button className={view === "carousel" ? "active" : ""} onClick={() => setView("carousel")}><Columns size={13} /> קרוסלה</button>
-        <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}><LayoutGrid size={13} /> קוביות</button>
-        <button className={view === "list" ? "active" : ""} onClick={() => setView("list")}><ListIcon size={13} /> רשימה</button>
+      <div className="view-switch-row">
+        <div className="view-switch-wrap" ref={menuRef}>
+          <button className="icon-btn on" onClick={() => setMenuOpen((v) => !v)} title="שנה תצוגה">
+            <current.Icon size={15} />
+          </button>
+          {menuOpen && (
+            <div className="view-menu">
+              {LIBRARY_VIEWS.map(({ id, label, Icon }) => (
+                <button key={id} className={`view-menu-item ${view === id ? "active" : ""}`} onClick={() => { setView(id); setMenuOpen(false); }}>
+                  <Icon size={14} /> {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {view === "carousel" && (
