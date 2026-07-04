@@ -170,8 +170,8 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .push-toast{position:fixed;top:10px;left:10px;right:10px;max-width:396px;margin:0 auto;z-index:40;background:var(--surface);border:1px solid var(--gold);border-radius:12px;padding:11px;display:flex;gap:10px;box-shadow:0 12px 30px rgba(0,0,0,.5);animation:toastin .5s ease;}
 @keyframes toastin{from{transform:translateY(-30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:420px;margin:0 auto;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:30;padding:4px 3px 8px;}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:var(--muted);font-size:9px;padding:6px 2px;cursor:pointer;font-family:'Inter',sans-serif;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:420px;margin:0 auto;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:30;padding:5px 3px 10px;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10.5px;padding:7px 2px;cursor:pointer;font-family:'Inter',sans-serif;}
 .nav-item.active{color:var(--gold-bright);}
 
 .fab-layer{position:fixed;inset:0;max-width:420px;margin:0 auto;pointer-events:none;z-index:50;}
@@ -182,10 +182,6 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .fab-menu-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:none;background:none;color:var(--text);font-size:12px;cursor:pointer;text-align:right;font-family:'Inter',sans-serif;}
 .fab-menu-item:hover{background:var(--surface-2);}
 .fab-menu-item .ic{color:var(--gold);flex-shrink:0;display:flex;}
-.fab-menu-label{font-size:9.5px;color:var(--muted);padding:5px 10px 3px;letter-spacing:.4px;}
-.fab-menu-divider{height:1px;background:var(--line);margin:4px 2px;}
-.fab-thumb{width:24px;height:24px;border-radius:6px;overflow:hidden;background:var(--surface-2);}
-.fab-menu-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -301,7 +297,7 @@ function BottomNav({ active, onChange }) {
     <div className="bottom-nav">
       {items.map(({ id, label, Icon }) => (
         <button key={id} className={`nav-item ${active === id ? "active" : ""}`} onClick={() => onChange(id)}>
-          <Icon size={15} />
+          <Icon size={18} />
           <span>{label}</span>
         </button>
       ))}
@@ -1323,11 +1319,12 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
 /* ------------------------------- Floating quick-nav ------------------------------- */
 
 const FAB_ITEMS = [
+  { id: "video", label: "סרטונים אחרונים", Icon: Video },
   { id: "publications", label: "פרסומים", Icon: PlaySquare },
   { id: "subscription", label: "המנוי שלך", Icon: CreditCard },
 ];
 
-function FabMenu({ onNavigate, library }) {
+function FabMenu({ onNavigate }) {
   const [pos, setPos] = useState({ x: 9999, y: 9999 });
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -1337,7 +1334,7 @@ function FabMenu({ onNavigate, library }) {
   useEffect(() => {
     const clamp = () => {
       const maxX = Math.min(window.innerWidth, 420) - 60;
-      const maxY = window.innerHeight - 110;
+      const maxY = window.innerHeight - 180;
       setPos((p) => ({ x: Math.min(Math.max(p.x, 8), maxX), y: Math.min(Math.max(p.y, 70), maxY) }));
     };
     clamp();
@@ -1373,8 +1370,7 @@ function FabMenu({ onNavigate, library }) {
     dragRef.current.dragging = false;
   };
 
-  const recentClips = library.slice(0, 3);
-  const menuHeight = (recentClips.length > 0 ? 18 + recentClips.length * 40 + 9 : 0) + FAB_ITEMS.length * 38 + 12;
+  const menuHeight = FAB_ITEMS.length * 38 + 12;
   const menuTop = pos.y - menuHeight - 10 > 60 ? pos.y - menuHeight - 10 : pos.y + 60;
   const menuLeft = Math.min(Math.max(pos.x - 118, 8), Math.min(window.innerWidth, 420) - 190);
 
@@ -1383,18 +1379,6 @@ function FabMenu({ onNavigate, library }) {
       <div ref={wrapRef}>
         {open && (
           <div className="fab-menu" style={{ left: menuLeft, top: menuTop }}>
-            {recentClips.length > 0 && (
-              <>
-                <div className="fab-menu-label">סרטונים אחרונים</div>
-                {recentClips.map((clip) => (
-                  <button key={clip.id} className="fab-menu-item" onClick={() => { onNavigate("video"); setOpen(false); }}>
-                    <span className="ic fab-thumb"><MediaFrame src={clip.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} /></span>
-                    <span className="fab-menu-item-label">{clip.label}</span>
-                  </button>
-                ))}
-                <div className="fab-menu-divider" />
-              </>
-            )}
             {FAB_ITEMS.map(({ id, label, Icon }) => (
               <button key={id} className="fab-menu-item" onClick={() => { onNavigate(id); setOpen(false); }}>
                 <span className="ic"><Icon size={14} /></span> {label}
@@ -1506,7 +1490,7 @@ function App() {
         <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
       )}
 
-      <FabMenu onNavigate={setTab} library={library} />
+      <FabMenu onNavigate={setTab} />
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );
