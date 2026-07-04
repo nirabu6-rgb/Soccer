@@ -44,12 +44,23 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .pulse-path{stroke:var(--gold);stroke-width:1.2;fill:none;stroke-dasharray:340;stroke-dashoffset:340;animation:pulseflow 3.2s linear infinite;}
 @keyframes pulseflow{0%{stroke-dashoffset:340;opacity:.35;}50%{stroke-dashoffset:0;opacity:1;}100%{stroke-dashoffset:-340;opacity:.35;}}
 
+.notif-wrap{position:relative;flex-shrink:0;}
+.notif-bell{position:relative;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.notif-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#d9584f;border:1.5px solid var(--surface-2);}
+.notif-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:25;width:260px;max-width:78vw;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 14px 32px rgba(0,0,0,.5);}
+.notif-panel-title{font-size:11px;color:var(--muted);padding:4px 6px 8px;letter-spacing:.5px;text-transform:uppercase;}
+.notif-item{display:flex;gap:8px;padding:8px 6px;border-top:1px solid var(--line);}
+.notif-item:first-of-type{border-top:none;}
+.notif-icon{width:24px;height:24px;border-radius:7px;background:rgba(201,162,76,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.notif-text{font-size:12px;line-height:1.4;}
+.notif-time{font-size:10px;color:var(--muted);margin-top:2px;}
+
 .screen{padding:10px 14px 82px;}
 .eyebrow{font-size:10.5px;letter-spacing:1.6px;color:var(--gold);text-transform:uppercase;margin-bottom:3px;}
 .h1{font-family:'Fraunces',serif;font-weight:560;font-size:20px;line-height:1.2;margin:0 0 4px;}
 .sub{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 12px;}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:10px;}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:10px;}
 
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
 .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;}
@@ -93,9 +104,11 @@ html,body{margin:0;padding:0;background:var(--bg);}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 .variations{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
-.variation-card{flex:0 0 auto;width:96px;border-radius:10px;border:1.5px solid var(--line);overflow:hidden;cursor:pointer;background:var(--surface-2);}
+.variation-card{position:relative;flex:0 0 auto;width:96px;border-radius:10px;border:1.5px solid var(--line);overflow:hidden;cursor:pointer;background:var(--surface-2);}
 .variation-card.selected{border-color:var(--gold);}
 .variation-card video, .video-placeholder{width:100%;aspect-ratio:9/16;object-fit:cover;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg,#1c1c19,#0a0a09 70%);color:var(--muted);}
+.media-frame-wrap{display:contents;}
+.media-watermark{position:absolute;bottom:6px;left:6px;opacity:.6;pointer-events:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));z-index:2;}
 .variation-meta{padding:6px;font-size:10.5px;color:var(--muted);}
 .variation-card.selected .variation-meta{color:var(--gold-bright);}
 
@@ -103,6 +116,10 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .pill{flex:1;text-align:center;padding:8px 4px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;cursor:pointer;color:var(--muted);}
 .pill.active{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,162,76,.08);}
 .budget-input{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px;font-family:'JetBrains Mono',monospace;font-size:21.5px;color:var(--text);text-align:center;}
+.onboarding-input{width:100%;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;font-family:'Inter',sans-serif;}
+.chip-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.chip{padding:7px 13px;border-radius:20px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);cursor:pointer;}
+.chip.active{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,162,76,.08);}
 .platform-row{margin-bottom:11px;}
 .platform-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;}
 .platform-cpl{color:var(--muted);}
@@ -112,7 +129,7 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px dashed var(--line);margin-top:3px;}
 
 .lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.lib-card{border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;}
+.lib-card{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;}
 .lib-card video, .lib-card .video-placeholder{aspect-ratio:1/1;}
 .lib-meta{padding:7px;}
 .lib-meta .t{font-size:12.5px;font-weight:600;}
@@ -161,7 +178,7 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .lang-row:last-child{border-bottom:none;}
 .lang-row.active{color:var(--gold-bright);}
 
-.post-card{background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:10px;}
+.post-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:10px;}
 .post-media{width:100%;aspect-ratio:9/16;max-height:220px;object-fit:cover;display:block;}
 .post-body{padding:10px 11px;}
 .post-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
@@ -236,6 +253,8 @@ const GroupedIcon = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="5" 
 const SettingsIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></Icon>;
 const Upload = (p) => <Icon {...p}><path d="M12 16V4" /><polyline points="6,10 12,4 18,10" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></Icon>;
 const ChevronDown = (p) => <Icon {...p}><polyline points="6,9 12,15 18,9" /></Icon>;
+const ChartIcon = (p) => <Icon {...p}><line x1="4" y1="20" x2="20" y2="20" /><rect x="6" y="12" width="3" height="8" rx="0.8" /><rect x="11" y="7" width="3" height="13" rx="0.8" /><rect x="16" y="10" width="3" height="10" rx="0.8" /></Icon>;
+const Download = (p) => <Icon {...p}><path d="M12 4v12" /><polyline points="6,12 12,18 18,12" /><path d="M4 20h16" /></Icon>;
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 const Home = (p) => <Icon {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></Icon>;
 const Scissors = (p) => <Icon {...p}><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.5" y2="15.5" /><line x1="8.5" y1="8.5" x2="20" y2="20" /></Icon>;
@@ -246,10 +265,15 @@ const ArrowRight = (p) => <Icon {...p}><line x1="5" y1="12" x2="19" y2="12" /><p
 /* ---------------------------- helpers ---------------------------- */
 
 function MediaFrame({ src, style }) {
-  if (!src || src === "demo") {
-    return <div className="video-placeholder" style={style}><Video size={17} /></div>;
-  }
-  return <video src={src} muted loop autoPlay playsInline style={style} />;
+  const media = !src || src === "demo"
+    ? <div className="video-placeholder" style={style}><Video size={17} /></div>
+    : <video src={src} muted loop autoPlay playsInline style={style} />;
+  return (
+    <div className="media-frame-wrap">
+      {media}
+      <ApexMark size={13} className="media-watermark" />
+    </div>
+  );
 }
 
 function useMediaCleanup(stream) {
@@ -286,12 +310,56 @@ function Splash({ fading }) {
 
 /* ---------------------------- header ------------------------------ */
 
+const NOTIFICATIONS = [
+  { id: "n1", Icon: MessageCircle, text: "דניאל כהן מוכן לסגירה — ממתין לאישור פגישה", time: "לפני 12 דק׳" },
+  { id: "n2", Icon: TrendingDown, text: "הקמפיין “השקה — קיץ 2026” הוריד עלות ליד ל-₪28", time: "לפני שעה" },
+  { id: "n3", Icon: PlaySquare, text: "הפוסט בטיקטוק עבר 90 אלף צפיות", time: "היום, 09:14" },
+  { id: "n4", Icon: CreditCard, text: "החיוב החודשי של המנוי בוצע בהצלחה", time: "אתמול" },
+];
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open]);
+
+  return (
+    <div className="notif-wrap" ref={wrapRef}>
+      <button className="notif-bell" onClick={() => setOpen((v) => !v)} title="התראות">
+        <Bell size={15} />
+        <span className="notif-dot" />
+      </button>
+      {open && (
+        <div className="notif-panel">
+          <div className="notif-panel-title">התראות</div>
+          {NOTIFICATIONS.map(({ id, Icon, text, time }) => (
+            <div key={id} className="notif-item">
+              <span className="notif-icon"><Icon size={13} /></span>
+              <div>
+                <div className="notif-text">{text}</div>
+                <div className="notif-time">{time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Header({ title }) {
   return (
     <div className="apex-header">
       <div className="brand-row">
         <ApexMark size={24} className="apex-mark" />
         <div className="header-title">{title}</div>
+        <div style={{ flex: 1 }} />
+        <NotificationBell />
       </div>
       <svg className="pulse-wrap" viewBox="0 0 340 14" preserveAspectRatio="none">
         <path className="pulse-path" d="M0,7 L60,7 L72,1 L84,13 L96,7 L150,7 L162,1 L174,13 L186,7 L340,7" />
@@ -1363,9 +1431,21 @@ const LANGUAGES = [
   { code: "zh", label: "中文" },
 ];
 
+const PAYMENT_METHODS = [
+  { id: "card", label: "כרטיס אשראי" },
+  { id: "bit", label: "Bit" },
+];
+
+const INVOICES = [
+  { id: "inv1", date: "01/07/2026", desc: "מנוי מקצועי — יולי 2026", amount: 490 },
+  { id: "inv2", date: "01/06/2026", desc: "מנוי מקצועי — יוני 2026", amount: 490 },
+  { id: "inv3", date: "01/05/2026", desc: "מנוי מקצועי — מאי 2026", amount: 490 },
+];
+
 function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [langOpen, setLangOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const logoInputRef = useRef(null);
   const currentLang = LANGUAGES.find((l) => l.code === language);
 
@@ -1391,6 +1471,9 @@ function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
 
       <div className="card">
         <div className="settings-row"><span className="sub" style={{ margin: 0 }}>שם העסק</span><span className="settings-value">{business.name}</span></div>
+        {business.industry && (
+          <div className="settings-row"><span className="sub" style={{ margin: 0 }}>תחום עיסוק</span><span className="settings-value">{business.industry}</span></div>
+        )}
         <div className="settings-row"><span className="sub" style={{ margin: 0 }}>אימייל</span><span className="settings-value">{business.email}</span></div>
         <div className="settings-row"><span className="sub" style={{ margin: 0 }}>טלפון</span><span className="settings-value">{business.phone}</span></div>
         <div className="settings-row"><span className="sub" style={{ margin: 0 }}>מספר עוסק</span><span className="settings-value">{business.taxId}</span></div>
@@ -1418,6 +1501,158 @@ function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
       {language !== "he" && (
         <p className="sub" style={{ marginTop: 8 }}>לתשומת לבך: תרגום מלא של כל מסכי האפליקציה לשפה זו עדיין לא מומש — זו כרגע רק בחירת שפה מועדפת.</p>
       )}
+
+      <div className="eyebrow" style={{ marginTop: 16 }}>אמצעי תשלום</div>
+      <div className="card">
+        {PAYMENT_METHODS.map((m) => (
+          <div key={m.id} className={`lang-row ${paymentMethod === m.id ? "active" : ""}`} onClick={() => setPaymentMethod(m.id)}>
+            <span>{m.label}</span>
+            {paymentMethod === m.id && <Check size={14} color="var(--gold)" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="eyebrow" style={{ marginTop: 16 }}>היסטוריית חשבוניות</div>
+      <div className="card">
+        {INVOICES.map((inv) => (
+          <div key={inv.id} className="settings-row">
+            <div>
+              <div className="settings-value" style={{ fontSize: 13 }}>{inv.desc}</div>
+              <div className="sub" style={{ margin: 0 }}>{inv.date}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="mono">₪{inv.amount}</span>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} title="הורדת חשבונית"><Download size={13} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------ Reports screen ------------------------ */
+
+function TrendChart({ data, max }) {
+  const barW = 100 / data.length;
+  return (
+    <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: 70 }}>
+      {data.map((v, i) => {
+        const h = (v / max) * 34;
+        const last = i === data.length - 1;
+        return <rect key={i} x={i * barW + barW * 0.15} y={38 - h} width={barW * 0.7} height={h} rx="1" fill={last ? "var(--gold-bright)" : "var(--gold)"} opacity={last ? 1 : 0.55} />;
+      })}
+    </svg>
+  );
+}
+
+function ReportsScreen({ onBack }) {
+  const leadsTrend = [3, 4, 4, 6, 5, 7, 8, 9];
+  const cplTrend = [52, 48, 45, 41, 39, 37, 35, 31];
+  const totalSpend = 11840;
+  const totalRevenue = 38200;
+  const roi = Math.round((totalRevenue / totalSpend) * 100) / 100;
+  const cplChangePct = Math.round((1 - cplTrend[cplTrend.length - 1] / cplTrend[0]) * 100);
+
+  return (
+    <div className="screen">
+      <BackLink label="חזרה ללוח הבקרה" onClick={onBack} />
+      <div className="eyebrow">דוחות</div>
+      <h1 className="h1">מגמות וסיכום ביצועים</h1>
+      <p className="sub">שמונת השבועות האחרונים.</p>
+
+      <div className="card">
+        <div className="sub" style={{ margin: "0 0 6px" }}>לידים לשבוע</div>
+        <TrendChart data={leadsTrend} max={Math.max(...leadsTrend)} />
+      </div>
+
+      <div className="card">
+        <div className="sub" style={{ margin: "0 0 6px" }}>עלות ליד ממוצעת (₪)</div>
+        <TrendChart data={cplTrend} max={Math.max(...cplTrend)} />
+        <div className="stat-row">
+          <span className="sub" style={{ margin: 0 }}>שינוי לעומת תחילת התקופה</span>
+          <span className="mono" style={{ color: "var(--good)", display: "flex", alignItems: "center", gap: 4 }}>
+            <TrendingDown size={12} /> {cplChangePct}%
+          </span>
+        </div>
+      </div>
+
+      <div className="eyebrow" style={{ marginTop: 16 }}>סיכום חודשי</div>
+      <div className="card">
+        <div className="stat-row" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
+          <span className="sub" style={{ margin: 0 }}>סה"כ הוצאה על פרסום</span>
+          <span className="mono">₪{fmtMoney(totalSpend)}</span>
+        </div>
+        <div className="stat-row">
+          <span className="sub" style={{ margin: 0 }}>סה"כ ערך עסקאות שנסגרו</span>
+          <span className="mono" style={{ color: "var(--good)" }}>₪{fmtMoney(totalRevenue)}</span>
+        </div>
+        <div className="stat-row">
+          <span className="sub" style={{ margin: 0 }}>החזר על ההשקעה (ROI)</span>
+          <span className="mono" style={{ color: "var(--good)" }}>{roi}x</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------ Onboarding ------------------------ */
+
+const INDUSTRIES = ["מסעדנות", "יופי וטיפוח", "כושר וספורט", "נדל\"ן", "קמעונאות", "שירותים מקצועיים", "אחר"];
+const ONBOARDING_GOALS = [
+  { id: "messages", label: "הודעות" },
+  { id: "leads", label: "לידים" },
+  { id: "sales", label: "מכירות" },
+];
+
+function Onboarding({ onComplete }) {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const [industry, setIndustry] = useState(INDUSTRIES[0]);
+  const [goal, setGoal] = useState("leads");
+
+  return (
+    <div className="screen" style={{ paddingTop: 50 }}>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+        <ApexMark size={44} />
+      </div>
+
+      {step === 0 && (
+        <>
+          <div className="eyebrow" style={{ textAlign: "center" }}>ברוכים הבאים ל-APEX</div>
+          <h1 className="h1" style={{ textAlign: "center" }}>בואו נכיר את העסק שלך</h1>
+          <div className="card">
+            <p className="sub" style={{ marginBottom: 6 }}>שם העסק</p>
+            <input className="onboarding-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="לדוגמה: מספרת גל" />
+          </div>
+          <p className="sub" style={{ marginTop: 16, marginBottom: 6 }}>תחום העיסוק</p>
+          <div className="chip-grid">
+            {INDUSTRIES.map((ind) => (
+              <div key={ind} className={`chip ${industry === ind ? "active" : ""}`} onClick={() => setIndustry(ind)}>{ind}</div>
+            ))}
+          </div>
+          <div className="actions">
+            <button className="btn-primary" disabled={!name.trim()} onClick={() => setStep(1)}>המשך</button>
+          </div>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <div className="eyebrow" style={{ textAlign: "center" }}>שלב אחרון</div>
+          <h1 className="h1" style={{ textAlign: "center" }}>מה המטרה העיקרית שלך?</h1>
+          <p className="sub" style={{ textAlign: "center" }}>נתאים את הדשבורד וההמלצות סביב זה.</p>
+          <div className="goal-pills">
+            {ONBOARDING_GOALS.map((g) => (
+              <div key={g.id} className={`pill ${goal === g.id ? "active" : ""}`} onClick={() => setGoal(g.id)}>{g.label}</div>
+            ))}
+          </div>
+          <div className="actions">
+            <button className="btn-primary" onClick={() => onComplete({ name: name.trim(), industry, goal })}>כניסה ל-APEX</button>
+            <button className="btn-ghost" onClick={() => setStep(0)}>חזרה</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1427,6 +1662,7 @@ function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
 const FAB_ITEMS = [
   { id: "video", label: "סרטונים אחרונים", Icon: Video },
   { id: "publications", label: "פרסומים", Icon: PlaySquare },
+  { id: "reports", label: "דוחות", Icon: ChartIcon },
   { id: "subscription", label: "המנוי שלך", Icon: CreditCard },
   { id: "settings", label: "הגדרות", Icon: SettingsIcon },
 ];
@@ -1541,7 +1777,22 @@ function App() {
   const [splashPhase, setSplashPhase] = useState("visible");
   const [currentPlanId, setCurrentPlanId] = useState("pro");
   const [language, setLanguage] = useState("he");
-  const [business] = useState({ name: "ניר אביב", email: "nir@apexaviv.co.il", phone: "050-1234567", taxId: "123456789" });
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem("apex_onboarded") === "1");
+  const [business, setBusiness] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("apex_business") || "null");
+      if (saved) return saved;
+    } catch (e) {}
+    return { name: "ניר אביב", email: "nir@apexaviv.co.il", phone: "050-1234567", taxId: "123456789" };
+  });
+
+  const completeOnboarding = ({ name, industry, goal }) => {
+    const updated = { ...business, name, industry, goal };
+    setBusiness(updated);
+    localStorage.setItem("apex_business", JSON.stringify(updated));
+    localStorage.setItem("apex_onboarded", "1");
+    setOnboarded(true);
+  };
 
   useEffect(() => {
     const t1 = setTimeout(() => setSplashPhase("fading"), 1800);
@@ -1562,48 +1813,56 @@ function App() {
 
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
-  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי", settings: "הגדרות" };
+  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי", settings: "הגדרות", reports: "דוחות" };
 
   return (
     <div className="apex-root">
       {splashPhase !== "done" && <Splash fading={splashPhase === "fading"} />}
-      <Header title={titles[tab]} />
 
-      {tab === "dashboard" && (
-        <Dashboard
-          videoCount={library.length}
-          activeCampaigns={campaigns.filter((c) => c.status === "פעיל").length}
-          leadsCount={leads.length}
-          closedCount={leads.filter((l) => l.status === "נסגר").length}
-          campaigns={campaigns}
-          leads={leads}
-          posts={posts}
-          weekStats={weekStats}
-          onNavigate={setTab}
-          onOpenLead={openLead}
-        />
-      )}
-      {tab === "video" && <VideoTab library={library} onSaveClip={addClip} onEditClip={(id) => { setEditingClipId(id); setTab("editing"); }} />}
-      {tab === "editing" && (
-        <EditingTab
-          library={library}
-          editingClipId={editingClipId}
-          onSelectClip={setEditingClipId}
-          onDone={() => { setEditingClipId(null); setTab("video"); }}
-        />
-      )}
-      {tab === "campaigns" && <CampaignsTab campaigns={campaigns} onAddCampaign={addCampaign} />}
-      {tab === "publications" && <PublicationsTab posts={posts} />}
-      {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
-      {tab === "subscription" && (
-        <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
-      )}
-      {tab === "settings" && (
-        <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} onBack={() => setTab("dashboard")} />
-      )}
+      {splashPhase === "done" && !onboarded ? (
+        <Onboarding onComplete={completeOnboarding} />
+      ) : (
+        <>
+          <Header title={titles[tab]} />
 
-      <FabMenu onNavigate={setTab} />
-      <BottomNav active={tab} onChange={setTab} />
+          {tab === "dashboard" && (
+            <Dashboard
+              videoCount={library.length}
+              activeCampaigns={campaigns.filter((c) => c.status === "פעיל").length}
+              leadsCount={leads.length}
+              closedCount={leads.filter((l) => l.status === "נסגר").length}
+              campaigns={campaigns}
+              leads={leads}
+              posts={posts}
+              weekStats={weekStats}
+              onNavigate={setTab}
+              onOpenLead={openLead}
+            />
+          )}
+          {tab === "video" && <VideoTab library={library} onSaveClip={addClip} onEditClip={(id) => { setEditingClipId(id); setTab("editing"); }} />}
+          {tab === "editing" && (
+            <EditingTab
+              library={library}
+              editingClipId={editingClipId}
+              onSelectClip={setEditingClipId}
+              onDone={() => { setEditingClipId(null); setTab("video"); }}
+            />
+          )}
+          {tab === "campaigns" && <CampaignsTab campaigns={campaigns} onAddCampaign={addCampaign} />}
+          {tab === "publications" && <PublicationsTab posts={posts} />}
+          {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
+          {tab === "subscription" && (
+            <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
+          )}
+          {tab === "settings" && (
+            <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} onBack={() => setTab("dashboard")} />
+          )}
+          {tab === "reports" && <ReportsScreen onBack={() => setTab("dashboard")} />}
+
+          <FabMenu onNavigate={setTab} />
+          <BottomNav active={tab} onChange={setTab} />
+        </>
+      )}
     </div>
   );
 }
