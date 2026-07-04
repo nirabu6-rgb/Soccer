@@ -1085,6 +1085,10 @@ function fmtCount(n) {
   return String(n);
 }
 
+function fmtMoney(n) {
+  return n.toLocaleString("en-US");
+}
+
 function PublicationsTab({ posts }) {
   const totals = posts.reduce(
     (acc, p) => ({ views: acc.views + p.views, likes: acc.likes + p.likes, comments: acc.comments + p.comments }),
@@ -1163,9 +1167,9 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
                 <div className="sub" style={{ margin: "2px 0 0" }}>{p.tagline}</div>
               </div>
               <div style={{ textAlign: "left" }}>
-                <div className="mono" style={{ fontSize: 18, color: "var(--gold-bright)" }}>₪{monthlyPrice}</div>
+                <div className="mono" style={{ fontSize: 18, color: "var(--gold-bright)" }}>₪{fmtMoney(monthlyPrice)}</div>
                 <div className="sub" style={{ margin: 0, fontSize: 9.5 }}>
-                  {billing === "annual" ? `לחודש · ₪${annualTotal} לשנה` : "לחודש"}
+                  {billing === "annual" ? `לחודש · ₪${fmtMoney(annualTotal)} לשנה` : "לחודש"}
                 </div>
               </div>
             </div>
