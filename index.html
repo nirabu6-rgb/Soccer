@@ -1421,7 +1421,7 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
             {isCurrent ? (
               <div className="status-badge" style={{ margin: 0 }}>המנוי הנוכחי שלך</div>
             ) : (
-              <button className="btn-primary" onClick={() => onUpgrade(p.id)}>
+              <button className="btn-primary" onClick={() => onUpgrade({ planId: p.id, planName: p.name, billing, amount: billing === "annual" ? annualTotal : monthlyPrice })}>
                 {p.price > current.price ? "שדרג למסלול הזה" : "עבור למסלול הזה"}
               </button>
             )}
@@ -1452,13 +1452,13 @@ const PAYMENT_METHODS = [
   { id: "bit", label: "Bit" },
 ];
 
-const INVOICES = [
+const DEFAULT_INVOICES = [
   { id: "inv1", date: "01/07/2026", desc: "מנוי מקצועי — יולי 2026", amount: 490 },
   { id: "inv2", date: "01/06/2026", desc: "מנוי מקצועי — יוני 2026", amount: 490 },
   { id: "inv3", date: "01/05/2026", desc: "מנוי מקצועי — מאי 2026", amount: 490 },
 ];
 
-function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
+function SettingsScreen({ business, language, onChangeLanguage, invoices, onBack }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [langOpen, setLangOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
@@ -1530,7 +1530,7 @@ function SettingsScreen({ business, language, onChangeLanguage, onBack }) {
 
       <div className="eyebrow" style={{ marginTop: 16 }}>היסטוריית חשבוניות</div>
       <div className="card">
-        {INVOICES.map((inv) => (
+        {invoices.map((inv) => (
           <div key={inv.id} className="settings-row">
             <div>
               <div className="settings-value" style={{ fontSize: 13 }}>{inv.desc}</div>
@@ -1614,30 +1614,44 @@ function ReportsScreen({ onBack }) {
 
 /* ------------------------ Trailer ------------------------ */
 
-const TRAILER_SCENES = [
-  { Icon: Video, title: "צלם בזמן אמת", text: "הבמאי הדיגיטלי מנחה אותך על תאורה, יציבות וסאונד בכל צילום" },
-  { Icon: Scissors, title: "עריכה חכמה תוך שניות", text: "AI מנקה, מוסיף כתוביות ומוזיקה — ומחזיר 3 גרסאות מוכנות" },
-  { Icon: Megaphone, title: "קמפיינים שרצים לבד", text: "התקציב מתחלק ומתאזן אוטומטית בין הפלטפורמות המשתלמות ביותר" },
-  { Icon: MessageCircle, title: "לידים שנסגרים בוואטסאפ", text: "סוכן המכירות עונה, מסנן וסוגר עסקאות בשבילך — 24/7" },
+const TRAILER_PACKS = [
+  [
+    { Icon: Video, title: "צלם בזמן אמת", text: "הבמאי הדיגיטלי מנחה אותך על תאורה, יציבות וסאונד בכל צילום" },
+    { Icon: Scissors, title: "עריכה חכמה תוך שניות", text: "AI מנקה, מוסיף כתוביות ומוזיקה — ומחזיר 3 גרסאות מוכנות" },
+    { Icon: Megaphone, title: "קמפיינים שרצים לבד", text: "התקציב מתחלק ומתאזן אוטומטית בין הפלטפורמות המשתלמות ביותר" },
+    { Icon: MessageCircle, title: "לידים שנסגרים בוואטסאפ", text: "סוכן המכירות עונה, מסנן וסוגר עסקאות בשבילך — 24/7" },
+  ],
+  [
+    { Icon: PlaySquare, title: "כל הפרסומים במקום אחד", text: "עקוב אחרי צפיות, לייקים ותגובות מכל פוסט שפורסם ברשתות" },
+    { Icon: ChartIcon, title: "המגמות שלך בזמן אמת", text: "גרפים שמראים איך הלידים ועלות הליד משתפרים משבוע לשבוע" },
+    { Icon: Bell, title: "לא מפספסים אף עדכון", text: "מרכז ההתראות מתריע כשליד מוכן לסגירה או כשקמפיין משתנה" },
+    { Icon: CreditCard, title: "שליטה מלאה בתשלומים", text: "שדרג מסלול, בחר תשלום חודשי או שנתי — הכל בלחיצה אחת" },
+  ],
+  [
+    { Icon: LayoutGrid, title: "בחר את התצוגה שנוחה לך", text: "קרוסלה, קוביות, רשימה, פסיפס או מקובץ — בדיוק כמו שאתה אוהב" },
+    { Icon: Upload, title: "גם מהגלריה, לא רק מצלמה", text: "כבר צילמת משהו טוב בעבר? העלה אותו ותן ל-AI לערוך אותו" },
+    { Icon: SettingsIcon, title: "האפליקציה מדברת אליך", text: "בחר שפה מתוך 10 שפות עולמיות ונהל את פרטי העסק שלך" },
+    { Icon: Sparkles, title: "3 גרסאות מכל עריכה", text: "המערכת תמיד נותנת לך לבחור את הגרסה המנצחת לפני שמפרסמים" },
+  ],
 ];
 const TRAILER_SCENE_MS = 1900;
 
-function Trailer({ onDone }) {
+function Trailer({ scenes, onDone }) {
   const [scene, setScene] = useState(0);
 
   useEffect(() => {
-    const isLast = scene >= TRAILER_SCENES.length - 1;
+    const isLast = scene >= scenes.length - 1;
     const t = setTimeout(() => { isLast ? onDone() : setScene((s) => s + 1); }, TRAILER_SCENE_MS);
     return () => clearTimeout(t);
   }, [scene]);
 
-  const current = TRAILER_SCENES[scene];
+  const current = scenes[scene];
 
   return (
     <div className="trailer">
       <div className="trailer-topbar">
         <div className="trailer-dots">
-          {TRAILER_SCENES.map((_, i) => (
+          {scenes.map((_, i) => (
             <div key={i} className="trailer-dot-track">
               <div className={`trailer-dot-fill ${i < scene ? "filled" : i === scene ? "active" : ""}`} />
             </div>
@@ -1834,9 +1848,12 @@ function App() {
   ]);
   const [splashPhase, setSplashPhase] = useState("visible");
   const [currentPlanId, setCurrentPlanId] = useState("pro");
+  const [invoices, setInvoices] = useState(DEFAULT_INVOICES);
   const [language, setLanguage] = useState("he");
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("apex_onboarded") === "1");
-  const [introStage, setIntroStage] = useState("trailer");
+  const trailerWeek = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+  const [showTrailer, setShowTrailer] = useState(() => localStorage.getItem("apex_trailer_week") !== String(trailerWeek));
+  const trailerScenes = TRAILER_PACKS[trailerWeek % TRAILER_PACKS.length];
   const [business, setBusiness] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("apex_business") || "null");
@@ -1851,6 +1868,11 @@ function App() {
     localStorage.setItem("apex_business", JSON.stringify(updated));
     localStorage.setItem("apex_onboarded", "1");
     setOnboarded(true);
+  };
+
+  const dismissTrailer = () => {
+    localStorage.setItem("apex_trailer_week", String(trailerWeek));
+    setShowTrailer(false);
   };
 
   useEffect(() => {
@@ -1872,19 +1894,25 @@ function App() {
 
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
+  const changePlan = ({ planId, planName, billing, amount }) => {
+    setCurrentPlanId(planId);
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+    const desc = `מנוי ${planName} — חיוב ${billing === "annual" ? "שנתי" : "חודשי"}`;
+    setInvoices((inv) => [{ id: "inv-" + Date.now(), date: dateStr, desc, amount }, ...inv]);
+  };
+
   const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי", settings: "הגדרות", reports: "דוחות" };
 
   return (
     <div className="apex-root">
       {splashPhase !== "done" && <Splash fading={splashPhase === "fading"} />}
 
-      {splashPhase === "done" && !onboarded ? (
-        introStage === "trailer" ? (
-          <Trailer onDone={() => setIntroStage("onboarding")} />
-        ) : (
-          <Onboarding onComplete={completeOnboarding} />
-        )
-      ) : (
+      {splashPhase === "done" && showTrailer ? (
+        <Trailer scenes={trailerScenes} onDone={dismissTrailer} />
+      ) : splashPhase === "done" && !onboarded ? (
+        <Onboarding onComplete={completeOnboarding} />
+      ) : splashPhase === "done" ? (
         <>
           <Header title={titles[tab]} />
 
@@ -1915,17 +1943,17 @@ function App() {
           {tab === "publications" && <PublicationsTab posts={posts} />}
           {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
           {tab === "subscription" && (
-            <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
+            <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={changePlan} onBack={() => setTab("dashboard")} />
           )}
           {tab === "settings" && (
-            <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} onBack={() => setTab("dashboard")} />
+            <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} invoices={invoices} onBack={() => setTab("dashboard")} />
           )}
           {tab === "reports" && <ReportsScreen onBack={() => setTab("dashboard")} />}
 
           <FabMenu onNavigate={setTab} />
           <BottomNav active={tab} onChange={setTab} />
         </>
-      )}
+      ) : null}
     </div>
   );
 }
