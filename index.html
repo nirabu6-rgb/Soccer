@@ -1133,7 +1133,10 @@ const PLANS = [
   { id: "scale", name: "עסקי", price: 990, tagline: "לעסק עם כמה סניפים או מותגים", features: ["הכל מהמסלול המקצועי", "קמפיינים ללא הגבלה", "מנהל לקוח ייעודי", "דוחות ביצועים מתקדמים"] },
 ];
 
+const ANNUAL_DISCOUNT = 0.2;
+
 function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
+  const [billing, setBilling] = useState("monthly");
   const current = PLANS.find((p) => p.id === currentPlanId);
 
   return (
@@ -1143,8 +1146,15 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
       <h1 className="h1">בחר את המסלול שלך</h1>
       <p className="sub">אפשר לשדרג או לשנות מסלול בכל רגע.</p>
 
+      <div className="goal-pills">
+        <div className={`pill ${billing === "monthly" ? "active" : ""}`} onClick={() => setBilling("monthly")}>תשלום חודשי</div>
+        <div className={`pill ${billing === "annual" ? "active" : ""}`} onClick={() => setBilling("annual")}>תשלום שנתי · חיסכון 20%</div>
+      </div>
+
       {PLANS.map((p) => {
         const isCurrent = p.id === currentPlanId;
+        const monthlyPrice = billing === "annual" ? Math.round(p.price * (1 - ANNUAL_DISCOUNT)) : p.price;
+        const annualTotal = Math.round(p.price * 12 * (1 - ANNUAL_DISCOUNT));
         return (
           <div className="card" key={p.id} style={isCurrent ? { borderColor: "var(--gold)" } : undefined}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
@@ -1153,8 +1163,10 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
                 <div className="sub" style={{ margin: "2px 0 0" }}>{p.tagline}</div>
               </div>
               <div style={{ textAlign: "left" }}>
-                <div className="mono" style={{ fontSize: 18, color: "var(--gold-bright)" }}>₪{p.price}</div>
-                <div className="sub" style={{ margin: 0, fontSize: 9.5 }}>לחודש</div>
+                <div className="mono" style={{ fontSize: 18, color: "var(--gold-bright)" }}>₪{monthlyPrice}</div>
+                <div className="sub" style={{ margin: 0, fontSize: 9.5 }}>
+                  {billing === "annual" ? `לחודש · ₪${annualTotal} לשנה` : "לחודש"}
+                </div>
               </div>
             </div>
             <div style={{ margin: "8px 0" }}>
