@@ -206,6 +206,7 @@ const PlaySquare = (p) => <Icon {...p}><rect x="3" y="3" width="18" height="18" 
 const Columns = (p) => <Icon {...p}><rect x="3" y="4" width="5" height="16" rx="1.2" /><rect x="9.5" y="4" width="5" height="16" rx="1.2" /><rect x="16" y="4" width="5" height="16" rx="1.2" /></Icon>;
 const LayoutGrid = (p) => <Icon {...p}><rect x="3" y="3" width="7.5" height="7.5" rx="1.4" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.4" /><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.4" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.4" /></Icon>;
 const ListIcon = (p) => <Icon {...p}><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></Icon>;
+const CreditCard = (p) => <Icon {...p}><rect x="2" y="5" width="20" height="14" rx="2.5" /><line x1="2" y1="10" x2="22" y2="10" /><line x1="6" y1="15" x2="10" y2="15" /></Icon>;
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 const Home = (p) => <Icon {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></Icon>;
 const Scissors = (p) => <Icon {...p}><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.5" y2="15.5" /><line x1="8.5" y1="8.5" x2="20" y2="20" /></Icon>;
@@ -295,11 +296,12 @@ function BottomNav({ active, onChange }) {
 
 /* ------------------------------ Dashboard --------------------------- */
 
-function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, posts, weekStats, onNavigate, onOpenLead }) {
+function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, posts, weekStats, currentPlanId, onNavigate, onOpenLead }) {
   const topCampaigns = campaigns.filter((c) => c.status === "פעיל").slice(0, 2);
   const recentLeads = leads.slice(0, 3);
   const recentClips = library.slice(0, 4);
   const topPost = posts.reduce((best, p) => (!best || p.views > best.views ? p : best), null);
+  const currentPlan = PLANS.find((p) => p.id === currentPlanId);
 
   return (
     <div className="screen">
@@ -333,6 +335,10 @@ function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campa
       <div className="action-card" onClick={() => onNavigate("bot")}>
         <div className="action-icon"><MessageCircle size={15} /></div>
         <div className="action-text"><div className="t">סוכן המכירות</div><div className="d">לידים שממתינים למענה</div></div>
+      </div>
+      <div className="action-card" onClick={() => onNavigate("subscription")}>
+        <div className="action-icon"><CreditCard size={15} /></div>
+        <div className="action-text"><div className="t">המנוי שלך</div><div className="d">מסלול {currentPlan.name} · ₪{currentPlan.price} לחודש</div></div>
       </div>
 
       <div className="eyebrow" style={{ marginTop: 16 }}>ביצועים השבוע</div>
@@ -1141,6 +1147,60 @@ function PublicationsTab({ posts }) {
   );
 }
 
+/* ------------------------ Subscription screen ------------------------ */
+
+const PLANS = [
+  { id: "basic", name: "בסיסי", price: 199, tagline: "לעסק שרק מתחיל עם פרסום", features: ["עד 4 סרטונים בחודש", "קמפיין פעיל אחד", "בוט מכירות בסיסי"] },
+  { id: "pro", name: "מקצועי", price: 490, tagline: "לעסק שרוצה לצמוח ברשתות", features: ["סרטונים ללא הגבלה", "עד 5 קמפיינים פעילים", "בוט מכירות מלא", "טאב פרסומים ואנליטיקס"] },
+  { id: "scale", name: "עסקי", price: 990, tagline: "לעסק עם כמה סניפים או מותגים", features: ["הכל מהמסלול המקצועי", "קמפיינים ללא הגבלה", "מנהל לקוח ייעודי", "דוחות ביצועים מתקדמים"] },
+];
+
+function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
+  const current = PLANS.find((p) => p.id === currentPlanId);
+
+  return (
+    <div className="screen">
+      <BackLink label="חזרה ללוח הבקרה" onClick={onBack} />
+      <div className="eyebrow">מנוי</div>
+      <h1 className="h1">בחר את המסלול שלך</h1>
+      <p className="sub">אפשר לשדרג או לשנות מסלול בכל רגע.</p>
+
+      {PLANS.map((p) => {
+        const isCurrent = p.id === currentPlanId;
+        return (
+          <div className="card" key={p.id} style={isCurrent ? { borderColor: "var(--gold)" } : undefined}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                <div className="sub" style={{ margin: "2px 0 0" }}>{p.tagline}</div>
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <div className="mono" style={{ fontSize: 18, color: "var(--gold-bright)" }}>₪{p.price}</div>
+                <div className="sub" style={{ margin: 0, fontSize: 9.5 }}>לחודש</div>
+              </div>
+            </div>
+            <div style={{ margin: "8px 0" }}>
+              {p.features.map((f) => (
+                <div key={f} className="checklist-item done" style={{ padding: "3px 0" }}>
+                  <div className="check-circle done"><Check size={10} /></div>
+                  {f}
+                </div>
+              ))}
+            </div>
+            {isCurrent ? (
+              <div className="status-badge" style={{ margin: 0 }}>המנוי הנוכחי שלך</div>
+            ) : (
+              <button className="btn-primary" onClick={() => onUpgrade(p.id)}>
+                {p.price > current.price ? "שדרג למסלול הזה" : "עבור למסלול הזה"}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ------------------------------- App -------------------------------- */
 
 function App() {
@@ -1172,6 +1232,7 @@ function App() {
     { id: "p4", url: null, platform: "פייסבוק", date: "לפני שבועיים", caption: "מבצע סוף עונה — קמפיין ראשי", views: 6300, likes: 210, comments: 18 },
   ]);
   const [splashPhase, setSplashPhase] = useState("visible");
+  const [currentPlanId, setCurrentPlanId] = useState("pro");
 
   useEffect(() => {
     const t1 = setTimeout(() => setSplashPhase("fading"), 1800);
@@ -1192,7 +1253,7 @@ function App() {
 
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
-  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות" };
+  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי" };
 
   return (
     <div className="apex-root">
@@ -1210,6 +1271,7 @@ function App() {
           library={library}
           posts={posts}
           weekStats={weekStats}
+          currentPlanId={currentPlanId}
           onNavigate={setTab}
           onOpenLead={openLead}
         />
@@ -1226,6 +1288,9 @@ function App() {
       {tab === "campaigns" && <CampaignsTab campaigns={campaigns} onAddCampaign={addCampaign} />}
       {tab === "publications" && <PublicationsTab posts={posts} />}
       {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
+      {tab === "subscription" && (
+        <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
+      )}
 
       <BottomNav active={tab} onChange={setTab} />
     </div>
