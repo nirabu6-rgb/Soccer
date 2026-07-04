@@ -1140,7 +1140,7 @@ function CampaignsTab({ campaigns, onAddCampaign }) {
 
 /* ------------------------ Bot tab --------------------------- */
 
-function ChatView({ leadName, onBack }) {
+function ChatView({ leadName, onClose, onBack }) {
   const script = [
     { who: "lead", text: `היי, ראיתי את המודעה שלכם. כמה עולה החבילה?` },
     { who: "bot", text: `היי ${leadName}! שמחים שפנית. לפני המחיר — זה עבור עסק קטן או ליווי אישי?` },
@@ -1182,7 +1182,7 @@ function ChatView({ leadName, onBack }) {
             <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>ליד מוכן לסגירה — {leadName}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>מבקש פגישה ביום שלישי, 14:00</div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="btn-primary" style={{ padding: "7px 10px", fontSize: 12.5 }} onClick={() => setDone(true)}>
+              <button className="btn-primary" style={{ padding: "7px 10px", fontSize: 12.5 }} onClick={() => { setDone(true); onClose(); }}>
                 <Calendar size={11} style={{ marginLeft: 4, verticalAlign: "-2px" }} /> אשר פגישה
               </button>
               <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setPushVisible(false)}><X size={12} /></button>
@@ -1209,10 +1209,10 @@ function ChatView({ leadName, onBack }) {
   );
 }
 
-function BotTab({ leads, activeLeadId, onOpenLead, onBack }) {
+function BotTab({ leads, activeLeadId, onOpenLead, onCloseLead, onBack }) {
   if (activeLeadId) {
     const lead = leads.find((l) => l.id === activeLeadId);
-    if (lead) return <ChatView leadName={lead.name} onBack={onBack} />;
+    if (lead) return <ChatView leadName={lead.name} onClose={() => onCloseLead(lead.id)} onBack={onBack} />;
   }
   return (
     <div className="screen">
@@ -1562,12 +1562,12 @@ function TrendChart({ data, max }) {
   );
 }
 
-function ReportsScreen({ onBack }) {
+function ReportsScreen({ leads, onBack }) {
   const leadsTrend = [3, 4, 4, 6, 5, 7, 8, 9];
   const cplTrend = [52, 48, 45, 41, 39, 37, 35, 31];
-  const totalSpend = 11840;
-  const totalRevenue = 38200;
-  const roi = Math.round((totalRevenue / totalSpend) * 100) / 100;
+  const totalSpend = leadsTrend.reduce((sum, count, i) => sum + count * cplTrend[i], 0);
+  const totalRevenue = leads.filter((l) => l.status === "נסגר").reduce((sum, l) => sum + (l.dealValue || 0), 0);
+  const roi = totalSpend > 0 ? Math.round((totalRevenue / totalSpend) * 100) / 100 : 0;
   const cplChangePct = Math.round((1 - cplTrend[cplTrend.length - 1] / cplTrend[0]) * 100);
 
   return (
@@ -1832,11 +1832,11 @@ function App() {
     { id: "c2", name: "מבצע סוף עונה", goal: "מכירות", budget: 1200, avgCpl: 48, status: "פעיל" },
     { id: "c3", name: "גיוס לקוחות חדשים — אפריל", goal: "הודעות", budget: 800, avgCpl: 22, status: "הסתיים" },
   ]);
-  const [leads] = useState([
-    { id: "l1", name: "דניאל כהן", status: "מוכן לסגירה", preview: "בטח, מתאים לי ליום שלישי 14:00" },
-    { id: "l2", name: "מיכל לוי", status: "בתהליך סינון", preview: "כמה זמן לוקח לראות תוצאות?" },
-    { id: "l3", name: "עומר בר", status: "ממתין למענה", preview: "היי, ראיתי את המודעה שלכם" },
-    { id: "l4", name: "שירה אביטן", status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌" },
+  const [leads, setLeads] = useState([
+    { id: "l1", name: "דניאל כהן", status: "מוכן לסגירה", preview: "בטח, מתאים לי ליום שלישי 14:00", dealValue: 3800 },
+    { id: "l2", name: "מיכל לוי", status: "בתהליך סינון", preview: "כמה זמן לוקח לראות תוצאות?", dealValue: 2600 },
+    { id: "l3", name: "עומר בר", status: "ממתין למענה", preview: "היי, ראיתי את המודעה שלכם", dealValue: 3100 },
+    { id: "l4", name: "שירה אביטן", status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌", dealValue: 4200 },
   ]);
   const [activeLeadId, setActiveLeadId] = useState(null);
   const [weekStats] = useState({ spend: 2860, budget: 4000, impressions: "128.4K", clicks: 2940, avgCpl: 34 });
@@ -1894,6 +1894,10 @@ function App() {
 
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
+  const closeLead = (id) => {
+    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌" } : l)));
+  };
+
   const changePlan = ({ planId, planName, billing, amount }) => {
     setCurrentPlanId(planId);
     const today = new Date();
@@ -1941,14 +1945,14 @@ function App() {
           )}
           {tab === "campaigns" && <CampaignsTab campaigns={campaigns} onAddCampaign={addCampaign} />}
           {tab === "publications" && <PublicationsTab posts={posts} />}
-          {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onBack={() => setActiveLeadId(null)} />}
+          {tab === "bot" && <BotTab leads={leads} activeLeadId={activeLeadId} onOpenLead={setActiveLeadId} onCloseLead={closeLead} onBack={() => setActiveLeadId(null)} />}
           {tab === "subscription" && (
             <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={changePlan} onBack={() => setTab("dashboard")} />
           )}
           {tab === "settings" && (
             <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} invoices={invoices} onBack={() => setTab("dashboard")} />
           )}
-          {tab === "reports" && <ReportsScreen onBack={() => setTab("dashboard")} />}
+          {tab === "reports" && <ReportsScreen leads={leads} onBack={() => setTab("dashboard")} />}
 
           <FabMenu onNavigate={setTab} />
           <BottomNav active={tab} onChange={setTab} />
