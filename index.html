@@ -39,6 +39,22 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .splash-sub{margin-top:6px;font-size:13px;color:var(--muted);animation:splashFadeIn .6s .4s both;}
 @keyframes splashJump{0%,100%{transform:translateY(0) scale(1);}45%{transform:translateY(-16px) scale(1.05);}70%{transform:translateY(0) scale(0.98);}}
 @keyframes splashFadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.trailer{position:fixed;inset:0;max-width:420px;margin:0 auto;z-index:900;background:radial-gradient(circle at 50% 32%,#1c1c19,#0a0a09 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 26px;}
+.trailer-topbar{position:absolute;top:16px;left:16px;right:16px;display:flex;align-items:center;gap:10px;}
+.trailer-dots{flex:1;display:flex;gap:5px;}
+.trailer-dot-track{flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;}
+.trailer-dot-fill{height:100%;width:0%;background:var(--gold-bright);border-radius:3px;}
+.trailer-dot-fill.filled{width:100%;}
+.trailer-dot-fill.active{animation:trailerFill 1.9s linear forwards;}
+@keyframes trailerFill{from{width:0%;}to{width:100%;}}
+.trailer-skip{font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;flex-shrink:0;}
+.trailer-scene{display:flex;flex-direction:column;align-items:center;text-align:center;animation:trailerSceneIn .45s ease both;}
+@keyframes trailerSceneIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.trailer-icon{width:84px;height:84px;border-radius:50%;background:rgba(201,162,76,.12);border:1px solid rgba(201,162,76,.35);display:flex;align-items:center;justify-content:center;color:var(--gold-bright);margin-bottom:20px;}
+.trailer-title{font-family:'Fraunces',serif;font-weight:680;font-size:24px;color:var(--text);margin-bottom:10px;}
+.trailer-text{font-size:15px;color:var(--muted);line-height:1.6;max-width:280px;margin:0;}
+
 .header-title{font-family:'Fraunces',serif;font-weight:560;font-size:16px;}
 .pulse-wrap{width:100%;height:9px;margin-top:5px;opacity:.85;}
 .pulse-path{stroke:var(--gold);stroke-width:1.2;fill:none;stroke-dasharray:340;stroke-dashoffset:340;animation:pulseflow 3.2s linear infinite;}
@@ -1596,6 +1612,48 @@ function ReportsScreen({ onBack }) {
   );
 }
 
+/* ------------------------ Trailer ------------------------ */
+
+const TRAILER_SCENES = [
+  { Icon: Video, title: "צלם בזמן אמת", text: "הבמאי הדיגיטלי מנחה אותך על תאורה, יציבות וסאונד בכל צילום" },
+  { Icon: Scissors, title: "עריכה חכמה תוך שניות", text: "AI מנקה, מוסיף כתוביות ומוזיקה — ומחזיר 3 גרסאות מוכנות" },
+  { Icon: Megaphone, title: "קמפיינים שרצים לבד", text: "התקציב מתחלק ומתאזן אוטומטית בין הפלטפורמות המשתלמות ביותר" },
+  { Icon: MessageCircle, title: "לידים שנסגרים בוואטסאפ", text: "סוכן המכירות עונה, מסנן וסוגר עסקאות בשבילך — 24/7" },
+];
+const TRAILER_SCENE_MS = 1900;
+
+function Trailer({ onDone }) {
+  const [scene, setScene] = useState(0);
+
+  useEffect(() => {
+    const isLast = scene >= TRAILER_SCENES.length - 1;
+    const t = setTimeout(() => { isLast ? onDone() : setScene((s) => s + 1); }, TRAILER_SCENE_MS);
+    return () => clearTimeout(t);
+  }, [scene]);
+
+  const current = TRAILER_SCENES[scene];
+
+  return (
+    <div className="trailer">
+      <div className="trailer-topbar">
+        <div className="trailer-dots">
+          {TRAILER_SCENES.map((_, i) => (
+            <div key={i} className="trailer-dot-track">
+              <div className={`trailer-dot-fill ${i < scene ? "filled" : i === scene ? "active" : ""}`} />
+            </div>
+          ))}
+        </div>
+        <button className="trailer-skip" onClick={onDone}>דלג</button>
+      </div>
+      <div key={scene} className="trailer-scene">
+        <div className="trailer-icon"><current.Icon size={38} /></div>
+        <div className="trailer-title">{current.title}</div>
+        <p className="trailer-text">{current.text}</p>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------ Onboarding ------------------------ */
 
 const INDUSTRIES = ["מסעדנות", "יופי וטיפוח", "כושר וספורט", "נדל\"ן", "קמעונאות", "שירותים מקצועיים", "אחר"];
@@ -1778,6 +1836,7 @@ function App() {
   const [currentPlanId, setCurrentPlanId] = useState("pro");
   const [language, setLanguage] = useState("he");
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("apex_onboarded") === "1");
+  const [introStage, setIntroStage] = useState("trailer");
   const [business, setBusiness] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("apex_business") || "null");
@@ -1820,7 +1879,11 @@ function App() {
       {splashPhase !== "done" && <Splash fading={splashPhase === "fading"} />}
 
       {splashPhase === "done" && !onboarded ? (
-        <Onboarding onComplete={completeOnboarding} />
+        introStage === "trailer" ? (
+          <Trailer onDone={() => setIntroStage("onboarding")} />
+        ) : (
+          <Onboarding onComplete={completeOnboarding} />
+        )
       ) : (
         <>
           <Header title={titles[tab]} />
