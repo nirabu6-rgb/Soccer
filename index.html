@@ -55,11 +55,6 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;}
 .stat-num{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--gold-bright);}
 .stat-label{font-size:10px;color:var(--muted);margin-top:2px;}
-.action-card{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:7px;cursor:pointer;}
-.action-icon{width:30px;height:30px;border-radius:8px;background:rgba(201,162,76,.12);display:flex;align-items:center;justify-content:center;color:var(--gold);flex-shrink:0;}
-.action-text .t{font-size:12px;font-weight:600;}
-.action-text .d{font-size:10.5px;color:var(--muted);margin-top:1px;}
-
 .stage{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:9/16;max-height:46vh;border:1px solid var(--line);margin:0 auto;}
 .stage video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
 .grid-overlay{position:absolute;inset:0;pointer-events:none;}
@@ -172,6 +167,15 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:420px;margin:0 auto;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:30;padding:4px 3px 8px;}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:var(--muted);font-size:9px;padding:6px 2px;cursor:pointer;font-family:'Inter',sans-serif;}
 .nav-item.active{color:var(--gold-bright);}
+
+.fab-layer{position:fixed;inset:0;max-width:420px;margin:0 auto;pointer-events:none;z-index:50;}
+.fab-btn{position:absolute;width:52px;height:52px;border-radius:50%;border:none;background:var(--gold);color:#0a0a09;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(0,0,0,.5);cursor:grab;pointer-events:auto;touch-action:none;transition:transform .15s ease,background .2s;}
+.fab-btn:active{cursor:grabbing;}
+.fab-btn.open{transform:rotate(45deg);background:var(--gold-bright);}
+.fab-menu{position:absolute;pointer-events:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 14px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;min-width:172px;}
+.fab-menu-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:none;background:none;color:var(--text);font-size:12px;cursor:pointer;text-align:right;font-family:'Inter',sans-serif;}
+.fab-menu-item:hover{background:var(--surface-2);}
+.fab-menu-item .ic{color:var(--gold);flex-shrink:0;display:flex;}
 </style>
 </head>
 <body>
@@ -296,12 +300,11 @@ function BottomNav({ active, onChange }) {
 
 /* ------------------------------ Dashboard --------------------------- */
 
-function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, posts, weekStats, currentPlanId, onNavigate, onOpenLead }) {
+function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campaigns, leads, library, posts, weekStats, onNavigate, onOpenLead }) {
   const topCampaigns = campaigns.filter((c) => c.status === "פעיל").slice(0, 2);
   const recentLeads = leads.slice(0, 3);
   const recentClips = library.slice(0, 4);
   const topPost = posts.reduce((best, p) => (!best || p.views > best.views ? p : best), null);
-  const currentPlan = PLANS.find((p) => p.id === currentPlanId);
 
   return (
     <div className="screen">
@@ -316,32 +319,7 @@ function Dashboard({ videoCount, activeCampaigns, leadsCount, closedCount, campa
         <div className="stat-card"><div className="stat-num mono">{closedCount}</div><div className="stat-label">עסקאות שנסגרו</div></div>
       </div>
 
-      <div className="action-card" onClick={() => onNavigate("video")}>
-        <div className="action-icon"><Video size={15} /></div>
-        <div className="action-text"><div className="t">צלם סרטון חדש</div><div className="d">הבמאי הדיגיטלי מלווה בזמן אמת</div></div>
-      </div>
-      <div className="action-card" onClick={() => onNavigate("editing")}>
-        <div className="action-icon"><Scissors size={15} /></div>
-        <div className="action-text"><div className="t">אולפן העריכה</div><div className="d">תן הוראה, קבל שלוש גרסאות</div></div>
-      </div>
-      <div className="action-card" onClick={() => onNavigate("campaigns")}>
-        <div className="action-icon"><Megaphone size={15} /></div>
-        <div className="action-text"><div className="t">קמפיינים</div><div className="d">פיזור תקציב ואופטימיזציה חיה</div></div>
-      </div>
-      <div className="action-card" onClick={() => onNavigate("publications")}>
-        <div className="action-icon"><PlaySquare size={15} /></div>
-        <div className="action-text"><div className="t">פרסומים</div><div className="d">מה פורסם וכמה ביצועים זה עשה</div></div>
-      </div>
-      <div className="action-card" onClick={() => onNavigate("bot")}>
-        <div className="action-icon"><MessageCircle size={15} /></div>
-        <div className="action-text"><div className="t">סוכן המכירות</div><div className="d">לידים שממתינים למענה</div></div>
-      </div>
-      <div className="action-card" onClick={() => onNavigate("subscription")}>
-        <div className="action-icon"><CreditCard size={15} /></div>
-        <div className="action-text"><div className="t">המנוי שלך</div><div className="d">מסלול {currentPlan.name} · ₪{currentPlan.price} לחודש</div></div>
-      </div>
-
-      <div className="eyebrow" style={{ marginTop: 16 }}>ביצועים השבוע</div>
+      <div className="eyebrow" style={{ marginTop: 4 }}>ביצועים השבוע</div>
       <div className="card">
         <div className="platform-row">
           <div className="platform-top"><span>הוצאת תקציב</span><span className="platform-cpl mono">₪{weekStats.spend} / ₪{weekStats.budget}</span></div>
@@ -1201,6 +1179,94 @@ function SubscriptionScreen({ currentPlanId, onUpgrade, onBack }) {
   );
 }
 
+/* ------------------------------- Floating quick-nav ------------------------------- */
+
+const FAB_ITEMS = [
+  { id: "video", label: "צלם סרטון חדש", Icon: Video },
+  { id: "editing", label: "אולפן העריכה", Icon: Scissors },
+  { id: "campaigns", label: "קמפיינים", Icon: Megaphone },
+  { id: "publications", label: "פרסומים", Icon: PlaySquare },
+  { id: "bot", label: "סוכן המכירות", Icon: MessageCircle },
+  { id: "subscription", label: "המנוי שלך", Icon: CreditCard },
+];
+
+function FabMenu({ onNavigate }) {
+  const [pos, setPos] = useState({ x: 320, y: 480 });
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const wrapRef = useRef(null);
+  const dragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, origX: 0, origY: 0 });
+
+  useEffect(() => {
+    const clamp = () => {
+      const maxX = Math.min(window.innerWidth, 420) - 60;
+      const maxY = window.innerHeight - 76;
+      setPos((p) => ({ x: Math.min(Math.max(p.x, 8), maxX), y: Math.min(Math.max(p.y, 70), maxY) }));
+    };
+    clamp();
+    window.addEventListener("resize", clamp);
+    return () => window.removeEventListener("resize", clamp);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("pointerdown", onOutside);
+    return () => document.removeEventListener("pointerdown", onOutside);
+  }, [open]);
+
+  const onPointerDown = (e) => {
+    dragRef.current = { dragging: true, moved: false, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+    btnRef.current.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current.dragging) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragRef.current.moved = true;
+    const maxX = Math.min(window.innerWidth, 420) - 60;
+    const maxY = window.innerHeight - 70;
+    setPos({
+      x: Math.min(Math.max(dragRef.current.origX + dx, 8), maxX),
+      y: Math.min(Math.max(dragRef.current.origY + dy, 70), maxY),
+    });
+  };
+  const onPointerUp = () => {
+    if (!dragRef.current.moved) setOpen((v) => !v);
+    dragRef.current.dragging = false;
+  };
+
+  const menuHeight = FAB_ITEMS.length * 38 + 12;
+  const menuTop = pos.y - menuHeight - 10 > 60 ? pos.y - menuHeight - 10 : pos.y + 60;
+  const menuLeft = Math.min(Math.max(pos.x - 118, 8), Math.min(window.innerWidth, 420) - 190);
+
+  return (
+    <div className="fab-layer">
+      <div ref={wrapRef}>
+        {open && (
+          <div className="fab-menu" style={{ left: menuLeft, top: menuTop }}>
+            {FAB_ITEMS.map(({ id, label, Icon }) => (
+              <button key={id} className="fab-menu-item" onClick={() => { onNavigate(id); setOpen(false); }}>
+                <span className="ic"><Icon size={14} /></span> {label}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          ref={btnRef}
+          className={`fab-btn ${open ? "open" : ""}`}
+          style={{ left: pos.x, top: pos.y }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        >
+          <Plus size={22} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------- App -------------------------------- */
 
 function App() {
@@ -1271,7 +1337,6 @@ function App() {
           library={library}
           posts={posts}
           weekStats={weekStats}
-          currentPlanId={currentPlanId}
           onNavigate={setTab}
           onOpenLead={openLead}
         />
@@ -1292,6 +1357,7 @@ function App() {
         <SubscriptionScreen currentPlanId={currentPlanId} onUpgrade={setCurrentPlanId} onBack={() => setTab("dashboard")} />
       )}
 
+      <FabMenu onNavigate={setTab} />
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );
