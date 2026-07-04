@@ -664,14 +664,12 @@ function LibraryBrowser({ items, onSelect, defaultView = "carousel" }) {
     return () => document.removeEventListener("mousedown", onOutside);
   }, [menuOpen]);
 
-  const current = LIBRARY_VIEWS.find((v) => v.id === view);
-
   return (
     <>
       <div className="view-switch-row">
         <div className="view-switch-wrap" ref={menuRef}>
           <button className="icon-btn on" onClick={() => setMenuOpen((v) => !v)} title="שנה תצוגה">
-            <current.Icon size={15} />
+            <LayoutGrid size={15} />
           </button>
           {menuOpen && (
             <div className="view-menu">
