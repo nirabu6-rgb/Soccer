@@ -65,7 +65,8 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .notif-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#d9584f;border:1.5px solid var(--surface-2);}
 .notif-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:25;width:260px;max-width:78vw;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 14px 32px rgba(0,0,0,.5);}
 .notif-panel-title{font-size:11px;color:var(--muted);padding:4px 6px 8px;letter-spacing:.5px;text-transform:uppercase;}
-.notif-item{display:flex;gap:8px;padding:8px 6px;border-top:1px solid var(--line);}
+.notif-item{display:flex;gap:8px;padding:8px 6px;border-top:1px solid var(--line);cursor:pointer;}
+.notif-item:hover{background:var(--surface-2);}
 .notif-item:first-of-type{border-top:none;}
 .notif-icon{width:24px;height:24px;border-radius:7px;background:rgba(201,162,76,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .notif-text{font-size:12px;line-height:1.4;}
@@ -327,13 +328,13 @@ function Splash({ fading }) {
 /* ---------------------------- header ------------------------------ */
 
 const NOTIFICATIONS = [
-  { id: "n1", Icon: MessageCircle, text: "דניאל כהן מוכן לסגירה — ממתין לאישור פגישה", time: "לפני 12 דק׳" },
-  { id: "n2", Icon: TrendingDown, text: "הקמפיין “השקה — קיץ 2026” הוריד עלות ליד ל-₪28", time: "לפני שעה" },
-  { id: "n3", Icon: PlaySquare, text: "הפוסט בטיקטוק עבר 90 אלף צפיות", time: "היום, 09:14" },
-  { id: "n4", Icon: CreditCard, text: "החיוב החודשי של המנוי בוצע בהצלחה", time: "אתמול" },
+  { id: "n1", Icon: MessageCircle, text: "דניאל כהן מוכן לסגירה — ממתין לאישור פגישה", time: "לפני 12 דק׳", target: { type: "lead", id: "l1" } },
+  { id: "n2", Icon: TrendingDown, text: "הקמפיין “השקה — קיץ 2026” הוריד עלות ליד ל-₪28", time: "לפני שעה", target: { type: "tab", id: "campaigns" } },
+  { id: "n3", Icon: PlaySquare, text: "הפוסט בטיקטוק עבר 90 אלף צפיות", time: "היום, 09:14", target: { type: "tab", id: "publications" } },
+  { id: "n4", Icon: CreditCard, text: "החיוב החודשי של המנוי בוצע בהצלחה", time: "אתמול", target: { type: "tab", id: "settings" } },
 ];
 
-function NotificationBell() {
+function NotificationBell({ onNavigate, onOpenLead }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -344,6 +345,12 @@ function NotificationBell() {
     return () => document.removeEventListener("mousedown", onOutside);
   }, [open]);
 
+  const handleClick = (target) => {
+    setOpen(false);
+    if (target.type === "lead") onOpenLead(target.id);
+    else onNavigate(target.id);
+  };
+
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button className="notif-bell" onClick={() => setOpen((v) => !v)} title="התראות">
@@ -353,8 +360,8 @@ function NotificationBell() {
       {open && (
         <div className="notif-panel">
           <div className="notif-panel-title">התראות</div>
-          {NOTIFICATIONS.map(({ id, Icon, text, time }) => (
-            <div key={id} className="notif-item">
+          {NOTIFICATIONS.map(({ id, Icon, text, time, target }) => (
+            <div key={id} className="notif-item" onClick={() => handleClick(target)}>
               <span className="notif-icon"><Icon size={13} /></span>
               <div>
                 <div className="notif-text">{text}</div>
@@ -368,14 +375,14 @@ function NotificationBell() {
   );
 }
 
-function Header({ title }) {
+function Header({ title, onNavigate, onOpenLead }) {
   return (
     <div className="apex-header">
       <div className="brand-row">
         <ApexMark size={24} className="apex-mark" />
         <div className="header-title">{title}</div>
         <div style={{ flex: 1 }} />
-        <NotificationBell />
+        <NotificationBell onNavigate={onNavigate} onOpenLead={onOpenLead} />
       </div>
       <svg className="pulse-wrap" viewBox="0 0 340 14" preserveAspectRatio="none">
         <path className="pulse-path" d="M0,7 L60,7 L72,1 L84,13 L96,7 L150,7 L162,1 L174,13 L186,7 L340,7" />
@@ -1079,6 +1086,7 @@ function CampaignCreate({ onDone, onCancel }) {
           <div className="card">
             <p className="sub" style={{ marginBottom: 6 }}>תקציב כולל (₪)</p>
             <input className="budget-input mono" type="number" value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
+            <p className="sub" style={{ marginTop: 10, marginBottom: 0 }}>התקציב הזה משולם ישירות לפלטפורמות הפרסום (מטא, גוגל, טיקטוק) — הוא נפרד מהמנוי החודשי שלך ל-APEX.</p>
           </div>
         </>
       )}
@@ -1918,7 +1926,7 @@ function App() {
         <Onboarding onComplete={completeOnboarding} />
       ) : splashPhase === "done" ? (
         <>
-          <Header title={titles[tab]} />
+          <Header title={titles[tab]} onNavigate={setTab} onOpenLead={openLead} />
 
           {tab === "dashboard" && (
             <Dashboard
