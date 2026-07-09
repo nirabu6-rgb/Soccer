@@ -69,6 +69,7 @@ html,body{margin:0;padding:0;background:var(--bg);}
 .notif-item:hover{background:var(--surface-2);}
 .notif-item:first-of-type{border-top:none;}
 .notif-icon{width:24px;height:24px;border-radius:7px;background:rgba(201,162,76,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cal-event-icon{width:28px;height:28px;border-radius:8px;background:rgba(201,162,76,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .notif-text{font-size:12px;line-height:1.4;}
 .notif-time{font-size:10px;color:var(--muted);margin-top:2px;}
 
@@ -1251,6 +1252,15 @@ function fmtMoney(n) {
   return n.toLocaleString("en-US");
 }
 
+function fmtDate(d) {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function parseDdMmYyyy(s) {
+  const [d, m, y] = s.split("/").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function PostCard({ p }) {
   return (
     <div className="post-card">
@@ -1620,6 +1630,80 @@ function ReportsScreen({ leads, onBack }) {
   );
 }
 
+/* ------------------------ Calendar screen ------------------------ */
+
+const CALENDAR_PERIODS = [
+  { id: "week", label: "השבוע" },
+  { id: "month", label: "החודש" },
+  { id: "all", label: "הכל" },
+];
+
+function CalendarScreen({ leads, campaigns, onBack }) {
+  const [period, setPeriod] = useState("month");
+  const [synced, setSynced] = useState(false);
+
+  const events = useMemo(() => {
+    const leadEvents = leads
+      .filter((l) => l.status === "נסגר" && l.closedAt)
+      .map((l) => ({ id: "lead-" + l.id, kind: "lead", date: l.closedAt, title: `עסקה נסגרה — ${l.name}`, sub: `₪${fmtMoney(l.dealValue || 0)}` }));
+    const campaignEvents = campaigns
+      .filter((c) => c.startDate)
+      .map((c) => ({ id: "camp-" + c.id, kind: "campaign", date: c.startDate, title: c.name, sub: c.status === "פעיל" ? "קמפיין עלה לאוויר" : `סטטוס: ${c.status}` }));
+    return [...leadEvents, ...campaignEvents].sort((a, b) => parseDdMmYyyy(b.date) - parseDdMmYyyy(a.date));
+  }, [leads, campaigns]);
+
+  const filteredEvents = useMemo(() => {
+    if (period === "all") return events;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (period === "week") cutoff.setDate(now.getDate() - 7);
+    else cutoff.setMonth(now.getMonth() - 1);
+    return events.filter((ev) => parseDdMmYyyy(ev.date) >= cutoff);
+  }, [events, period]);
+
+  return (
+    <div className="screen">
+      <BackLink label="חזרה ללוח הבקרה" onClick={onBack} />
+      <div className="eyebrow">יומן</div>
+      <h1 className="h1">כל האירועים שלך במקום אחד</h1>
+      <p className="sub">לידים שנסגרו וקמפיינים שעלו לאוויר.</p>
+
+      <div className="goal-pills">
+        {CALENDAR_PERIODS.map((p) => (
+          <div key={p.id} className={`pill ${period === p.id ? "active" : ""}`} onClick={() => setPeriod(p.id)}>{p.label}</div>
+        ))}
+      </div>
+
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div className="settings-value">סנכרון עם יומן העסק</div>
+          <p className="sub" style={{ margin: "2px 0 0" }}>Google Calendar / Outlook</p>
+        </div>
+        <button className="btn-ghost" style={{ width: "auto", margin: 0, padding: "8px 14px" }} onClick={() => setSynced((v) => !v)}>
+          {synced ? "מחובר ✓" : "חבר יומן"}
+        </button>
+      </div>
+      {!synced && (
+        <p className="sub" style={{ marginTop: -4 }}>חיבור אמיתי ליומן חיצוני דורש הרשאת OAuth מול Google/Microsoft — עדיין לא ממומש, זו כרגע רק אפשרות בממשק.</p>
+      )}
+
+      {filteredEvents.length === 0 && <p className="sub">אין אירועים בתקופה הזו.</p>}
+      {filteredEvents.map((ev) => (
+        <div key={ev.id} className="lead-row">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="cal-event-icon">{ev.kind === "lead" ? <Check size={14} color="var(--good)" /> : <Megaphone size={14} color="var(--gold)" />}</span>
+            <div>
+              <div className="lead-name">{ev.title}</div>
+              <div className="lead-status">{ev.sub}</div>
+            </div>
+          </div>
+          <div className="sub mono" style={{ margin: 0 }}>{ev.date}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------ Trailer ------------------------ */
 
 const TRAILER_PACKS = [
@@ -1743,6 +1827,7 @@ const FAB_ITEMS = [
   { id: "video", label: "סרטונים אחרונים", Icon: Video },
   { id: "publications", label: "פרסומים", Icon: PlaySquare },
   { id: "reports", label: "דוחות", Icon: ChartIcon },
+  { id: "calendar", label: "יומן", Icon: Calendar },
   { id: "subscription", label: "המנוי שלך", Icon: CreditCard },
   { id: "settings", label: "הגדרות", Icon: SettingsIcon },
 ];
@@ -1836,15 +1921,15 @@ function App() {
   ]);
   const [editingClipId, setEditingClipId] = useState(null);
   const [campaigns, setCampaigns] = useState([
-    { id: "c1", name: "קמפיין השקה — קיץ 2026", goal: "לידים", budget: 2000, avgCpl: 31, status: "פעיל" },
-    { id: "c2", name: "מבצע סוף עונה", goal: "מכירות", budget: 1200, avgCpl: 48, status: "פעיל" },
-    { id: "c3", name: "גיוס לקוחות חדשים — אפריל", goal: "הודעות", budget: 800, avgCpl: 22, status: "הסתיים" },
+    { id: "c1", name: "קמפיין השקה — קיץ 2026", goal: "לידים", budget: 2000, avgCpl: 31, status: "פעיל", startDate: "15/06/2026" },
+    { id: "c2", name: "מבצע סוף עונה", goal: "מכירות", budget: 1200, avgCpl: 48, status: "פעיל", startDate: "01/07/2026" },
+    { id: "c3", name: "גיוס לקוחות חדשים — אפריל", goal: "הודעות", budget: 800, avgCpl: 22, status: "הסתיים", startDate: "01/04/2026" },
   ]);
   const [leads, setLeads] = useState([
     { id: "l1", name: "דניאל כהן", status: "מוכן לסגירה", preview: "בטח, מתאים לי ליום שלישי 14:00", dealValue: 3800 },
     { id: "l2", name: "מיכל לוי", status: "בתהליך סינון", preview: "כמה זמן לוקח לראות תוצאות?", dealValue: 2600 },
     { id: "l3", name: "עומר בר", status: "ממתין למענה", preview: "היי, ראיתי את המודעה שלכם", dealValue: 3100 },
-    { id: "l4", name: "שירה אביטן", status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌", dealValue: 4200 },
+    { id: "l4", name: "שירה אביטן", status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌", dealValue: 4200, closedAt: "05/07/2026" },
   ]);
   const [activeLeadId, setActiveLeadId] = useState(null);
   const [weekStats] = useState({ spend: 2860, budget: 4000, impressions: "128.4K", clicks: 2940, avgCpl: 34 });
@@ -1903,18 +1988,16 @@ function App() {
   const openLead = (id) => { setActiveLeadId(id); setTab("bot"); };
 
   const closeLead = (id) => {
-    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌" } : l)));
+    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status: "נסגר", preview: "סגור, שולחת תשלום עכשיו 🙌", closedAt: fmtDate(new Date()) } : l)));
   };
 
   const changePlan = ({ planId, planName, billing, amount }) => {
     setCurrentPlanId(planId);
-    const today = new Date();
-    const dateStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
     const desc = `מנוי ${planName} — חיוב ${billing === "annual" ? "שנתי" : "חודשי"}`;
-    setInvoices((inv) => [{ id: "inv-" + Date.now(), date: dateStr, desc, amount }, ...inv]);
+    setInvoices((inv) => [{ id: "inv-" + Date.now(), date: fmtDate(new Date()), desc, amount }, ...inv]);
   };
 
-  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי", settings: "הגדרות", reports: "דוחות" };
+  const titles = { dashboard: "לוח בקרה", video: "צילומים", editing: "עריכה", campaigns: "קמפיינים", publications: "פרסומים", bot: "בוט מכירות", subscription: "מנוי", settings: "הגדרות", reports: "דוחות", calendar: "יומן" };
 
   return (
     <div className="apex-root">
@@ -1961,6 +2044,7 @@ function App() {
             <SettingsScreen business={business} language={language} onChangeLanguage={setLanguage} invoices={invoices} onBack={() => setTab("dashboard")} />
           )}
           {tab === "reports" && <ReportsScreen leads={leads} onBack={() => setTab("dashboard")} />}
+          {tab === "calendar" && <CalendarScreen leads={leads} campaigns={campaigns} onBack={() => setTab("dashboard")} />}
 
           <FabMenu onNavigate={setTab} />
           <BottomNav active={tab} onChange={setTab} />
