@@ -1503,6 +1503,10 @@ function generateDemoData(){
         raw=Math.max(tare,raw-Math.floor(Math.random()*6)*unitW);
       }
     }
+    // Fix last reading to be recent (within last 10 min)
+    if(readings.length){
+      readings[readings.length-1].ts = Date.now() - Math.floor(Math.random()*10)*60*1000;
+    }
     if(shelf.id==='ds3'){
       readings[readings.length-1].rawWeight=tare+5*unitW;
       readings[readings.length-1].netWeight=5*unitW;
@@ -1516,9 +1520,17 @@ function generateDemoData(){
 }
 
 /* ─── BOOT ─── */
+var APP_VER = '3';
 function boot(){
+  // Clear old data if version changed
+  if(LS.get('ver','') !== APP_VER){
+    ['shelves','items','categories','readings','alerts','settings'].forEach(function(k){
+      try{localStorage.removeItem('ws_'+k);}catch(e){}
+    });
+    LS.set('ver', APP_VER);
+  }
   if(!getShelves().length) generateDemoData();
-  renderDashboard();
+  try{ renderDashboard(); }catch(e){ console.error(e); }
   updateAlertBell();
   setInterval(runAutoSimulation, 30000);
 }
