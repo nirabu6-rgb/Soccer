@@ -857,7 +857,7 @@ function wizGo(step){
     wD.aVal=parseFloat(document.getElementById('wiz-aval').value)||0;
     var it2=getItems().find(function(i){return i.id===wD.itemId;}), hw2=HW[wD.profile];
     document.getElementById('wiz-sum').innerHTML=
-      'שם: '+wD.name+(wD.zone?' ('+wD.zone+')')+'<br>פרופיל: '+(hw2?hw2.label+' · '+hw2.range:'')+'<br>פריט: '+(it2?it2.name:'—')+' · '+(it2?it2.unitWeight:'?')+'גרם<br>טרה: '+wD.tare+'גרם<br>סף: '+wD.aVal+(wD.aType==='weight'?' גרם':' יחידות');
+      'שם: '+wD.name+(wD.zone?' ('+wD.zone+')':'')+'<br>פרופיל: '+(hw2?hw2.label+' · '+hw2.range:'')+'<br>פריט: '+(it2?it2.name:'—')+' · '+(it2?it2.unitWeight:'?')+'גרם<br>טרה: '+wD.tare+'גרם<br>סף: '+wD.aVal+(wD.aType==='weight'?' גרם':' יחידות');
     gS(3,4);
   }
 }
