@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WeightStock — מלאי חכם לפי משקל</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230a0e14'/%3E%3Ctext x='50' y='70' font-size='62' font-family='Arial' fill='%232563eb' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WeightStock">
+<style>
+:root{
+  --bg:#0a0e14;--card:#12171f;--card2:#1a2030;--card3:#222c40;
+  --accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--crit:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;--border:#232d42;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',Arial,Helvetica,sans-serif;height:100%;}
+#app{max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg);
+  position:relative;overflow-x:hidden;padding-bottom:68px;}
+.screen{display:none;padding:16px;animation:fi .2s ease;}
+.screen.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+h1,h2,h3{margin:.2em 0;}
+button{cursor:pointer;font-family:inherit;}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;
+  padding:13px 18px;font-size:15px;font-weight:700;width:100%;transition:opacity .15s;}
+.btn:active{opacity:.8;}
+.btn.sec{background:var(--card2);color:var(--text);}
+.btn.danger{background:var(--crit);}
+.btn.ok{background:var(--ok);color:#fff;}
+.btn.sm{padding:8px 14px;font-size:13px;width:auto;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:10px 0;}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);
+  color:var(--text);border-radius:10px;padding:11px;font-size:15px;margin-top:4px;
+  color-scheme:dark;font-family:inherit;}
+input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent;}
+label{font-size:13px;color:var(--muted);display:block;margin-top:14px;}
+.row{display:flex;gap:10px;}
+.row>*{flex:1;}
+.muted{color:var(--muted);font-size:13px;}
+.center{text-align:center;}
+/* TOP NAV */
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 6px;position:sticky;top:0;background:var(--bg);z-index:40;}
+.topbar h2{margin:0;font-size:18px;letter-spacing:.4px;}
+.topbar .actions{display:flex;gap:8px;}
+.icon-btn{background:var(--card2);border:none;border-radius:50%;
+  width:38px;height:38px;color:var(--text);font-size:17px;
+  display:flex;align-items:center;justify-content:center;flex:0 0 38px;}
+.back-btn{background:var(--card2);border:none;border-radius:50%;
+  width:36px;height:36px;color:var(--text);font-size:18px;flex:0 0 36px;}
+/* BOTTOM NAV */
+.bottomnav{position:fixed;bottom:0;left:0;right:0;max-width:600px;margin:0 auto;
+  background:#0d121a;border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;padding:8px 0 10px;z-index:50;}
+.navbtn{background:none;border:none;color:var(--muted);font-size:10px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;min-width:48px;}
+.navbtn.active{color:var(--accent);}
+.navbtn .ic{font-size:20px;}
+/* FAB */
+.fab{position:fixed;bottom:78px;left:20px;width:54px;height:54px;
+  border-radius:50%;background:var(--accent);color:#fff;font-size:26px;
+  border:none;box-shadow:0 6px 18px rgba(37,99,235,.45);z-index:60;
+  display:flex;align-items:center;justify-content:center;}
+/* STATUS BADGE */
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;
+  padding:4px 12px;font-size:12px;font-weight:700;}
+.badge.ok{background:rgba(16,185,129,.15);color:var(--ok);}
+.badge.warn{background:rgba(245,158,11,.15);color:var(--warn);}
+.badge.crit{background:rgba(239,68,68,.15);color:var(--crit);}
+.badge.off{background:var(--card2);color:var(--muted);}
+/* SHELF CARDS */
+.shelf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.shelf-card{background:var(--card);border-radius:16px;padding:14px;
+  border:2px solid transparent;cursor:pointer;transition:border-color .2s;}
+.shelf-card.ok{border-color:rgba(16,185,129,.3);}
+.shelf-card.warn{border-color:rgba(245,158,11,.35);}
+.shelf-card.crit{border-color:rgba(239,68,68,.4);}
+.shelf-card.offline{border-color:var(--border);}
+.shelf-card .qty{font-size:28px;font-weight:800;margin:6px 0 2px;}
+.shelf-card .item-name{font-size:12px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.shelf-card .ts{font-size:10px;color:var(--muted);margin-top:6px;}
+/* SUMMARY ROW */
+.summary-row{display:flex;gap:8px;margin-bottom:8px;}
+.sum-tile{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center;}
+.sum-tile .n{font-size:22px;font-weight:800;}
+.sum-tile .l{font-size:10px;color:var(--muted);}
+/* PROGRESS BAR */
+.progress-bar{height:6px;background:var(--card2);border-radius:6px;overflow:hidden;margin:6px 0;}
+.progress-fill{height:100%;border-radius:6px;transition:.3s;}
+/* CHART SVG */
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);
+  display:none;align-items:flex-end;justify-content:center;z-index:200;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border-radius:20px 20px 0 0;
+  padding:22px 20px 30px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;}
+.modal-box.center-modal{border-radius:20px;margin:auto;max-height:80vh;padding:22px 20px;}
+.modal-close{float:left;background:var(--card2);border:none;border-radius:50%;
+  width:28px;height:28px;color:var(--text);font-size:15px;cursor:pointer;}
+/* WIZARD */
+.wizard-step{display:none;} .wizard-step.active{display:block;}
+/* ALERT ITEM */
+.alert-item{display:flex;align-items:center;gap:12px;padding:12px;
+  background:var(--card);border-radius:14px;margin-bottom:8px;
+  border-right:4px solid var(--crit);}
+.alert-item.warn{border-right-color:var(--warn);}
+/* READING LIST */
+.reading-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.reading-row:last-child{border-bottom:none;}
+/* TOGGLE */
+.toggle{position:relative;width:44px;height:24px;background:#333a47;
+  border-radius:20px;border:none;flex:0 0 44px;}
+.toggle.on{background:var(--accent);}
+.toggle .knob{position:absolute;top:3px;right:3px;width:18px;height:18px;
+  background:#fff;border-radius:50%;transition:.2s;}
+.toggle.on .knob{right:23px;}
+/* VALIDATION WARNING */
+.hw-warn{background:rgba(245,158,11,.12);border:1px solid var(--warn);
+  border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px;color:var(--warn);}
+.hw-ok{background:rgba(16,185,129,.1);border:1px solid var(--ok);
+  border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px;color:var(--ok);}
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty .ic{font-size:48px;margin-bottom:10px;}
+/* PROFILE TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.ptable th{color:var(--muted);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--border);}
+.ptable td{padding:7px 4px;border-bottom:1px solid var(--border);text-align:center;}
+.ptable tr:last-child td{border-bottom:none;}
+.ptable .hi{color:var(--accent);font-weight:700;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="topbar">
+    <div>
+      <h2>⚖️ WeightStock</h2>
+      <div class="muted" id="db-subtitle">מערכת מלאי חכם לפי משקל</div>
+    </div>
+    <div class="actions">
+      <button class="icon-btn" onclick="navTo('screen-alerts')" id="alert-bell" title="התראות">🔔</button>
+      <button class="icon-btn" onclick="openModal('modal-settings')" title="הגדרות">⚙️</button>
+    </div>
+  </div>
+  <div class="summary-row" id="db-summary"></div>
+  <div id="db-shelves"></div>
+</div>
+
+<!-- SHELF DETAIL -->
+<div class="screen" id="screen-shelf-detail">
+  <div class="topbar">
+    <button class="back-btn" onclick="navTo('screen-dashboard')">&#8594;</button>
+    <h2 id="sd-title" style="flex:1;text-align:center;font-size:16px;"></h2>
+    <button class="icon-btn" onclick="openEditShelf()" title="ערוך">✏️</button>
+  </div>
+  <div id="sd-content"></div>
+</div>
+
+<!-- ITEMS LIBRARY -->
+<div class="screen" id="screen-items">
+  <div class="topbar">
+    <h2>📦 ספריית פריטים</h2>
+    <button class="icon-btn" onclick="openAddItem()" title="הוסף פריט">+</button>
+  </div>
+  <div id="items-list"></div>
+</div>
+
+<!-- ALERTS -->
+<div class="screen" id="screen-alerts">
+  <div class="topbar">
+    <button class="back-btn" onclick="navTo('screen-dashboard')">&#8594;</button>
+    <h2 style="flex:1;text-align:center;">🔔 התראות</h2>
+  </div>
+  <div id="alerts-list"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottomnav">
+  <button class="navbtn active" id="nav-dashboard" onclick="navTo('screen-dashboard')">
+    <span class="ic">📊</span>דשבורד</button>
+  <button class="navbtn" id="nav-screen-items" onclick="navTo('screen-items')">
+    <span class="ic">📦</span>פריטים</button>
+  <button class="navbtn" id="nav-screen-alerts" onclick="navTo('screen-alerts')">
+    <span class="ic">🔔</span><span id="nav-alert-label">התראות</span></button>
+</nav>
+<button class="fab" onclick="openSetupWizard()" title="הוסף משטח שקילה">+</button>
+
+<!-- ===== MODALS ===== -->
+
+<!-- SETUP WIZARD -->
+<div class="modal-overlay" id="modal-setup">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 id="wiz-title" style="margin:0;">הוספת משטח שקילה</h3>
+      <button class="modal-close" onclick="closeModal('modal-setup')">✕</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="wiz-progress" style="width:25%;background:var(--accent);"></div></div>
+    <!-- Step 1: Shelf info -->
+    <div class="wizard-step active" id="wiz-step-1">
+      <h4>שלב 1 — פרטי המשטח</h4>
+      <label>שם/מיקום המשטח</label>
+      <input id="wiz-name" placeholder="למשל: ארון א – תא 1">
+      <label>פרופיל תא עומס (טווח מדידה)</label>
+      <select id="wiz-profile" onchange="renderHwValidation()">
+        <option value="micro">🔬 Micro — 0–500 גרם (דיוק ~0.5 גרם)</option>
+        <option value="light" selected>⚖️ Light — 0–5 ק"ג (דיוק ~5 גרם)</option>
+        <option value="heavy">🏋️ Heavy — 0–100 ק"ג (דיוק ~100 גרם)</option>
+      </select>
+      <div class="card" style="margin-top:14px;background:var(--card2);">
+        <b style="font-size:12px;">פרופילי חומרה — עלות רכיבים</b>
+        <table class="ptable">
+          <tr><th>פרופיל</th><th>טווח</th><th>דיוק אמיתי</th><th>משקל מינ' ליחידה</th><th>עלות</th></tr>
+          <tr><td>Micro</td><td>0-500 גרם</td><td>~0.5 גרם</td><td>1 גרם</td><td>~30$</td></tr>
+          <tr><td>Light</td><td>0-5 ק"ג</td><td>~5 גרם</td><td>10 גרם</td><td>~25$</td></tr>
+          <tr><td>Heavy</td><td>0-100 ק"ג</td><td>~100 גרם</td><td>200 גרם</td><td>~40$</td></tr>
+        </table>
+      </div>
+      <div style="margin-top:16px;"><button class="btn" onclick="wizNext(1)">המשך &#8592;</button></div>
+    </div>
+    <!-- Step 2: Item -->
+    <div class="wizard-step" id="wiz-step-2">
+      <h4>שלב 2 — פריט משויך</h4>
+      <div class="row" style="margin-bottom:8px;">
+        <button class="btn sec" id="wiz-item-existing-btn" onclick="showExistingItems()" style="font-size:13px;">בחר מהספרייה</button>
+        <button class="btn" id="wiz-item-new-btn" onclick="showNewItem()" style="font-size:13px;">צור פריט חדש</button>
+      </div>
+      <div id="wiz-existing-list" style="display:none;max-height:200px;overflow-y:auto;"></div>
+      <div id="wiz-new-item">
+        <label>שם הפריט</label>
+        <input id="wiz-item-name" placeholder="למשל: ברגי M6">
+        <label>משקל סגולי ליחידה (גרם)</label>
+        <input id="wiz-unit-weight" type="number" placeholder="לדוגמה: 5.2" step="0.1" oninput="renderHwValidation()">
+        <div id="wiz-hw-validation"></div>
+      </div>
+      <div id="wiz-selected-item-info" style="display:none;" class="card hw-ok" style="margin-top:10px;"></div>
+      <div style="margin-top:16px;" class="row">
+        <button class="btn sec" onclick="wizBack(2)">&#8592; חזור</button>
+        <button class="btn" onclick="wizNext(2)">המשך &#8592;</button>
+      </div>
+    </div>
+    <!-- Step 3: Tare + Threshold -->
+    <div class="wizard-step" id="wiz-step-3">
+      <h4>שלב 3 — טרה וסף התראה</h4>
+      <label>משקל טרה — הקופסה/המיכל הריק (גרם)</label>
+      <input id="wiz-tare" type="number" value="0" placeholder="0 אם אין קופסה">
+      <label>סוג סף התראה</label>
+      <select id="wiz-alert-type" onchange="renderAlertThresholdInput()">
+        <option value="qty">לפי כמות יחידות</option>
+        <option value="weight">לפי משקל (גרם)</option>
+      </select>
+      <div id="wiz-alert-threshold-wrap">
+        <label>סף מינימלי (כמות)</label>
+        <input id="wiz-alert-value" type="number" placeholder="לדוגמה: 20">
+      </div>
+      <div style="margin-top:16px;" class="row">
+        <button class="btn sec" onclick="wizBack(3)">&#8592; חזור</button>
+        <button class="btn" onclick="wizNext(3)">המשך &#8592;</button>
+      </div>
+    </div>
+    <!-- Step 4: Confirm -->
+    <div class="wizard-step" id="wiz-step-4">
+      <h4>שלב 4 — אישור ראשוני</h4>
+      <div id="wiz-summary" class="card" style="background:var(--card2);font-size:14px;line-height:1.8;"></div>
+      <div class="hw-warn" style="margin-top:10px;font-size:13px;">
+        💡 לאחר הוספת המשטח, לחץ <b>קרא עכשיו</b> בכרטיסיית המשטח לאפס את הבסיס (Tare/Calibrate).
+      </div>
+      <div style="margin-top:16px;" class="row">
+        <button class="btn sec" onclick="wizBack(4)">&#8592; חזור</button>
+        <button class="btn ok" onclick="wizFinish()">✓ צור משטח</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT ITEM MODAL -->
+<div class="modal-overlay" id="modal-item">
+  <div class="modal-box center-modal" style="width:calc(100% - 32px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 id="item-modal-title" style="margin:0;">פריט חדש</h3>
+      <button class="modal-close" onclick="closeModal('modal-item')">✕</button>
+    </div>
+    <label>שם הפריט</label>
+    <input id="item-name" placeholder="למשל: ברגי M6">
+    <label>משקל סגולי ליחידה (גרם)</label>
+    <input id="item-unit-weight" type="number" placeholder="5.2" step="0.1">
+    <label>ספק (אופציונלי)</label>
+    <input id="item-supplier" placeholder="שם הספק">
+    <input type="hidden" id="item-edit-id">
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="saveItem()">שמור פריט</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SHELF MODAL -->
+<div class="modal-overlay" id="modal-edit-shelf">
+  <div class="modal-box center-modal" style="width:calc(100% - 32px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">עריכת משטח</h3>
+      <button class="modal-close" onclick="closeModal('modal-edit-shelf')">✕</button>
+    </div>
+    <label>שם/מיקום</label>
+    <input id="es-name">
+    <label>משקל טרה (גרם)</label>
+    <input id="es-tare" type="number">
+    <label>סף התראה — סוג</label>
+    <select id="es-alert-type">
+      <option value="qty">כמות יחידות</option>
+      <option value="weight">משקל (גרם)</option>
+    </select>
+    <label id="es-alert-label">סף מינימלי</label>
+    <input id="es-alert-value" type="number">
+    <input type="hidden" id="es-shelf-id">
+    <div style="margin-top:16px;" class="row">
+      <button class="btn danger sm" onclick="deleteShelf()">🗑 מחק משטח</button>
+      <button class="btn ok" onclick="saveEditShelf()">✓ שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal-box center-modal" style="width:calc(100% - 32px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">⚙️ הגדרות</h3>
+      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <label>שם העסק</label>
+    <input id="settings-biz-name" placeholder="שם העסק שלך">
+    <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+      <span>מצב דמו (נתוני דוגמה)</span>
+      <button class="toggle on" id="demo-toggle" onclick="toggleDemo()"><span class="knob"></span></button>
+    </div>
+    <div style="margin-top:8px;" class="muted">במצב דמו — המערכת מדמה קריאות ESP32 אוטומטיות</div>
+    <div style="margin-top:20px;" class="row">
+      <button class="btn danger sm" onclick="clearAllData()">🗑 נקה כל הנתונים</button>
+      <button class="btn" onclick="saveSettings()">✓ שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- READING MODAL (manual read result) -->
+<div class="modal-overlay" id="modal-reading">
+  <div class="modal-box center-modal" style="width:calc(100% - 32px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">📡 קריאה חדשה</h3>
+      <button class="modal-close" onclick="closeModal('modal-reading')">✕</button>
+    </div>
+    <div id="reading-result" class="center"></div>
+    <div style="margin-top:16px;">
+      <button class="btn" onclick="closeModal('modal-reading')">סגור</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<script>
+(function(){"use strict";
+
+var LS = {
+  get:function(k,d){try{var v=localStorage.getItem('ws_'+k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem('ws_'+k,JSON.stringify(v));}catch(e){}}
+};
+
+var HW_PROFILES = {
+  micro:{label:'Micro',range:'0-500 גרם',accuracy:0.5,minUnit:1,cost:'~30$'},
+  light:{label:'Light',range:'0-5 ק"ג',accuracy:5,minUnit:10,cost:'~25$'},
+  heavy:{label:'Heavy',range:'0-100 ק"ג',accuracy:100,minUnit:200,cost:'~40$'}
+};
+
+var activeScreen = 'screen-dashboard';
+var currentShelfId = null;
+var wizData = {};
+var wizSelectedItemId = null;
+
+/* ─── NAVIGATION ─── */
+function navTo(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  activeScreen = id;
+  document.querySelectorAll('.navbtn').forEach(function(b){b.classList.remove('active');});
+  var nb = document.getElementById('nav-'+id) || document.getElementById('nav-dashboard');
+  if(nb) nb.classList.add('active');
+  if(id==='screen-dashboard') renderDashboard();
+  if(id==='screen-items') renderItems();
+  if(id==='screen-alerts') renderAlerts();
+}
+window.navTo = navTo;
+
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+window.openModal = openModal; window.closeModal = closeModal;
+
+/* ─── DATA HELPERS ─── */
+function getShelves(){return LS.get('shelves',[]);}
+function getItems(){return LS.get('items',[]);}
+function getReadings(shelfId){
+  var all = LS.get('readings',{});
+  return (all[shelfId]||[]).slice(-200); // last 200 readings per shelf
+}
+function addReading(shelfId, rawWeight){
+  var shelves = getShelves();
+  var shelf = shelves.find(function(s){return s.id===shelfId;});
+  if(!shelf) return null;
+  var items = getItems();
+  var item = items.find(function(i){return i.id===shelf.itemId;});
+  var unitW = item ? parseFloat(item.unitWeight)||1 : 1;
+  var tare = parseFloat(shelf.tare)||0;
+  var net = Math.max(0, rawWeight - tare);
+  var qty = Math.round(net / unitW);
+  var reading = {ts:Date.now(), rawWeight:rawWeight, netWeight:net, qty:qty, src:'auto'};
+  var all = LS.get('readings',{});
+  if(!all[shelfId]) all[shelfId]=[];
+  all[shelfId].push(reading);
+  if(all[shelfId].length>500) all[shelfId]=all[shelfId].slice(-500);
+  LS.set('readings',all);
+  // Check alerts
+  checkAlert(shelf, reading, item);
+  return reading;
+}
+
+function calcStatus(shelf, reading){
+  if(!reading) return 'offline';
+  var age = (Date.now()-reading.ts)/1000/60; // minutes
+  if(age > 180) return 'offline';
+  if(!shelf.alertType || !shelf.alertValue) return 'ok';
+  var val = shelf.alertType==='weight' ? reading.netWeight : reading.qty;
+  var thresh = parseFloat(shelf.alertValue)||0;
+  if(val <= 0) return 'crit';
+  if(val <= thresh*0.5) return 'crit';
+  if(val <= thresh) return 'warn';
+  return 'ok';
+}
+
+function latestReading(shelfId){
+  var r = getReadings(shelfId);
+  return r.length ? r[r.length-1] : null;
+}
+
+function checkAlert(shelf, reading, item){
+  var status = calcStatus(shelf, reading);
+  if(status==='warn'||status==='crit'){
+    var alerts = LS.get('alerts',[]);
+    var existing = alerts.find(function(a){return a.shelfId===shelf.id&&a.status==='active';});
+    if(!existing){
+      alerts.push({id:'a'+Date.now(),shelfId:shelf.id,shelfName:shelf.name,
+        itemName:item?item.name:'',severity:status,ts:Date.now(),status:'active'});
+      LS.set('alerts',alerts);
+    } else { existing.severity = status; LS.set('alerts',alerts); }
+  }
+  updateAlertBell();
+}
+
+function updateAlertBell(){
+  var alerts = LS.get('alerts',[]).filter(function(a){return a.status==='active';});
+  var bell = document.getElementById('alert-bell');
+  var label = document.getElementById('nav-alert-label');
+  if(bell) bell.textContent = alerts.length ? '🔔' : '🔕';
+  if(label) label.textContent = alerts.length ? 'התראות ('+alerts.length+')' : 'התראות';
+}
+
+/* ─── DASHBOARD ─── */
+function renderDashboard(){
+  var shelves = getShelves();
+  var items = getItems();
+  var alerts = LS.get('alerts',[]).filter(function(a){return a.status==='active';});
+
+  // Summary
+  var onlineCount = 0, critCount = 0, warnCount = 0;
+  shelves.forEach(function(s){
+    var r = latestReading(s.id);
+    var st = calcStatus(s,r);
+    if(st!=='offline') onlineCount++;
+    if(st==='crit') critCount++;
+    if(st==='warn') warnCount++;
+  });
+  var sumHtml = '<div class="sum-tile"><div class="n">'+shelves.length+'</div><div class="l">משטחים</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--warn);">'+warnCount+'</div><div class="l">אזהרות</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--crit);">'+critCount+'</div><div class="l">קריטיים</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--ok);">'+onlineCount+'</div><div class="l">מחוברים</div></div>';
+  document.getElementById('db-summary').innerHTML = sumHtml;
+
+  var biz = LS.get('settings',{}).bizName||'';
+  document.getElementById('db-subtitle').textContent = biz||'מערכת מלאי חכם לפי משקל';
+
+  if(!shelves.length){
+    document.getElementById('db-shelves').innerHTML =
+      '<div class="empty"><div class="ic">⚖️</div>'+
+      '<div style="font-weight:700;margin-bottom:6px;">אין משטחי שקילה</div>'+
+      '<div class="muted">לחץ + כדי להוסיף את המשטח הראשון</div></div>';
+    return;
+  }
+
+  // Sort: crit first, then warn, then ok, then offline
+  var order = {crit:0,warn:1,ok:2,offline:3};
+  var sorted = shelves.slice().sort(function(a,b){
+    var ra = latestReading(a.id), rb = latestReading(b.id);
+    return (order[calcStatus(a,ra)]||3)-(order[calcStatus(b,rb)]||3);
+  });
+
+  var html = '<div class="shelf-grid">';
+  sorted.forEach(function(shelf){
+    var r = latestReading(shelf.id);
+    var st = calcStatus(shelf,r);
+    var item = items.find(function(i){return i.id===shelf.itemId;});
+    var qty = r ? r.qty : '—';
+    var net = r ? (r.netWeight/1000>1 ? (r.netWeight/1000).toFixed(2)+' ק"ג' : r.netWeight+'גרם') : '—';
+    var ts = r ? timeAgo(r.ts) : 'אין קריאה';
+    var badge = {ok:'<span class="badge ok">✓ תקין</span>',warn:'<span class="badge warn">⚠ נמוך</span>',
+      crit:'<span class="badge crit">🔴 קריטי</span>',offline:'<span class="badge off">○ לא מחובר</span>'}[st];
+    html += '<div class="shelf-card '+st+'" onclick="openShelfDetail(\''+shelf.id+'\')">'+
+      badge+
+      '<div class="qty" style="color:'+(st==='crit'?'var(--crit)':st==='warn'?'var(--warn)':'var(--text)')+'">'+qty+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);">יחידות</div>'+
+      '<div class="item-name">'+(item?item.name:'—')+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:4px;">'+net+'</div>'+
+      '<div class="ts">'+shelf.name+'</div>'+
+      '<div class="ts">'+ts+'</div>'+
+      '</div>';
+  });
+  html += '</div>';
+  document.getElementById('db-shelves').innerHTML = html;
+  updateAlertBell();
+}
+window.renderDashboard = renderDashboard;
+
+/* ─── SHELF DETAIL ─── */
+function openShelfDetail(id){
+  currentShelfId = id;
+  navTo('screen-shelf-detail');
+  renderShelfDetail(id);
+}
+window.openShelfDetail = openShelfDetail;
+
+function renderShelfDetail(id){
+  var shelves = getShelves();
+  var shelf = shelves.find(function(s){return s.id===id;});
+  if(!shelf) return;
+  document.getElementById('sd-title').textContent = shelf.name;
+  var items = getItems();
+  var item = items.find(function(i){return i.id===shelf.itemId;});
+  var readings = getReadings(id);
+  var r = readings.length ? readings[readings.length-1] : null;
+  var st = calcStatus(shelf,r);
+  var hw = HW_PROFILES[shelf.profile]||HW_PROFILES.light;
+  var badge = {ok:'<span class="badge ok">✓ תקין</span>',warn:'<span class="badge warn">⚠ מלאי נמוך</span>',
+    crit:'<span class="badge crit">🔴 מלאי קריטי</span>',offline:'<span class="badge off">○ לא מחובר</span>'}[st];
+
+  // Calc threshold progress
+  var pct = 100, alertV = parseFloat(shelf.alertValue)||0;
+  if(r && alertV>0){
+    var curV = shelf.alertType==='weight'?r.netWeight:r.qty;
+    pct = Math.min(100, Math.round(curV/(alertV*2)*100));
+  }
+  var pctColor = pct>50?'var(--ok)':pct>25?'var(--warn)':'var(--crit)';
+
+  var html = '';
+  // Status + main metric
+  html += '<div class="card center">'+badge+
+    '<div style="font-size:52px;font-weight:800;margin:12px 0 4px;color:'+(st==='crit'?'var(--crit)':st==='warn'?'var(--warn)':'var(--text)')+'">'+
+    (r?r.qty:'—')+'</div>'+
+    '<div class="muted">יחידות</div>'+
+    '<div style="font-size:18px;font-weight:600;margin-top:4px;">'+(r?r.netWeight+'גרם נטו':'')+'</div>'+
+    (alertV>0?'<div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:'+pct+'%;background:'+pctColor+';"></div></div>'+
+    '<div class="muted" style="font-size:11px;">סף התראה: '+(shelf.alertType==='weight'?alertV+'גרם':alertV+' יחידות')+'</div>':'')+'</div>';
+
+  // Info row
+  html += '<div class="card" style="background:var(--card2);">'+
+    '<div class="row" style="font-size:13px;">'+
+    '<div><div class="muted">פריט</div><b>'+(item?item.name:'—')+'</b></div>'+
+    '<div><div class="muted">משקל סגולי</div><b>'+(item?item.unitWeight+'גרם':'—')+'</b></div>'+
+    '<div><div class="muted">פרופיל HW</div><b>'+hw.label+'</b></div>'+
+    '</div>'+
+    '<div class="row" style="font-size:13px;margin-top:10px;">'+
+    '<div><div class="muted">טרה</div><b>'+(shelf.tare||0)+'גרם</b></div>'+
+    '<div><div class="muted">קריאה אחרונה</div><b>'+(r?timeAgo(r.ts):'—')+'</b></div>'+
+    '<div><div class="muted">מקור</div><b>'+(r?(r.src==='auto'?'ESP32 אוטו':'ידני'):'—')+'</b></div>'+
+    '</div></div>';
+
+  // Manual read button
+  html += '<button class="btn" onclick="performManualReading(\''+id+'\')">📡 קרא עכשיו (ידני)</button>';
+
+  // Consumption chart
+  if(readings.length>1){
+    html += '<div class="card"><b style="font-size:13px;">📈 היסטוריית צריכה</b>'+
+      renderChart(readings, shelf)+'</div>';
+  }
+
+  // Reading history table
+  var recent = readings.slice(-10).reverse();
+  if(recent.length){
+    html += '<div class="card"><b style="font-size:13px;">קריאות אחרונות</b>';
+    recent.forEach(function(rd){
+      var src = rd.src==='auto'?'🤖 אוטו':'👆 ידני';
+      html += '<div class="reading-row">'+
+        '<div><div>'+rd.qty+' יח\'  · '+rd.netWeight+'גרם</div>'+
+        '<div class="muted" style="font-size:11px;">'+src+' · '+formatTs(rd.ts)+'</div></div>'+
+        '<div style="font-size:11px;color:var(--muted);">גולמי: '+rd.rawWeight+'גרם</div>'+
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('sd-content').innerHTML = html;
+}
+window.renderShelfDetail = renderShelfDetail;
+
+function renderChart(readings, shelf){
+  // Group by day — show last 14 days
+  var days = {};
+  var now = new Date(); now.setHours(23,59,59,999);
+  for(var d=13;d>=0;d--){
+    var day = new Date(now); day.setDate(day.getDate()-d);
+    var key = day.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+    days[key] = [];
+  }
+  readings.forEach(function(r){
+    var key = new Date(r.ts).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+    if(days[key]!==undefined) days[key].push(r.qty);
+  });
+  var keys = Object.keys(days);
+  var avgs = keys.map(function(k){
+    var arr = days[k];
+    return arr.length ? Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length) : null;
+  });
+  var max = Math.max.apply(null, avgs.filter(function(v){return v!==null;}));
+  if(!max) return '';
+  var alertV = parseFloat(shelf.alertValue)||0;
+  var W = 30, H = 90, gap = 4;
+  var totalW = keys.length*(W+gap);
+  var svgH = H+30;
+  var bars = keys.map(function(k,i){
+    var v = avgs[i];
+    if(v===null) return '';
+    var bh = Math.round((v/max)*H);
+    var y = H-bh;
+    var color = alertV>0?(v<=alertV*0.5?'var(--crit)':v<=alertV?'var(--warn)':'var(--ok)'):'var(--accent)';
+    var label = k.replace(/\//,'/');
+    return '<rect x="'+(i*(W+gap))+'" y="'+y+'" width="'+W+'" height="'+bh+'" rx="4" fill="'+color+'" opacity=".85"/>'+
+      '<text x="'+(i*(W+gap)+W/2)+'" y="'+(H+14)+'" text-anchor="middle" font-size="9" fill="var(--muted)">'+label+'</text>'+
+      '<text x="'+(i*(W+gap)+W/2)+'" y="'+(y-3)+'" text-anchor="middle" font-size="9" fill="var(--text)">'+v+'</text>';
+  }).join('');
+  // Alert line
+  var alertLine = '';
+  if(alertV>0 && max>0){
+    var lineY = H - Math.round((alertV/max)*H);
+    if(lineY>0 && lineY<H)
+      alertLine = '<line x1="0" y1="'+lineY+'" x2="'+totalW+'" y2="'+lineY+'" stroke="var(--warn)" stroke-dasharray="4,3" stroke-width="1.5"/>';
+  }
+  return '<div class="chart-wrap" style="margin-top:10px;"><svg width="'+totalW+'" height="'+svgH+'" style="display:block;">'+bars+alertLine+'</svg></div>';
+}
+
+/* ─── MANUAL READING ─── */
+function performManualReading(id){
+  var shelves = getShelves();
+  var shelf = shelves.find(function(s){return s.id===id;});
+  if(!shelf) return;
+  var items = getItems();
+  var item = items.find(function(i){return i.id===shelf.itemId;});
+  // Simulate: generate realistic weight based on last reading with small decrease
+  var readings = getReadings(id);
+  var lastRaw = readings.length ? readings[readings.length-1].rawWeight : (parseFloat(shelf.tare)||0)+(item?parseFloat(item.unitWeight)*50:500);
+  var decrease = Math.random()*20; // random small consumption
+  var raw = Math.max(parseFloat(shelf.tare)||0, lastRaw - decrease);
+  raw = Math.round(raw*10)/10;
+  // Add noise (simulating real sensor)
+  var noise = (Math.random()-0.5)*(HW_PROFILES[shelf.profile]||HW_PROFILES.light).accuracy;
+  raw = Math.max(0, Math.round((raw+noise)*10)/10);
+  var reading = addReading(id, raw);
+  reading.src = 'manual';
+  // Update in storage
+  var all = LS.get('readings',{});
+  if(all[id] && all[id].length) all[id][all[id].length-1].src='manual';
+  LS.set('readings',all);
+  // Show result
+  var resultHtml = '<div style="font-size:48px;font-weight:800;color:var(--accent);">'+reading.qty+'</div>'+
+    '<div class="muted">יחידות</div>'+
+    '<div style="font-size:18px;margin-top:8px;">'+reading.netWeight+'גרם נטו</div>'+
+    '<div class="muted" style="margin-top:4px;">גולמי: '+reading.rawWeight+'גרם | טרה: '+(shelf.tare||0)+'גרם</div>';
+  document.getElementById('reading-result').innerHTML = resultHtml;
+  openModal('modal-reading');
+  if(activeScreen==='screen-shelf-detail') renderShelfDetail(id);
+  renderDashboard();
+}
+window.performManualReading = performManualReading;
+
+/* ─── ITEMS ─── */
+function renderItems(){
+  var items = getItems();
+  var shelves = getShelves();
+  if(!items.length){
+    document.getElementById('items-list').innerHTML =
+      '<div class="empty"><div class="ic">📦</div><div>אין פריטים בספרייה</div>'+
+      '<div class="muted">לחץ + כדי להוסיף פריט ראשון</div></div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item){
+    var usedIn = shelves.filter(function(s){return s.itemId===item.id;}).length;
+    html += '<div class="card" style="display:flex;justify-content:space-between;align-items:center;">'+
+      '<div>'+
+      '<div style="font-weight:700;">'+item.name+'</div>'+
+      '<div class="muted">'+item.unitWeight+'גרם/יחידה'+(item.supplier?' · '+item.supplier:'')+'</div>'+
+      '<div class="muted" style="font-size:11px;">'+usedIn+' משטחים משתמשים</div>'+
+      '</div>'+
+      '<button class="btn sec sm" onclick="openEditItem(\''+item.id+'\')">✏️</button>'+
+      '</div>';
+  });
+  document.getElementById('items-list').innerHTML = html;
+}
+window.renderItems = renderItems;
+
+function openAddItem(){
+  document.getElementById('item-modal-title').textContent = 'פריט חדש';
+  document.getElementById('item-name').value = '';
+  document.getElementById('item-unit-weight').value = '';
+  document.getElementById('item-supplier').value = '';
+  document.getElementById('item-edit-id').value = '';
+  openModal('modal-item');
+}
+window.openAddItem = openAddItem;
+
+function openEditItem(id){
+  var items = getItems();
+  var item = items.find(function(i){return i.id===id;});
+  if(!item) return;
+  document.getElementById('item-modal-title').textContent = 'עריכת פריט';
+  document.getElementById('item-name').value = item.name||'';
+  document.getElementById('item-unit-weight').value = item.unitWeight||'';
+  document.getElementById('item-supplier').value = item.supplier||'';
+  document.getElementById('item-edit-id').value = id;
+  openModal('modal-item');
+}
+window.openEditItem = openEditItem;
+
+function saveItem(){
+  var name = document.getElementById('item-name').value.trim();
+  var uw = parseFloat(document.getElementById('item-unit-weight').value);
+  if(!name){alert('יש להזין שם פריט');return;}
+  if(!uw||uw<=0){alert('יש להזין משקל סגולי חיובי');return;}
+  var items = getItems();
+  var editId = document.getElementById('item-edit-id').value;
+  if(editId){
+    var idx = items.findIndex(function(i){return i.id===editId;});
+    if(idx>=0){
+      items[idx].name=name; items[idx].unitWeight=uw;
+      items[idx].supplier=document.getElementById('item-supplier').value.trim();
+    }
+  } else {
+    items.push({id:'i'+Date.now(),name:name,unitWeight:uw,
+      supplier:document.getElementById('item-supplier').value.trim()});
+  }
+  LS.set('items',items);
+  closeModal('modal-item');
+  renderItems();
+}
+window.saveItem = saveItem;
+
+/* ─── ALERTS ─── */
+function renderAlerts(){
+  var alerts = LS.get('alerts',[]);
+  if(!alerts.length){
+    document.getElementById('alerts-list').innerHTML =
+      '<div class="empty"><div class="ic">✅</div><div>אין התראות פעילות</div></div>';
+    return;
+  }
+  alerts.sort(function(a,b){return b.ts-a.ts;});
+  var html = '';
+  alerts.forEach(function(al){
+    var ic = al.severity==='crit'?'🔴':'⚠️';
+    var statusLabel = al.status==='active'?'פעילה':al.status==='ordered'?'הוזמן מלאי':'טופלה';
+    var statusColor = al.status==='active'?(al.severity==='crit'?'var(--crit)':'var(--warn)'):'var(--ok)';
+    html += '<div class="alert-item '+(al.severity==='warn'?'warn':'')+'">'+
+      '<div style="font-size:24px;">'+ic+'</div>'+
+      '<div style="flex:1;">'+
+      '<div style="font-weight:700;">'+al.shelfName+'</div>'+
+      '<div class="muted">'+al.itemName+' · '+timeAgo(al.ts)+'</div>'+
+      '<div style="font-size:12px;color:'+statusColor+';margin-top:3px;">'+statusLabel+'</div>'+
+      '</div>'+
+      (al.status==='active'?
+        '<div style="display:flex;flex-direction:column;gap:4px;">'+
+        '<button class="btn sm ok" onclick="markAlert(\''+al.id+'\',\'ordered\')">הוזמן</button>'+
+        '<button class="btn sm sec" onclick="markAlert(\''+al.id+'\',\'done\')">טופל</button>'+
+        '</div>':'')+'</div>';
+  });
+  document.getElementById('alerts-list').innerHTML = html;
+}
+window.renderAlerts = renderAlerts;
+
+function markAlert(id, status){
+  var alerts = LS.get('alerts',[]);
+  var a = alerts.find(function(x){return x.id===id;});
+  if(a) a.status=status;
+  LS.set('alerts',alerts);
+  renderAlerts();
+  updateAlertBell();
+}
+window.markAlert = markAlert;
+
+/* ─── EDIT SHELF ─── */
+function openEditShelf(){
+  var shelves = getShelves();
+  var shelf = shelves.find(function(s){return s.id===currentShelfId;});
+  if(!shelf) return;
+  document.getElementById('es-shelf-id').value = shelf.id;
+  document.getElementById('es-name').value = shelf.name||'';
+  document.getElementById('es-tare').value = shelf.tare||0;
+  document.getElementById('es-alert-type').value = shelf.alertType||'qty';
+  document.getElementById('es-alert-value').value = shelf.alertValue||'';
+  document.getElementById('es-alert-label').textContent = shelf.alertType==='weight'?'סף מינימלי (גרם)':'סף מינימלי (יחידות)';
+  openModal('modal-edit-shelf');
+}
+window.openEditShelf = openEditShelf;
+
+function saveEditShelf(){
+  var id = document.getElementById('es-shelf-id').value;
+  var shelves = getShelves();
+  var idx = shelves.findIndex(function(s){return s.id===id;});
+  if(idx<0) return;
+  shelves[idx].name = document.getElementById('es-name').value.trim()||shelves[idx].name;
+  shelves[idx].tare = parseFloat(document.getElementById('es-tare').value)||0;
+  shelves[idx].alertType = document.getElementById('es-alert-type').value;
+  shelves[idx].alertValue = parseFloat(document.getElementById('es-alert-value').value)||0;
+  LS.set('shelves',shelves);
+  closeModal('modal-edit-shelf');
+  renderShelfDetail(id);
+}
+window.saveEditShelf = saveEditShelf;
+
+function deleteShelf(){
+  if(!confirm('למחוק את המשטח ואת כל הקריאות שלו?')) return;
+  var id = document.getElementById('es-shelf-id').value;
+  var shelves = getShelves().filter(function(s){return s.id!==id;});
+  LS.set('shelves',shelves);
+  var all = LS.get('readings',{});
+  delete all[id];
+  LS.set('readings',all);
+  closeModal('modal-edit-shelf');
+  navTo('screen-dashboard');
+}
+window.deleteShelf = deleteShelf;
+
+/* ─── SETTINGS ─── */
+function openSettingsModal(){
+  var s = LS.get('settings',{});
+  document.getElementById('settings-biz-name').value = s.bizName||'';
+  var demo = s.demo!==false;
+  var tog = document.getElementById('demo-toggle');
+  tog.classList.toggle('on', demo);
+  openModal('modal-settings');
+}
+function saveSettings(){
+  var s = LS.get('settings',{});
+  s.bizName = document.getElementById('settings-biz-name').value.trim();
+  LS.set('settings',s);
+  closeModal('modal-settings');
+  renderDashboard();
+}
+function toggleDemo(){
+  var s = LS.get('settings',{});
+  s.demo = !(s.demo!==false);
+  LS.set('settings',s);
+  var tog = document.getElementById('demo-toggle');
+  tog.classList.toggle('on', s.demo);
+}
+function clearAllData(){
+  if(!confirm('למחוק את כל הנתונים? פעולה זו בלתי הפיכה.')) return;
+  ['shelves','items','readings','alerts','settings'].forEach(function(k){LS.set(k,null);});
+  closeModal('modal-settings');
+  location.reload();
+}
+window.saveSettings = saveSettings; window.toggleDemo = toggleDemo; window.clearAllData = clearAllData;
+
+/* ─── SETUP WIZARD ─── */
+var wizStep = 1;
+function openSetupWizard(){
+  wizStep = 1;
+  wizData = {};
+  wizSelectedItemId = null;
+  document.querySelectorAll('.wizard-step').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('wiz-step-1').classList.add('active');
+  document.getElementById('wiz-progress').style.width = '25%';
+  document.getElementById('wiz-name').value = '';
+  document.getElementById('wiz-profile').value = 'light';
+  document.getElementById('wiz-hw-validation').innerHTML = '';
+  openModal('modal-setup');
+}
+window.openSetupWizard = openSetupWizard;
+
+function wizNext(step){
+  if(step===1){
+    var name = document.getElementById('wiz-name').value.trim();
+    if(!name){alert('יש להזין שם למשטח');return;}
+    wizData.name = name;
+    wizData.profile = document.getElementById('wiz-profile').value;
+    document.getElementById('wiz-step-1').classList.remove('active');
+    document.getElementById('wiz-step-2').classList.add('active');
+    document.getElementById('wiz-progress').style.width='50%';
+    showNewItem();
+    wizStep=2;
+  } else if(step===2){
+    // Collect item
+    if(!wizSelectedItemId){
+      var iname = document.getElementById('wiz-item-name').value.trim();
+      var iuw = parseFloat(document.getElementById('wiz-unit-weight').value);
+      if(!iname){alert('יש להזין שם פריט');return;}
+      if(!iuw||iuw<=0){alert('יש להזין משקל סגולי');return;}
+      // Validate HW profile
+      var hw = HW_PROFILES[wizData.profile];
+      if(hw && iuw < hw.minUnit){
+        if(!confirm('אזהרה: המשקל הסגולי ('+iuw+'גרם) נמוך מהמינימום המומלץ לפרופיל זה ('+hw.minUnit+'גרם). להמשיך בכל זאת?')) return;
+      }
+      // Save new item
+      var items = getItems();
+      var newItem = {id:'i'+Date.now(),name:iname,unitWeight:iuw,supplier:''};
+      items.push(newItem);
+      LS.set('items',items);
+      wizSelectedItemId = newItem.id;
+    }
+    wizData.itemId = wizSelectedItemId;
+    document.getElementById('wiz-step-2').classList.remove('active');
+    document.getElementById('wiz-step-3').classList.add('active');
+    document.getElementById('wiz-progress').style.width='75%';
+    renderAlertThresholdInput();
+    wizStep=3;
+  } else if(step===3){
+    wizData.tare = parseFloat(document.getElementById('wiz-tare').value)||0;
+    wizData.alertType = document.getElementById('wiz-alert-type').value;
+    wizData.alertValue = parseFloat(document.getElementById('wiz-alert-value').value)||0;
+    // Summary
+    var items = getItems();
+    var item = items.find(function(i){return i.id===wizData.itemId;});
+    var hw = HW_PROFILES[wizData.profile];
+    document.getElementById('wiz-summary').innerHTML =
+      '📍 <b>שם:</b> '+wizData.name+'<br>'+
+      '⚖️ <b>פרופיל:</b> '+(hw?hw.label+' ('+hw.range+')')+'<br>'+
+      '📦 <b>פריט:</b> '+(item?item.name:'—')+' · '+(item?item.unitWeight:'?')+'גרם/יחידה<br>'+
+      '🧺 <b>טרה:</b> '+wizData.tare+'גרם<br>'+
+      '🚨 <b>סף התראה:</b> '+wizData.alertValue+(wizData.alertType==='weight'?' גרם':' יחידות');
+    document.getElementById('wiz-step-3').classList.remove('active');
+    document.getElementById('wiz-step-4').classList.add('active');
+    document.getElementById('wiz-progress').style.width='100%';
+    wizStep=4;
+  }
+}
+window.wizNext = wizNext;
+
+function wizBack(step){
+  document.getElementById('wiz-step-'+step).classList.remove('active');
+  document.getElementById('wiz-step-'+(step-1)).classList.add('active');
+  document.getElementById('wiz-progress').style.width=((step-1)*25)+'%';
+  wizStep=step-1;
+}
+window.wizBack = wizBack;
+
+function wizFinish(){
+  var shelf = {id:'s'+Date.now(),name:wizData.name,profile:wizData.profile,
+    itemId:wizData.itemId,tare:wizData.tare,
+    alertType:wizData.alertType,alertValue:wizData.alertValue};
+  var shelves = getShelves();
+  shelves.push(shelf);
+  LS.set('shelves',shelves);
+  closeModal('modal-setup');
+  renderDashboard();
+  // Auto-add first simulated reading
+  setTimeout(function(){simulateReading(shelf.id);},300);
+}
+window.wizFinish = wizFinish;
+
+function showNewItem(){
+  document.getElementById('wiz-existing-list').style.display='none';
+  document.getElementById('wiz-new-item').style.display='block';
+  document.getElementById('wiz-selected-item-info').style.display='none';
+  wizSelectedItemId=null;
+  renderHwValidation();
+}
+window.showNewItem = showNewItem;
+
+function showExistingItems(){
+  var items = getItems();
+  if(!items.length){showNewItem();return;}
+  document.getElementById('wiz-new-item').style.display='none';
+  document.getElementById('wiz-selected-item-info').style.display='none';
+  var html='';
+  items.forEach(function(item){
+    html+='<div onclick="selectExistingItem(\''+item.id+'\')" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;">'+
+      '<div style="font-weight:700;">'+item.name+'</div>'+
+      '<div class="muted">'+item.unitWeight+'גרם/יחידה'+(item.supplier?' · '+item.supplier:'')+'</div></div>';
+  });
+  document.getElementById('wiz-existing-list').innerHTML=html;
+  document.getElementById('wiz-existing-list').style.display='block';
+}
+window.showExistingItems = showExistingItems;
+
+function selectExistingItem(id){
+  var items = getItems();
+  var item = items.find(function(i){return i.id===id;});
+  if(!item) return;
+  wizSelectedItemId = id;
+  document.getElementById('wiz-existing-list').style.display='none';
+  var hw = HW_PROFILES[document.getElementById('wiz-profile').value||'light'];
+  var ok = !hw || item.unitWeight>=hw.minUnit;
+  var cls = ok?'hw-ok':'hw-warn';
+  var msg = ok ? '✓ '+item.name+' ('+item.unitWeight+'גרם/יחידה) — תואם לפרופיל'+hw.label :
+    '⚠ '+item.name+' ('+item.unitWeight+'גרם/יחידה) — נמוך מהמינימום המומלץ ('+hw.minUnit+'גרם) לפרופיל '+hw.label;
+  document.getElementById('wiz-selected-item-info').className='card '+cls;
+  document.getElementById('wiz-selected-item-info').textContent=msg;
+  document.getElementById('wiz-selected-item-info').style.display='block';
+}
+window.selectExistingItem = selectExistingItem;
+
+function renderHwValidation(){
+  var uw = parseFloat(document.getElementById('wiz-unit-weight')?document.getElementById('wiz-unit-weight').value:0);
+  var profile = document.getElementById('wiz-profile')?document.getElementById('wiz-profile').value:'light';
+  var el = document.getElementById('wiz-hw-validation');
+  if(!el) return;
+  if(!uw||uw<=0){el.innerHTML='';return;}
+  var hw = HW_PROFILES[profile];
+  if(!hw){el.innerHTML='';return;}
+  if(uw<hw.minUnit){
+    el.innerHTML='<div class="hw-warn">⚠ משקל סגולי '+uw+'גרם נמוך מהמינימום המומלץ ('+hw.minUnit+'גרם) עבור פרופיל '+hw.label+'. מומלץ לעבור לפרופיל Micro.</div>';
+  } else {
+    el.innerHTML='<div class="hw-ok">✓ המשקל הסגולי ('+uw+'גרם) תואם לפרופיל '+hw.label+' (מינימום '+hw.minUnit+'גרם)</div>';
+  }
+}
+window.renderHwValidation = renderHwValidation;
+
+function renderAlertThresholdInput(){
+  var type = document.getElementById('wiz-alert-type').value;
+  var wrap = document.getElementById('wiz-alert-threshold-wrap');
+  wrap.innerHTML='<label>סף מינימלי ('+(type==='weight'?'גרם':'יחידות')+')</label>'+
+    '<input id="wiz-alert-value" type="number" placeholder="'+(type==='weight'?'לדוגמה: 100':'לדוגמה: 20')+'">';
+}
+window.renderAlertThresholdInput = renderAlertThresholdInput;
+
+/* ─── SIMULATION ─── */
+function simulateReading(shelfId){
+  var shelves = getShelves();
+  var shelf = shelves.find(function(s){return s.id===shelfId;});
+  if(!shelf) return;
+  var items = getItems();
+  var item = items.find(function(i){return i.id===shelf.itemId;});
+  var unitW = item ? parseFloat(item.unitWeight)||5 : 5;
+  var tare = parseFloat(shelf.tare)||0;
+  var readings = getReadings(shelfId);
+  var hw = HW_PROFILES[shelf.profile]||HW_PROFILES.light;
+  var raw;
+  if(readings.length===0){
+    // First reading: start at 50-80% full
+    var initQty = Math.floor(50+Math.random()*50);
+    raw = tare + unitW*initQty;
+  } else {
+    var last = readings[readings.length-1];
+    // Consume 0-5 units since last reading
+    var consumed = Math.random()<0.3?0:Math.floor(Math.random()*5);
+    raw = Math.max(tare, last.rawWeight - consumed*unitW);
+    // Add sensor noise
+    var noise = (Math.random()-0.5)*hw.accuracy*2;
+    raw = Math.max(0, raw+noise);
+  }
+  raw = Math.round(raw*10)/10;
+  addReading(shelfId, raw);
+}
+
+function runAutoSimulation(){
+  var s = LS.get('settings',{});
+  if(s.demo===false) return;
+  var shelves = getShelves();
+  shelves.forEach(function(shelf){simulateReading(shelf.id);});
+  if(activeScreen==='screen-dashboard') renderDashboard();
+  if(activeScreen==='screen-shelf-detail' && currentShelfId) renderShelfDetail(currentShelfId);
+}
+
+/* ─── DEMO DATA ─── */
+function generateDemoData(){
+  var demoItems = [
+    {id:'di1',name:'ברגי M6 (אינוקס)',unitWeight:5.2,supplier:'מחסן הברגים'},
+    {id:'di2',name:'מסמרות 40מ"מ',unitWeight:3.1,supplier:'הנגרות המרכזית'},
+    {id:'di3',name:'אומים M8',unitWeight:8.4,supplier:'מחסן הברגים'},
+    {id:'di4',name:'צירים זהב 50מ"מ',unitWeight:22.5,supplier:'כלים ואביזרים בע"מ'}
+  ];
+  var demoShelves = [
+    {id:'ds1',name:'ארון א — תא 1',profile:'micro',itemId:'di1',tare:85,alertType:'qty',alertValue:30},
+    {id:'ds2',name:'ארון א — תא 2',profile:'micro',itemId:'di2',tare:60,alertType:'qty',alertValue:50},
+    {id:'ds3',name:'ארון ב — תא 1',profile:'light',itemId:'di3',tare:120,alertType:'qty',alertValue:20},
+    {id:'ds4',name:'ארון ב — תא 2',profile:'light',itemId:'di4',tare:200,alertType:'qty',alertValue:10}
+  ];
+  LS.set('items',demoItems);
+  LS.set('shelves',demoShelves);
+  // Generate 14 days of readings
+  var allReadings = {};
+  demoShelves.forEach(function(shelf){
+    var item = demoItems.find(function(i){return i.id===shelf.itemId;});
+    var unitW = item.unitWeight;
+    var tare = shelf.tare;
+    var readings = [];
+    var now = Date.now();
+    // Start qty: 80-200 units
+    var qty = Math.floor(80+Math.random()*120);
+    var raw = tare + qty*unitW;
+    for(var d=13;d>=0;d--){
+      // 2 readings per day
+      for(var h=0;h<2;h++){
+        var ts = now - (d*24+h*12)*3600*1000 + (Math.random()-0.5)*600000;
+        var hw = HW_PROFILES[shelf.profile];
+        var noise = (Math.random()-0.5)*hw.accuracy*2;
+        var readRaw = Math.max(tare, raw+noise);
+        readRaw = Math.round(readRaw*10)/10;
+        var net = Math.max(0, readRaw-tare);
+        var calcQty = Math.max(0,Math.round(net/unitW));
+        readings.push({ts:ts,rawWeight:readRaw,netWeight:Math.round(net*10)/10,qty:calcQty,src:'auto'});
+        // Consume: 0-8 units randomly per 12h
+        var consumed = Math.floor(Math.random()*8);
+        raw = Math.max(tare, raw-consumed*unitW);
+      }
+    }
+    // Last shelf (ds3) is critical
+    if(shelf.id==='ds3'){
+      var critRaw = tare + 5*unitW;
+      readings[readings.length-1].rawWeight=critRaw;
+      readings[readings.length-1].netWeight=5*unitW;
+      readings[readings.length-1].qty=5;
+    }
+    allReadings[shelf.id] = readings;
+  });
+  LS.set('readings',allReadings);
+  // Add alert for ds3
+  LS.set('alerts',[{id:'a1',shelfId:'ds3',shelfName:'ארון ב — תא 1',itemName:'אומים M8',
+    severity:'crit',ts:Date.now()-3600000,status:'active'}]);
+  LS.set('settings',{bizName:'פרזול ונגרות כהן בע"מ',demo:true});
+}
+
+/* ─── UTILS ─── */
+function timeAgo(ts){
+  var diff = Math.floor((Date.now()-ts)/1000);
+  if(diff<60) return 'לפני '+diff+' שנ\'';
+  if(diff<3600) return 'לפני '+Math.floor(diff/60)+' דק\'';
+  if(diff<86400) return 'לפני '+Math.floor(diff/3600)+' שע\'';
+  return 'לפני '+Math.floor(diff/86400)+' ימים';
+}
+function formatTs(ts){
+  var d = new Date(ts);
+  return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+
+    ' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ─── BOOT ─── */
+function boot(){
+  var shelves = getShelves();
+  if(!shelves.length){
+    generateDemoData();
+  }
+  renderDashboard();
+  updateAlertBell();
+  // Simulate readings every 30s in demo mode (represents hourly in production)
+  setInterval(runAutoSimulation, 30000);
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
