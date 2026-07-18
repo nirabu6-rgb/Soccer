@@ -1,2 +1,1252 @@
 <!DOCTYPE html>
-<html><head><meta http-equiv="refresh" content="0;url=weightstock.html"></head><body></body></html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WeightStock — מלאי חכם לפי משקל</title>
+<style>
+:root{
+  --bg:#0a0e14;--card:#12171f;--card2:#1a2030;--card3:#222c40;
+  --accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--crit:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;--border:#232d42;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;height:100%;}
+#app{max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg);padding-bottom:72px;}
+.screen{display:none;padding:14px;}
+.screen.active{display:block;}
+button{cursor:pointer;font-family:inherit;}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px 18px;font-size:15px;font-weight:700;width:100%;}
+.btn.sec{background:var(--card2);color:var(--text);}
+.btn.ok{background:var(--ok);}
+.btn.danger{background:var(--crit);}
+.btn.sm{padding:7px 13px;font-size:13px;width:auto;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:10px 0;}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:15px;margin-top:4px;font-family:inherit;color-scheme:dark;}
+input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent;}
+textarea{resize:vertical;min-height:68px;}
+label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
+.row{display:flex;gap:10px;}
+.row>*{flex:1;}
+.muted{color:var(--muted);font-size:13px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px;position:sticky;top:0;background:var(--bg);z-index:40;}
+.topbar h2{margin:0;font-size:18px;}
+.icon-btn{background:var(--card2);border:none;border-radius:50%;width:38px;height:38px;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 38px;color:var(--text);}
+.back-btn{background:var(--card2);border:none;border-radius:50%;width:36px;height:36px;font-size:18px;flex:0 0 36px;color:var(--text);}
+.bottomnav{position:fixed;bottom:0;left:0;right:0;max-width:600px;margin:0 auto;background:#0d121a;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 10px;z-index:50;}
+.navbtn{background:none;border:none;color:var(--muted);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:48px;}
+.navbtn.active{color:var(--accent);}
+.navbtn .ic{font-size:20px;}
+.fab{position:fixed;bottom:80px;left:18px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;border:none;box-shadow:0 6px 18px rgba(37,99,235,.45);z-index:60;display:flex;align-items:center;justify-content:center;}
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700;}
+.badge.ok{background:rgba(16,185,129,.15);color:var(--ok);}
+.badge.warn{background:rgba(245,158,11,.15);color:var(--warn);}
+.badge.crit{background:rgba(239,68,68,.15);color:var(--crit);}
+.badge.off{background:var(--card2);color:var(--muted);}
+.shelf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.shelf-card{background:var(--card);border-radius:16px;padding:14px;border:2px solid transparent;cursor:pointer;}
+.shelf-card.ok{border-color:rgba(16,185,129,.3);}
+.shelf-card.warn{border-color:rgba(245,158,11,.35);}
+.shelf-card.crit{border-color:rgba(239,68,68,.4);}
+.shelf-card.offline{border-color:var(--border);}
+.shelf-card .qty{font-size:28px;font-weight:800;margin:6px 0 2px;}
+.summary-row{display:flex;gap:8px;margin-bottom:10px;}
+.sum-tile{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center;}
+.sum-tile .n{font-size:22px;font-weight:800;}
+.sum-tile .l{font-size:10px;color:var(--muted);}
+.prog{height:6px;background:var(--card2);border-radius:6px;overflow:hidden;margin:6px 0;}
+.prog-fill{height:100%;border-radius:6px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center;z-index:200;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border-radius:20px 20px 0 0;padding:22px 20px 32px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+.modal-box.mid{border-radius:20px;margin:auto;max-height:88vh;}
+.modal-close{float:left;background:var(--card2);border:none;border-radius:50%;width:28px;height:28px;color:var(--text);font-size:15px;cursor:pointer;}
+.wstep{display:none;}.wstep.active{display:block;}
+.toggle{position:relative;width:44px;height:24px;background:#333a47;border-radius:20px;border:none;flex:0 0 44px;}
+.toggle.on{background:var(--accent);}
+.toggle .knob{position:absolute;top:3px;right:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;}
+.toggle.on .knob{right:23px;}
+.alert-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:14px;margin-bottom:8px;border-right:4px solid var(--crit);}
+.alert-item.warn{border-right-color:var(--warn);}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.rrow:last-child{border-bottom:none;}
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty .ic{font-size:48px;margin-bottom:10px;}
+.zone-h{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin:14px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.cat-chip{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;}
+.ftabs{display:flex;gap:6px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none;}
+.ftabs::-webkit-scrollbar{display:none;}
+.ftab{background:var(--card2);border:none;border-radius:20px;padding:6px 14px;font-size:13px;color:var(--muted);white-space:nowrap;cursor:pointer;}
+.ftab.active{background:var(--accent);color:#fff;font-weight:700;}
+.icard{background:var(--card);border-radius:14px;padding:14px;margin-bottom:8px;}
+.adv-btn{background:none;border:none;color:var(--accent);font-size:13px;padding:8px 0;cursor:pointer;width:100%;text-align:right;}
+.adv-wrap{display:none;}
+.adv-wrap.open{display:block;}
+.ccard{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;}
+.icon-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.isel{background:var(--card2);border:2px solid transparent;border-radius:8px;width:40px;height:40px;font-size:20px;cursor:pointer;}
+.isel.on{border-color:var(--accent);}
+.color-grid{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.cswatch{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;}
+.cswatch.on{border-color:#fff;}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.hwok{background:rgba(16,185,129,.1);border:1px solid var(--ok);border-radius:10px;padding:9px 12px;margin-top:8px;font-size:13px;color:var(--ok);}
+.hwwarn{background:rgba(245,158,11,.12);border:1px solid var(--warn);border-radius:10px;padding:9px 12px;margin-top:8px;font-size:13px;color:var(--warn);}
+.ptable{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.ptable th{color:var(--muted);font-weight:600;padding:5px 3px;border-bottom:1px solid var(--border);}
+.ptable td{padding:6px 3px;border-bottom:1px solid var(--border);text-align:center;}
+.ptable tr:last-child td{border-bottom:none;}
+/* ── ONBOARDING ── */
+.ob-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;display:none;}
+.ob-overlay.show{display:block;}
+.ob-wrap{max-width:600px;margin:0 auto;padding:32px 18px 60px;}
+.ob-logo{font-size:40px;margin-bottom:6px;}
+.ob-title{font-size:26px;font-weight:800;margin-bottom:6px;}
+.ob-sub{color:var(--muted);font-size:14px;margin-bottom:28px;line-height:1.5;}
+.tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.tmpl-card{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:18px 14px;cursor:pointer;transition:border-color .15s,background .15s;text-align:center;}
+.tmpl-card:hover,.tmpl-card:active{border-color:var(--accent);background:rgba(37,99,235,.07);}
+.tmpl-card .tc-icon{font-size:36px;margin-bottom:8px;}
+.tmpl-card .tc-name{font-size:15px;font-weight:700;margin-bottom:4px;}
+.tmpl-card .tc-desc{font-size:11px;color:var(--muted);line-height:1.4;}
+.ob-step{display:none;}.ob-step.active{display:block;}
+.ob-biz{background:var(--card);border-radius:18px;padding:20px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── ONBOARDING ── -->
+<div class="ob-overlay" id="ob-overlay">
+  <div class="ob-wrap">
+    <div class="ob-step active" id="ob-s1">
+      <div class="ob-logo">⚖️</div>
+      <div class="ob-title">ברוכים הבאים ל-WeightStock</div>
+      <div class="ob-sub">מערכת מלאי חכמה לפי משקל.<br>בחר את סוג העסק שלך — נטען מלאי התחלתי מותאם, ותוכל לערוך הכל.</div>
+      <div class="tmpl-grid" id="tmpl-grid"></div>
+      <div class="muted" style="font-size:12px;text-align:center;">אפשר לשנות בכל עת מהגדרות</div>
+    </div>
+    <div class="ob-step" id="ob-s2">
+      <div class="ob-logo" id="ob-s2-icon">🏪</div>
+      <div class="ob-title" id="ob-s2-name">הגדרת עסק</div>
+      <div class="ob-sub">שלב אחרון — מה שם העסק שלך?</div>
+      <div class="ob-biz">
+        <label>שם העסק</label>
+        <input id="ob-bizname" placeholder="חנות כהן בע&quot;מ">
+        <label style="margin-top:16px;">סוג מטבע</label>
+        <select id="ob-cur">
+          <option value="₪">₪ שקל</option>
+          <option value="$">$ דולר</option>
+          <option value="€">€ אירו</option>
+        </select>
+        <div class="row" style="margin-top:18px;">
+          <button class="btn sec" onclick="obBack()">חזור</button>
+          <button class="btn ok" onclick="obFinish()">כניסה למערכת ✓</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen active" id="screen-dashboard">
+  <div class="topbar">
+    <div><h2>&#x2696;&#xFE0F; WeightStock</h2><div class="muted" id="db-sub" style="font-size:12px;">מערכת מלאי חכם לפי משקל</div></div>
+    <div style="display:flex;gap:8px;">
+      <button class="icon-btn" id="bell-btn" onclick="navTo('screen-alerts')">&#x1F514;</button>
+      <button class="icon-btn" onclick="openSettings()">&#x2699;&#xFE0F;</button>
+    </div>
+  </div>
+  <div class="summary-row" id="db-summary"></div>
+  <div id="db-shelves"></div>
+</div>
+
+<div class="screen" id="screen-shelf-detail">
+  <div class="topbar">
+    <button class="back-btn" onclick="navTo('screen-dashboard')">&#x203A;</button>
+    <h2 id="sd-title" style="flex:1;text-align:center;font-size:15px;"></h2>
+    <button class="icon-btn" onclick="openEditShelf()">&#x270F;&#xFE0F;</button>
+  </div>
+  <div id="sd-content"></div>
+</div>
+
+<div class="screen" id="screen-items">
+  <div class="topbar"><h2>&#x1F4E6; פריטים</h2><button class="icon-btn" onclick="openAddItem()">+</button></div>
+  <div class="ftabs" id="item-tabs"></div>
+  <div id="items-list"></div>
+</div>
+
+<div class="screen" id="screen-categories">
+  <div class="topbar"><h2>&#x1F3F7;&#xFE0F; קטגוריות</h2><button class="icon-btn" onclick="openAddCat()">+</button></div>
+  <div class="muted" style="padding:0 0 10px;">קבץ פריטים לפי קטגוריה — הוסף כמה שצריך</div>
+  <div id="cat-list"></div>
+</div>
+
+<div class="screen" id="screen-alerts">
+  <div class="topbar">
+    <button class="back-btn" onclick="navTo('screen-dashboard')">&#x203A;</button>
+    <h2 style="flex:1;text-align:center;">&#x1F514; התראות</h2>
+  </div>
+  <div id="alerts-list"></div>
+</div>
+
+<nav class="bottomnav">
+  <button class="navbtn active" id="nav-screen-dashboard" onclick="navTo('screen-dashboard')"><span class="ic">&#x1F4CA;</span>דשבורד</button>
+  <button class="navbtn" id="nav-screen-items" onclick="navTo('screen-items')"><span class="ic">&#x1F4E6;</span>פריטים</button>
+  <button class="navbtn" id="nav-screen-categories" onclick="navTo('screen-categories')"><span class="ic">&#x1F3F7;&#xFE0F;</span>קטגוריות</button>
+  <button class="navbtn" id="nav-screen-alerts" onclick="navTo('screen-alerts')"><span class="ic">&#x1F514;</span><span id="nav-alert-lbl">התראות</span></button>
+</nav>
+<button class="fab" onclick="openSetupWizard()">+</button>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-setup">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">הוספת משטח שקילה</h3>
+      <button class="modal-close" onclick="closeModal('modal-setup')">&#x2715;</button>
+    </div>
+    <div class="prog"><div id="wiz-prog" class="prog-fill" style="width:25%;background:var(--accent);"></div></div>
+    <div class="wstep active" id="wiz-s1">
+      <h4 style="margin:10px 0 4px;">שלב 1 — מיקום ופרופיל</h4>
+      <label>שם/מיקום</label><input id="wiz-name" placeholder="ארון א — תא 1">
+      <label>אזור (אופציונלי)</label><input id="wiz-zone" placeholder="מחסן, קומה 1, תצוגה...">
+      <label>פרופיל חיישן</label>
+      <select id="wiz-profile" onchange="wizHwCheck()">
+        <option value="micro">Micro — 0-500 גרם (ברגים, מסמרות)</option>
+        <option value="light" selected>Light — 0-5 ק"ג (כלים, קופסאות)</option>
+        <option value="heavy">Heavy — 0-100 ק"ג (שקים, לוחות)</option>
+      </select>
+      <div class="card" style="background:var(--card2);margin-top:12px;">
+        <b style="font-size:12px;">פרופילי חומרה</b>
+        <table class="ptable">
+          <tr><th>פרופיל</th><th>טווח</th><th>דיוק</th><th>מינ'</th><th>עלות</th></tr>
+          <tr><td>Micro</td><td>0-500גרם</td><td>~0.5גרם</td><td>1גרם</td><td>~30$</td></tr>
+          <tr><td>Light</td><td>0-5ק"ג</td><td>~5גרם</td><td>10גרם</td><td>~25$</td></tr>
+          <tr><td>Heavy</td><td>0-100ק"ג</td><td>~100גרם</td><td>200גרם</td><td>~40$</td></tr>
+        </table>
+      </div>
+      <button class="btn" style="margin-top:14px;" onclick="wizGo(1)">המשך</button>
+    </div>
+    <div class="wstep" id="wiz-s2">
+      <h4 style="margin:10px 0 4px;">שלב 2 — פריט משויך</h4>
+      <div class="row" style="margin-bottom:8px;">
+        <button class="btn sec" onclick="wizShowExisting()" style="font-size:13px;">בחר מהספרייה</button>
+        <button class="btn" onclick="wizShowNew()" style="font-size:13px;">פריט חדש</button>
+      </div>
+      <div id="wiz-existing" style="display:none;max-height:200px;overflow-y:auto;border-radius:10px;border:1px solid var(--border);"></div>
+      <div id="wiz-new">
+        <label>שם הפריט</label><input id="wiz-iname" placeholder="ברגי M6, שק צמנט, פרופיל אלומיניום...">
+        <label>סוג יחידה</label><select id="wiz-utype"></select>
+        <label>משקל ליחידה (גרם)</label><input id="wiz-uwt" type="number" placeholder="5.2" step="0.1" oninput="wizHwCheck()">
+        <div id="wiz-hwcheck"></div>
+      </div>
+      <div id="wiz-sel-info" style="display:none;" class="hwok"></div>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn sec" onclick="wizBack(2)">חזור</button>
+        <button class="btn" onclick="wizGo(2)">המשך</button>
+      </div>
+    </div>
+    <div class="wstep" id="wiz-s3">
+      <h4 style="margin:10px 0 4px;">שלב 3 — טרה וסף התראה</h4>
+      <label>משקל טרה — מיכל ריק (גרם)</label><input id="wiz-tare" type="number" value="0">
+      <label>סוג סף התראה</label>
+      <select id="wiz-atype" onchange="wizAlertInput()">
+        <option value="qty">כמות יחידות</option>
+        <option value="weight">משקל (גרם)</option>
+      </select>
+      <div id="wiz-athresh">
+        <label>סף מינימלי (יחידות)</label>
+        <input id="wiz-aval" type="number" placeholder="20">
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn sec" onclick="wizBack(3)">חזור</button>
+        <button class="btn" onclick="wizGo(3)">המשך</button>
+      </div>
+    </div>
+    <div class="wstep" id="wiz-s4">
+      <h4 style="margin:10px 0 4px;">שלב 4 — אישור</h4>
+      <div id="wiz-sum" class="card" style="background:var(--card2);font-size:14px;line-height:2;"></div>
+      <div class="hwwarn" style="margin-top:10px;font-size:13px;">לאחר ההוספה — לחץ קרא עכשיו לכיול ראשוני.</div>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn sec" onclick="wizBack(4)">חזור</button>
+        <button class="btn ok" onclick="wizFinish()">צור משטח</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-item">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 id="item-modal-title" style="margin:0;">פריט חדש</h3>
+      <button class="modal-close" onclick="closeModal('modal-item')">&#x2715;</button>
+    </div>
+    <label>שם הפריט *</label><input id="im-name" placeholder="ברגי M6, שק צמנט, פרופיל אלומיניום...">
+    <label>קטגוריה</label><select id="im-cat"><option value="">— ללא קטגוריה —</option></select>
+    <div class="row">
+      <div><label>סוג יחידה *</label><select id="im-utype"></select></div>
+      <div><label>משקל ליחידה (גרם) *</label><input id="im-uwt" type="number" placeholder="5.2" step="0.1"></div>
+    </div>
+    <button class="adv-btn" onclick="toggleAdv()">פרטים נוספים (מק"ט, מחיר, ספק...)</button>
+    <div class="adv-wrap" id="adv-wrap">
+      <div class="row">
+        <div><label>מק"ט / קטלוג</label><input id="im-sku" placeholder="ABC-123"></div>
+        <div><label>ברקוד</label><input id="im-bar" placeholder="7290000000000"></div>
+      </div>
+      <div class="row">
+        <div><label id="im-price-lbl">מחיר ליחידה</label><input id="im-price" type="number" step="0.01" placeholder="0.00"></div>
+        <div><label>כמות הזמנה מינ'</label><input id="im-minord" type="number" placeholder="100"></div>
+      </div>
+      <label>ספק</label><input id="im-sup" placeholder="שם הספק">
+      <label>טלפון ספק</label><input id="im-suptel" type="tel" placeholder="050-0000000">
+      <label>הערות</label><textarea id="im-notes" placeholder="הערות על הפריט..."></textarea>
+    </div>
+    <input type="hidden" id="im-id">
+    <div class="row" style="margin-top:14px;">
+      <button class="btn danger sm" id="im-del" onclick="deleteItem()" style="display:none;">מחק</button>
+      <button class="btn" onclick="saveItem()">שמור פריט</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cat">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 id="cat-modal-title" style="margin:0;">קטגוריה חדשה</h3>
+      <button class="modal-close" onclick="closeModal('modal-cat')">&#x2715;</button>
+    </div>
+    <label>שם הקטגוריה *</label><input id="cm-name" placeholder="ברגים, חשמל, נגרות...">
+    <label>אייקון</label><div class="icon-grid" id="cm-icons"></div>
+    <label>צבע</label><div class="color-grid" id="cm-colors"></div>
+    <input type="hidden" id="cm-id">
+    <div class="row" style="margin-top:14px;">
+      <button class="btn danger sm" id="cm-del" onclick="deleteCat()" style="display:none;">מחק</button>
+      <button class="btn" onclick="saveCat()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-eshelf">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">עריכת משטח</h3>
+      <button class="modal-close" onclick="closeModal('modal-eshelf')">&#x2715;</button>
+    </div>
+    <label>שם/מיקום</label><input id="es-name">
+    <label>אזור/מחלקה</label><input id="es-zone" placeholder="מחסן, קומה 1, תצוגה...">
+    <label>טרה (גרם)</label><input id="es-tare" type="number">
+    <label>סוג סף</label>
+    <select id="es-atype"><option value="qty">כמות יחידות</option><option value="weight">משקל (גרם)</option></select>
+    <label>סף מינימלי</label><input id="es-aval" type="number">
+    <label>הערות</label><textarea id="es-notes"></textarea>
+    <input type="hidden" id="es-id">
+    <div class="row" style="margin-top:14px;">
+      <button class="btn danger sm" onclick="deleteShelf()">מחק משטח</button>
+      <button class="btn ok" onclick="saveEditShelf()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">הגדרות עסק</h3>
+      <button class="modal-close" onclick="closeModal('modal-settings')">&#x2715;</button>
+    </div>
+    <label>שם העסק</label><input id="st-biz" placeholder="שם העסק שלך">
+    <label>סוג עסק</label><input id="st-type" placeholder="חנות חומרי בניין, פרזול, מחסן...">
+    <div class="row">
+      <div><label>מטבע</label>
+        <select id="st-cur">
+          <option value="&#x20AA;">&#x20AA; שקל</option>
+          <option value="$">$ דולר</option>
+          <option value="&#x20AC;">&#x20AC; אירו</option>
+          <option value="&#xA3;">&#xA3; פאונד</option>
+        </select>
+      </div>
+      <div><label>סף ברירת מחדל</label><input id="st-defalert" type="number" placeholder="20"></div>
+    </div>
+    <label>הערות (כתובת, טלפון...)</label><textarea id="st-notes"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+      <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות ESP32 כל 30 שניות</div></div>
+      <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">החלפת תחום עסקי</div>
+      <button class="btn sec" style="font-size:13px;" onclick="resetToOnboarding()">בחר תחום עסקי אחר</button>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <button class="btn danger sm" onclick="resetAll()">איפוס הכל</button>
+      <button class="btn" onclick="saveSettings()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-read">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">קריאה חדשה</h3>
+      <button class="modal-close" onclick="closeModal('modal-read')">&#x2715;</button>
+    </div>
+    <div id="read-result" style="text-align:center;padding:10px 0;"></div>
+    <button class="btn" style="margin-top:12px;" onclick="closeModal('modal-read')">סגור</button>
+  </div>
+</div>
+
+</div>
+<script>
+(function(){"use strict";
+
+var LS={
+  get:function(k,d){try{var v=localStorage.getItem('ws3_'+k);return v!=null?JSON.parse(v):d;}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem('ws3_'+k,JSON.stringify(v));}catch(e){}},
+  del:function(k){try{localStorage.removeItem('ws3_'+k);}catch(e){}}
+};
+
+var HW={
+  micro:{label:'Micro',range:'0-500g',acc:0.5,min:1,cost:'~30$'},
+  light:{label:'Light',range:'0-5kg',acc:5,min:10,cost:'~25$'},
+  heavy:{label:'Heavy',range:'0-100kg',acc:100,min:200,cost:'~40$'}
+};
+
+var UNITS=[
+  {v:'unit',l:'יחידה'},{v:'meter',l:'מטר'},{v:'cm',l:'ס"מ'},
+  {v:'liter',l:'ליטר'},{v:'kg',l:'ק"ג'},{v:'box',l:'קופסה'},
+  {v:'bag',l:'שק'},{v:'bundle',l:'צרור'},{v:'sheet',l:'גיליון'},
+  {v:'panel',l:'לוח/משטח'},{v:'roll',l:'גליל'},{v:'pack',l:'חבילה'}
+];
+
+var CAT_COLORS=['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316','#14b8a6','#84cc16'];
+var CAT_ICONS=['🔩','📦','🔧','🪛','🔨','⚡','🪵','🧴','🏗️','📋','🧱','🔑','💡','🎨','🛢️','⚙️','🪚','🧰','🔗','🪝','🧲','🔌','📐','🗜️','🥁','🎸','🎵','🎻','🥾','🌿','🐄','🍕','🧺','🪞','🛋️','🔬','💊','🧪','📷','🖥️'];
+
+/* ════════════════════════════════════════════════════
+   TEMPLATES — one per industry
+════════════════════════════════════════════════════ */
+var TEMPLATES={
+
+  hardware:{
+    name:'פרזול ומסגרות', icon:'🔩', desc:'ברגים, מסמרות, אומים, צירים, חיבורים',
+    bizType:'חנות פרזול',
+    cats:[
+      {id:'c1',name:'ברגים ואומים',icon:'🔩',color:'#2563eb'},
+      {id:'c2',name:'נגרות',icon:'🪵',color:'#10b981'},
+      {id:'c3',name:'חשמל',icon:'⚡',color:'#f59e0b'},
+      {id:'c4',name:'חומרי גמר',icon:'🎨',color:'#8b5cf6'}
+    ],
+    items:[
+      {id:'i1',name:'ברגי M6 (אינוקס)',unitType:'unit',unitWeight:5.2,categoryId:'c1',sku:'SCR-M6-SS',price:0.45,minOrder:500,supplier:'מחסן הברגים',supplierPhone:'03-5551234',notes:'אינוקס 316'},
+      {id:'i2',name:'מסמרות 40מ"מ',unitType:'unit',unitWeight:3.1,categoryId:'c2',sku:'NL-40',price:0.12,minOrder:1000,supplier:'הנגרות המרכזית',supplierPhone:'04-6667890',notes:''},
+      {id:'i3',name:'אומים M8',unitType:'unit',unitWeight:8.4,categoryId:'c1',sku:'NUT-M8',price:0.35,minOrder:200,supplier:'מחסן הברגים',supplierPhone:'03-5551234',notes:''},
+      {id:'i4',name:'צירים זהב 50מ"מ',unitType:'unit',unitWeight:22.5,categoryId:'c2',sku:'HNG-50-G',price:4.90,minOrder:50,supplier:'כלים ואביזרים',supplierPhone:'02-1234567',notes:''},
+      {id:'i5',name:'נורות LED 12W',unitType:'unit',unitWeight:85,categoryId:'c3',sku:'LED-12W',price:18.50,minOrder:20,supplier:'אור וחשמל',supplierPhone:'08-9990001',notes:''},
+      {id:'i6',name:'מרצפות גרניט 60x60',unitType:'panel',unitWeight:1800,categoryId:'c4',sku:'GRN-60',price:89,minOrder:10,supplier:'אבן טבעית',supplierPhone:'09-7778888',notes:'לבן נגד החלקה'}
+    ],
+    shelves:[
+      {id:'s1',name:'ארון א — תא 1',zone:'מחסן ראשי',profile:'micro',itemId:'i1',tare:85,alertType:'qty',alertValue:30,notes:''},
+      {id:'s2',name:'ארון א — תא 2',zone:'מחסן ראשי',profile:'micro',itemId:'i2',tare:60,alertType:'qty',alertValue:50,notes:''},
+      {id:'s3',name:'ארון ב — תא 1',zone:'מחסן ראשי',profile:'light',itemId:'i3',tare:120,alertType:'qty',alertValue:20,notes:''},
+      {id:'s4',name:'ארון ב — תא 2',zone:'מחסן ראשי',profile:'light',itemId:'i4',tare:200,alertType:'qty',alertValue:10,notes:''},
+      {id:'s5',name:'מדף C1',zone:'קומה 1',profile:'light',itemId:'i5',tare:50,alertType:'qty',alertValue:10,notes:''},
+      {id:'s6',name:'אזור פריקה',zone:'חצר',profile:'heavy',itemId:'i6',tare:0,alertType:'qty',alertValue:5,notes:''}
+    ]
+  },
+
+  carpentry:{
+    name:'נגרות ועץ', icon:'🪵', desc:'משטחי עץ, ציפוי, דבק, חיבורים, כלי נגרות',
+    bizType:'בית עסק לנגרות',
+    cats:[
+      {id:'c1',name:'עץ גולמי',icon:'🪵',color:'#10b981'},
+      {id:'c2',name:'ציפוי ולכה',icon:'🎨',color:'#f59e0b'},
+      {id:'c3',name:'חיבורים',icon:'🔗',color:'#2563eb'},
+      {id:'c4',name:'כלים',icon:'🪚',color:'#8b5cf6'}
+    ],
+    items:[
+      {id:'i1',name:'לוח MDF 18מ"מ',unitType:'panel',unitWeight:8200,categoryId:'c1',sku:'MDF-18',price:62,minOrder:5,supplier:'מחסן הנגרות',supplierPhone:'03-6660001',notes:'120x240 ס"מ'},
+      {id:'i2',name:'ברגי עץ 4x40',unitType:'unit',unitWeight:4.5,categoryId:'c3',sku:'WS-4X40',price:0.08,minOrder:500,supplier:'מחסן הנגרות',supplierPhone:'03-6660001',notes:''},
+      {id:'i3',name:'דבק עץ PVA',unitType:'liter',unitWeight:1100,categoryId:'c3',sku:'PVA-1L',price:24,minOrder:10,supplier:'כלי עבודה',supplierPhone:'04-7771234',notes:''},
+      {id:'i4',name:'ציפוי טיק',unitType:'liter',unitWeight:950,categoryId:'c2',sku:'TK-OIL',price:68,minOrder:6,supplier:'צבעי גזית',supplierPhone:'02-3334567',notes:'UV עמיד'},
+      {id:'i5',name:'וו L 40מ"מ',unitType:'unit',unitWeight:12,categoryId:'c3',sku:'L40',price:0.35,minOrder:100,supplier:'מחסן הנגרות',supplierPhone:'03-6660001',notes:''},
+      {id:'i6',name:'גיליון נייר שמיר 180',unitType:'sheet',unitWeight:22,categoryId:'c4',sku:'SND-180',price:1.5,minOrder:50,supplier:'כלי עבודה',supplierPhone:'04-7771234',notes:''}
+    ],
+    shelves:[
+      {id:'s1',name:'מחסן עץ — מדף 1',zone:'מחסן',profile:'heavy',itemId:'i1',tare:0,alertType:'qty',alertValue:3,notes:''},
+      {id:'s2',name:'ארון חיבורים — ברגים',zone:'סדנה',profile:'micro',itemId:'i2',tare:80,alertType:'qty',alertValue:100,notes:''},
+      {id:'s3',name:'מדף נוזלים — דבק',zone:'סדנה',profile:'light',itemId:'i3',tare:150,alertType:'qty',alertValue:4,notes:''},
+      {id:'s4',name:'מדף נוזלים — ציפוי',zone:'סדנה',profile:'light',itemId:'i4',tare:150,alertType:'qty',alertValue:3,notes:''},
+      {id:'s5',name:'ארון חיבורים — ווים',zone:'סדנה',profile:'micro',itemId:'i5',tare:60,alertType:'qty',alertValue:20,notes:''},
+      {id:'s6',name:'מדף כלים — שמיר',zone:'סדנה',profile:'light',itemId:'i6',tare:30,alertType:'qty',alertValue:15,notes:''}
+    ]
+  },
+
+  music:{
+    name:'כלי נגינה', icon:'🥁', desc:'תופים, טמבורינות, מצילות, מיתרים, אביזרים',
+    bizType:'חנות כלי נגינה',
+    cats:[
+      {id:'c1',name:'קרומי תופים',icon:'🥁',color:'#ef4444'},
+      {id:'c2',name:'מצילות',icon:'🎵',color:'#f59e0b'},
+      {id:'c3',name:'טמבורינות ופרקאשן',icon:'🎶',color:'#8b5cf6'},
+      {id:'c4',name:'מיתרים ואביזרים',icon:'🎸',color:'#10b981'}
+    ],
+    items:[
+      {id:'i1',name:'עור לתוף 14"',unitType:'unit',unitWeight:195,categoryId:'c1',sku:'HD-14',price:65,minOrder:5,supplier:'Remo Israel',supplierPhone:'03-9991234',notes:'coated ambassador'},
+      {id:'i2',name:'טמבורין 10"',unitType:'unit',unitWeight:310,categoryId:'c3',sku:'TBR-10',price:89,minOrder:3,supplier:'Latin Percussion',supplierPhone:'03-7775678',notes:''},
+      {id:'i3',name:'מצילה Hi-Hat 14"',unitType:'unit',unitWeight:960,categoryId:'c2',sku:'HH-14',price:380,minOrder:2,supplier:'Zildjian Israel',supplierPhone:'03-5558899',notes:'A-Series'},
+      {id:'i4',name:'מקלות תיפוף 5A',unitType:'bundle',unitWeight:185,categoryId:'c4',sku:'STK-5A',price:42,minOrder:10,supplier:'Vic Firth IL',supplierPhone:'054-4440001',notes:'זוג'},
+      {id:'i5',name:'מיתרי גיטרה אקוסטית',unitType:'pack',unitWeight:72,categoryId:'c4',sku:'STR-AC',price:35,minOrder:10,supplier:'Elixir Israel',supplierPhone:'052-3330002',notes:'Phosphor Bronze'},
+      {id:'i6',name:'ראש כפול Pinstripe 22"',unitType:'unit',unitWeight:610,categoryId:'c1',sku:'PS-22',price:145,minOrder:2,supplier:'Remo Israel',supplierPhone:'03-9991234',notes:'bass drum'}
+    ],
+    shelves:[
+      {id:'s1',name:'ארון תופים — עורות 14"',zone:'קיר תופים',profile:'light',itemId:'i1',tare:60,alertType:'qty',alertValue:4,notes:''},
+      {id:'s2',name:'מדף טמבורינות',zone:'פרקאשן',profile:'light',itemId:'i2',tare:50,alertType:'qty',alertValue:3,notes:''},
+      {id:'s3',name:'ארון מצילות',zone:'מצילות',profile:'light',itemId:'i3',tare:80,alertType:'qty',alertValue:2,notes:''},
+      {id:'s4',name:'מגירת מקלות',zone:'אביזרים',profile:'micro',itemId:'i4',tare:40,alertType:'qty',alertValue:5,notes:''},
+      {id:'s5',name:'מגירת מיתרים',zone:'אביזרים',profile:'micro',itemId:'i5',tare:30,alertType:'qty',alertValue:8,notes:''},
+      {id:'s6',name:'ארון תופים — ראשים 22"',zone:'קיר תופים',profile:'light',itemId:'i6',tare:60,alertType:'qty',alertValue:2,notes:''}
+    ]
+  },
+
+  construction:{
+    name:'חומרי בניין', icon:'🧱', desc:'בטון, מלט, ריצוף, גבס, צנרת, חיפוי',
+    bizType:'יצרן חומרי בניין',
+    cats:[
+      {id:'c1',name:'בטון ומלט',icon:'🧱',color:'#64748b'},
+      {id:'c2',name:'ריצוף וחיפוי',icon:'🪟',color:'#2563eb'},
+      {id:'c3',name:'צנרת',icon:'🔧',color:'#06b6d4'},
+      {id:'c4',name:'גבס ובידוד',icon:'📦',color:'#f59e0b'}
+    ],
+    items:[
+      {id:'i1',name:'שק מלט 40 ק"ג',unitType:'bag',unitWeight:40000,categoryId:'c1',sku:'CEM-40',price:28,minOrder:20,supplier:'נשר תעשיות',supplierPhone:'04-8880001',notes:''},
+      {id:'i2',name:'מרצפת גרניט 60x60',unitType:'panel',unitWeight:1800,categoryId:'c2',sku:'GRN-60',price:89,minOrder:10,supplier:'אבן טבעית',supplierPhone:'09-7778888',notes:'לבן נגד החלקה'},
+      {id:'i3',name:'צינור PVC 3"',unitType:'meter',unitWeight:620,categoryId:'c3',sku:'PVC-3IN',price:22,minOrder:50,supplier:'אמקור',supplierPhone:'03-5554433',notes:'לחץ 6 אטמ'},
+      {id:'i4',name:'לוח גבס 12.5מ"מ',unitType:'panel',unitWeight:9200,categoryId:'c4',sku:'GYP-125',price:35,minOrder:8,supplier:'קנאף ישראל',supplierPhone:'08-6660099',notes:'120x260'},
+      {id:'i5',name:'שק חצץ 4-8מ"מ',unitType:'bag',unitWeight:25000,categoryId:'c1',sku:'GRV-4',price:18,minOrder:10,supplier:'כרייה מרכז',supplierPhone:'03-9990011',notes:''},
+      {id:'i6',name:'בלוק בטון 20x20x40',unitType:'unit',unitWeight:12000,categoryId:'c1',sku:'BLK-20',price:4.5,minOrder:100,supplier:'בלוקית ישראל',supplierPhone:'04-8884422',notes:''}
+    ],
+    shelves:[
+      {id:'s1',name:'מחסן מלט',zone:'מחסן חיצוני',profile:'heavy',itemId:'i1',tare:0,alertType:'qty',alertValue:10,notes:''},
+      {id:'s2',name:'מחסן ריצוף',zone:'מחסן פנימי',profile:'heavy',itemId:'i2',tare:0,alertType:'qty',alertValue:20,notes:''},
+      {id:'s3',name:'מדף צנרת',zone:'מחסן פנימי',profile:'heavy',itemId:'i3',tare:0,alertType:'qty',alertValue:20,notes:''},
+      {id:'s4',name:'מחסן גבס',zone:'מחסן פנימי',profile:'heavy',itemId:'i4',tare:0,alertType:'qty',alertValue:6,notes:''},
+      {id:'s5',name:'מחסן חצץ',zone:'מחסן חיצוני',profile:'heavy',itemId:'i5',tare:0,alertType:'qty',alertValue:5,notes:''},
+      {id:'s6',name:'מחסן בלוקים',zone:'מחסן חיצוני',profile:'heavy',itemId:'i6',tare:0,alertType:'qty',alertValue:50,notes:''}
+    ]
+  },
+
+  food:{
+    name:'מוצרי מזון', icon:'🛒', desc:'מוצרי יבש, שתייה, קפואים, קטניות, ניקיון',
+    bizType:'מינימרקט / מכולת',
+    cats:[
+      {id:'c1',name:'יבשים וקטניות',icon:'🌾',color:'#f59e0b'},
+      {id:'c2',name:'שתייה',icon:'🧴',color:'#06b6d4'},
+      {id:'c3',name:'חטיפים וממתקים',icon:'🍫',color:'#ec4899'},
+      {id:'c4',name:'ניקיון ותברואה',icon:'🧹',color:'#10b981'}
+    ],
+    items:[
+      {id:'i1',name:'קמח לבן 1 ק"ג',unitType:'bag',unitWeight:1000,categoryId:'c1',sku:'FLR-1K',price:5.9,minOrder:20,supplier:'שטראוס',supplierPhone:'03-7777001',notes:''},
+      {id:'i2',name:'בקבוק מים 1.5 ל"ל',unitType:'unit',unitWeight:1560,categoryId:'c2',sku:'WTR-15',price:2.9,minOrder:24,supplier:'נביעות',supplierPhone:'04-5550022',notes:''},
+      {id:'i3',name:'עדשים כתומים 500גרם',unitType:'pack',unitWeight:510,categoryId:'c1',sku:'LNT-500',price:8.5,minOrder:12,supplier:'אסם',supplierPhone:'03-8889900',notes:''},
+      {id:'i4',name:'שוקולד מריר 100גרם',unitType:'unit',unitWeight:105,categoryId:'c3',sku:'CHOC-D',price:6.9,minOrder:20,supplier:'עלית',supplierPhone:'03-5552211',notes:'70% קקאו'},
+      {id:'i5',name:'נוזל כלים 750מ"ל',unitType:'unit',unitWeight:810,categoryId:'c4',sku:'DSH-750',price:9.9,minOrder:12,supplier:'פרוקטר',supplierPhone:'03-4440055',notes:''},
+      {id:'i6',name:'אורז בסמטי 1 ק"ג',unitType:'bag',unitWeight:1010,categoryId:'c1',sku:'RCE-BAS',price:12.9,minOrder:10,supplier:'אסם',supplierPhone:'03-8889900',notes:''}
+    ],
+    shelves:[
+      {id:'s1',name:'מדף A1 — קמח',zone:'מדפי יבש',profile:'light',itemId:'i1',tare:0,alertType:'qty',alertValue:10,notes:''},
+      {id:'s2',name:'מקרר שתייה',zone:'מקררים',profile:'light',itemId:'i2',tare:0,alertType:'qty',alertValue:12,notes:''},
+      {id:'s3',name:'מדף A2 — קטניות',zone:'מדפי יבש',profile:'light',itemId:'i3',tare:50,alertType:'qty',alertValue:8,notes:''},
+      {id:'s4',name:'מדף ממתקים',zone:'קופה',profile:'light',itemId:'i4',tare:30,alertType:'qty',alertValue:10,notes:''},
+      {id:'s5',name:'מדף ניקיון',zone:'מדפי ניקיון',profile:'light',itemId:'i5',tare:0,alertType:'qty',alertValue:6,notes:''},
+      {id:'s6',name:'מדף A3 — אורז',zone:'מדפי יבש',profile:'light',itemId:'i6',tare:0,alertType:'qty',alertValue:8,notes:''}
+    ]
+  },
+
+  pharmacy:{
+    name:'בית מרקחת', icon:'💊', desc:'תרופות, תוספים, קוסמטיקה, ציוד רפואי',
+    bizType:'בית מרקחת',
+    cats:[
+      {id:'c1',name:'תרופות ללא מרשם',icon:'💊',color:'#10b981'},
+      {id:'c2',name:'תוספי תזונה',icon:'🔬',color:'#2563eb'},
+      {id:'c3',name:'קוסמטיקה',icon:'🌿',color:'#ec4899'},
+      {id:'c4',name:'ציוד רפואי',icon:'🩺',color:'#f59e0b'}
+    ],
+    items:[
+      {id:'i1',name:'אופטלגין 500מ"ג',unitType:'box',unitWeight:62,categoryId:'c1',sku:'OPT-500',price:18.5,minOrder:10,supplier:'טבע',supplierPhone:'04-4440001',notes:'20 כדורים'},
+      {id:'i2',name:'ויטמין D3 1000',unitType:'box',unitWeight:48,categoryId:'c2',sku:'VIT-D3',price:39,minOrder:6,supplier:'אלטמן',supplierPhone:'03-5550033',notes:'60 כמוסות'},
+      {id:'i3',name:'קרם לחות SPF50',unitType:'unit',unitWeight:155,categoryId:'c3',sku:'SPF-50',price:64,minOrder:6,supplier:'נוטרוגנה',supplierPhone:'02-6660011',notes:''},
+      {id:'i4',name:'מד חום דיגיטלי',unitType:'unit',unitWeight:68,categoryId:'c4',sku:'THERM',price:49,minOrder:5,supplier:'Beurer IL',supplierPhone:'03-8881122',notes:''},
+      {id:'i5',name:'כדורי אומגה 3',unitType:'box',unitWeight:112,categoryId:'c2',sku:'OMG-3',price:55,minOrder:6,supplier:'אלטמן',supplierPhone:'03-5550033',notes:'30 כמוסות'},
+      {id:'i6',name:'תחבושות גאזה',unitType:'pack',unitWeight:95,categoryId:'c4',sku:'GAUZE',price:12,minOrder:10,supplier:'מרמד',supplierPhone:'04-7774455',notes:'5x5 ס"מ'}
+    ],
+    shelves:[
+      {id:'s1',name:'מדף תרופות — א',zone:'מדפי תרופות',profile:'light',itemId:'i1',tare:0,alertType:'qty',alertValue:8,notes:''},
+      {id:'s2',name:'מדף ויטמינים',zone:'תוספי תזונה',profile:'light',itemId:'i2',tare:0,alertType:'qty',alertValue:5,notes:''},
+      {id:'s3',name:'מדף קוסמטיקה',zone:'קוסמטיקה',profile:'light',itemId:'i3',tare:0,alertType:'qty',alertValue:4,notes:''},
+      {id:'s4',name:'ארון ציוד רפואי',zone:'ציוד רפואי',profile:'light',itemId:'i4',tare:0,alertType:'qty',alertValue:3,notes:''},
+      {id:'s5',name:'מדף אומגה',zone:'תוספי תזונה',profile:'light',itemId:'i5',tare:0,alertType:'qty',alertValue:4,notes:''},
+      {id:'s6',name:'ארון חבישות',zone:'ציוד רפואי',profile:'light',itemId:'i6',tare:0,alertType:'qty',alertValue:6,notes:''}
+    ]
+  },
+
+  custom:{
+    name:'הגדרה עצמית', icon:'✨', desc:'התחל מאפס — הוסף קטגוריות ופריטים לפי הצורך',
+    bizType:'',
+    cats:[],items:[],shelves:[]
+  }
+};
+
+/* ════════════════════════════════════════════════════
+   DATA ACCESS
+════════════════════════════════════════════════════ */
+function activeTmpl(){return LS.get('tmpl',null);}
+function isDemo(){return LS.get('mode','demo')==='demo';}
+
+var _DR=null; // readings cache
+
+function getTmplData(){
+  var t=activeTmpl(); return t&&TEMPLATES[t]?TEMPLATES[t]:{cats:[],items:[],shelves:[]};
+}
+function getShelves(){return isDemo()?getTmplData().shelves:LS.get('shelves',[]);}
+function getItems(){return isDemo()?getTmplData().items:LS.get('items',[]);}
+function getCats(){return isDemo()?getTmplData().cats:LS.get('cats',[]);}
+function getAlerts(){return isDemo()?genDemoAlerts():LS.get('alerts',[]);}
+function getSettings(){
+  var s=LS.get('settings',null);
+  if(s)return s;
+  var t=activeTmpl(),td=t&&TEMPLATES[t]?TEMPLATES[t]:{};
+  return {bizName:'',bizType:td.bizType||'',currency:'₪',defaultAlert:20,demo:true,bizNotes:''};
+}
+function getCurrency(){return getSettings().currency||'₪';}
+
+function genDemoAlerts(){
+  var shs=getTmplData().shelves, its=getTmplData().items, out=[];
+  shs.forEach(function(sh){
+    var r=latestR(sh.id); if(!r)return;
+    var st=calcSt(sh,r);
+    if(st==='crit'||st==='warn'){
+      var it=its.find(function(i){return i.id===sh.itemId;});
+      out.push({id:'a_'+sh.id,shelfId:sh.id,shelfName:sh.name,itemName:it?it.name:'',severity:st,ts:Date.now()-3600000,status:'active'});
+    }
+  });
+  return out;
+}
+
+function genReadings(shelves,items){
+  var now0=Date.now(), out={};
+  shelves.forEach(function(sh){
+    var it=items.find(function(i){return i.id===sh.itemId;}); if(!it)return;
+    var hw=HW[sh.profile]||HW.light, unitW=parseFloat(it.unitWeight)||1, tare=parseFloat(sh.tare)||0;
+    var reads=[], qty=40+Math.floor(Math.random()*80), raw=tare+qty*unitW;
+    for(var d=13;d>=0;d--){
+      for(var h=0;h<2;h++){
+        var ts=now0-(d*24+h*12)*3600000;
+        var noise=(Math.random()-0.5)*hw.acc*2;
+        var rr=Math.max(tare,raw+noise); rr=Math.round(rr*10)/10;
+        var net=Math.max(0,rr-tare);
+        reads.push({ts:ts,rawWeight:rr,netWeight:Math.round(net*10)/10,qty:Math.max(0,Math.round(net/unitW)),src:'auto'});
+        raw=Math.max(tare,raw-Math.floor(Math.random()*3)*unitW);
+      }
+    }
+    if(reads.length)reads[reads.length-1].ts=now0-120000;
+    // force one shelf to warn
+    if(sh===shelves[2]&&reads.length){var l=reads[reads.length-1];var av=parseFloat(sh.alertValue)||10;l.qty=Math.max(1,Math.round(av*0.4));l.netWeight=l.qty*unitW;l.rawWeight=tare+l.netWeight;}
+    out[sh.id]=reads;
+  });
+  return out;
+}
+
+function getDemoReadings(id){
+  if(!_DR){_DR=genReadings(getTmplData().shelves,getTmplData().items);}
+  return _DR[id]||[];
+}
+function getReadings(id){return isDemo()?getDemoReadings(id):(LS.get('readings',{})[id]||[]);}
+
+function switchToUser(){
+  if(!isDemo())return;
+  LS.set('mode','user');
+  var td=getTmplData();
+  LS.set('shelves',JSON.parse(JSON.stringify(td.shelves)));
+  LS.set('items',JSON.parse(JSON.stringify(td.items)));
+  LS.set('cats',JSON.parse(JSON.stringify(td.cats)));
+  if(!_DR)_DR=genReadings(td.shelves,td.items);
+  LS.set('readings',JSON.parse(JSON.stringify(_DR)));
+  LS.set('alerts',[]);
+  var s=getSettings(); LS.set('settings',s);
+}
+
+function addReading(shelfId,rawW){
+  switchToUser();
+  var sh=getShelves().find(function(s){return s.id===shelfId;}); if(!sh)return null;
+  var it=getItems().find(function(i){return i.id===sh.itemId;});
+  var uw=it?parseFloat(it.unitWeight)||1:1, tare=parseFloat(sh.tare)||0;
+  var net=Math.max(0,rawW-tare), qty=Math.round(net/uw);
+  var r={ts:Date.now(),rawWeight:rawW,netWeight:Math.round(net*10)/10,qty:qty,src:'auto'};
+  var all=LS.get('readings',{}); if(!all[shelfId])all[shelfId]=[];
+  all[shelfId].push(r); if(all[shelfId].length>500)all[shelfId]=all[shelfId].slice(-500);
+  LS.set('readings',all);
+  chkAlert(sh,r,it); return r;
+}
+function latestR(id){var r=getReadings(id);return r.length?r[r.length-1]:null;}
+function calcSt(sh,r){
+  if(!r)return 'offline';
+  if((Date.now()-r.ts)/60000>180)return 'offline';
+  if(!sh.alertValue)return 'ok';
+  var v=sh.alertType==='weight'?r.netWeight:r.qty, t=parseFloat(sh.alertValue)||0;
+  if(v<=0)return 'crit'; if(v<=t*0.5)return 'crit'; if(v<=t)return 'warn'; return 'ok';
+}
+function chkAlert(sh,r,it){
+  var st=calcSt(sh,r);
+  if(st==='warn'||st==='crit'){
+    var al=LS.get('alerts',[]), ex=al.find(function(a){return a.shelfId===sh.id&&a.status==='active';});
+    if(!ex)al.push({id:'a'+Date.now(),shelfId:sh.id,shelfName:sh.name,itemName:it?it.name:'',severity:st,ts:Date.now(),status:'active'});
+    else ex.severity=st;
+    LS.set('alerts',al);
+  }
+  updBell();
+}
+function updBell(){
+  var n=getAlerts().filter(function(a){return a.status==='active';}).length;
+  var b=document.getElementById('bell-btn'), l=document.getElementById('nav-alert-lbl');
+  if(b)b.textContent=n?'🔔':'🔕';
+  if(l)l.textContent=n?'התראות ('+n+')':'התראות';
+}
+function unitL(it){if(!it)return 'יחידות';var u=UNITS.find(function(x){return x.v===(it.unitType||'unit');});return u?u.l:'יחידות';}
+function fmtW(g){if(g==null)return '—';return g>=1000?(g/1000).toFixed(2)+' ק"ג':g+'גרם';}
+function ago(ts){var d=Math.floor((Date.now()-ts)/1000);if(d<60)return 'לפני '+d+' שנ\'';if(d<3600)return 'לפני '+Math.floor(d/60)+' דק\'';if(d<86400)return 'לפני '+Math.floor(d/3600)+' שע\'';return 'לפני '+Math.floor(d/86400)+' ימים';}
+function fmtTs(ts){var d=new Date(ts);return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});}
+
+/* ════════════════════════════════════════════════════
+   ONBOARDING
+════════════════════════════════════════════════════ */
+var _obTmpl=null;
+
+function showOnboarding(){
+  var grid=document.getElementById('tmpl-grid');
+  grid.innerHTML=Object.keys(TEMPLATES).map(function(k){
+    var t=TEMPLATES[k];
+    return '<div class="tmpl-card" onclick="obSelect(\''+k+'\')">'+
+      '<div class="tc-icon">'+t.icon+'</div>'+
+      '<div class="tc-name">'+t.name+'</div>'+
+      '<div class="tc-desc">'+t.desc+'</div></div>';
+  }).join('');
+  document.getElementById('ob-overlay').classList.add('show');
+}
+window.showOnboarding=showOnboarding;
+
+function obSelect(key){
+  _obTmpl=key;
+  var t=TEMPLATES[key];
+  document.getElementById('ob-s2-icon').textContent=t.icon;
+  document.getElementById('ob-s2-name').textContent=t.name;
+  document.getElementById('ob-bizname').value='';
+  document.getElementById('ob-s1').classList.remove('active');
+  document.getElementById('ob-s2').classList.add('active');
+}
+window.obSelect=obSelect;
+
+function obBack(){
+  document.getElementById('ob-s2').classList.remove('active');
+  document.getElementById('ob-s1').classList.add('active');
+}
+window.obBack=obBack;
+
+function obFinish(){
+  if(!_obTmpl)return;
+  LS.set('tmpl',_obTmpl);
+  _DR=null;
+  var biz=document.getElementById('ob-bizname').value.trim();
+  var cur=document.getElementById('ob-cur').value;
+  var td=TEMPLATES[_obTmpl];
+  LS.set('settings',{bizName:biz,bizType:td.bizType||'',currency:cur,defaultAlert:20,demo:true,bizNotes:''});
+  document.getElementById('ob-overlay').classList.remove('show');
+  renderDash(); updBell();
+}
+window.obFinish=obFinish;
+
+/* ════════════════════════════════════════════════════
+   NAV
+════════════════════════════════════════════════════ */
+var activeSc='screen-dashboard', curSh=null;
+function navTo(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active'); activeSc=id;
+  document.querySelectorAll('.navbtn').forEach(function(b){b.classList.remove('active');});
+  var nb=document.getElementById('nav-'+id); if(nb)nb.classList.add('active');
+  else document.getElementById('nav-screen-dashboard').classList.add('active');
+  if(id==='screen-dashboard')renderDash();
+  if(id==='screen-items')renderItemsSc();
+  if(id==='screen-categories')renderCatsSc();
+  if(id==='screen-alerts')renderAlerts();
+}
+window.navTo=navTo;
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+window.openModal=openModal;window.closeModal=closeModal;
+
+/* ════════════════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════════════════ */
+function renderDash(){
+  var shs=getShelves(), its=getItems(), online=0, crit=0, warn=0;
+  shs.forEach(function(s){var st=calcSt(s,latestR(s.id));if(st!=='offline')online++;if(st==='crit')crit++;if(st==='warn')warn++;});
+  document.getElementById('db-summary').innerHTML=
+    '<div class="sum-tile"><div class="n">'+shs.length+'</div><div class="l">משטחים</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--warn);">'+warn+'</div><div class="l">אזהרות</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--crit);">'+crit+'</div><div class="l">קריטיים</div></div>'+
+    '<div class="sum-tile"><div class="n" style="color:var(--ok);">'+online+'</div><div class="l">מחוברים</div></div>';
+  var s=getSettings();
+  document.getElementById('db-sub').textContent=s.bizName||(s.bizType||'מערכת מלאי חכם לפי משקל');
+  if(!shs.length){
+    var t=activeTmpl(),td=t&&TEMPLATES[t]?TEMPLATES[t]:null;
+    document.getElementById('db-shelves').innerHTML='<div class="empty"><div class="ic">'+(td?td.icon:'⚖️')+'</div><b>אין משטחי שקילה</b><div class="muted">לחץ + כדי להוסיף</div></div>';
+    return;
+  }
+  var ord={crit:0,warn:1,ok:2,offline:3};
+  var sorted=shs.slice().sort(function(a,b){return (ord[calcSt(a,latestR(a.id))]||3)-(ord[calcSt(b,latestR(b.id))]||3);});
+  var hasZ=shs.some(function(s){return s.zone;}), html='';
+  if(hasZ){
+    var zones={};
+    sorted.forEach(function(sh){var z=sh.zone||'';if(!zones[z])zones[z]=[];zones[z].push(sh);});
+    Object.keys(zones).forEach(function(z){
+      if(z)html+='<div class="zone-h">📍 '+z+'</div>';
+      html+='<div class="shelf-grid">'+zones[z].map(function(sh){return shCard(sh,its);}).join('')+'</div>';
+    });
+  } else {
+    html='<div class="shelf-grid">'+sorted.map(function(sh){return shCard(sh,its);}).join('')+'</div>';
+  }
+  document.getElementById('db-shelves').innerHTML=html;
+  updBell();
+}
+window.renderDash=renderDash;
+
+function shCard(sh,its){
+  var r=latestR(sh.id), st=calcSt(sh,r), it=its.find(function(i){return i.id===sh.itemId;});
+  var qc={ok:'var(--text)',warn:'var(--warn)',crit:'var(--crit)',offline:'var(--muted)'}[st];
+  var bdg={ok:'<span class="badge ok">תקין</span>',warn:'<span class="badge warn">נמוך</span>',crit:'<span class="badge crit">קריטי</span>',offline:'<span class="badge off">לא מחובר</span>'}[st];
+  return '<div class="shelf-card '+st+'" onclick="openSh(\''+sh.id+'\')">'+bdg+
+    '<div class="qty" style="color:'+qc+';">'+(r?r.qty:'—')+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);">'+unitL(it)+'</div>'+
+    '<div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(it?it.name:'—')+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);">'+(r?fmtW(r.netWeight):'—')+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);">'+sh.name+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);">'+(r?ago(r.ts):'אין קריאה')+'</div></div>';
+}
+
+/* ════════════════════════════════════════════════════
+   SHELF DETAIL
+════════════════════════════════════════════════════ */
+function openSh(id){curSh=id;navTo('screen-shelf-detail');renderSh(id);}
+window.openSh=openSh;
+function renderSh(id){
+  var sh=getShelves().find(function(s){return s.id===id;}); if(!sh)return;
+  document.getElementById('sd-title').textContent=sh.name+(sh.zone?' · '+sh.zone:'');
+  var its=getItems(), cats=getCats(), it=its.find(function(i){return i.id===sh.itemId;});
+  var reads=getReadings(id), r=reads.length?reads[reads.length-1]:null;
+  var st=calcSt(sh,r), ul=unitL(it), hw=HW[sh.profile]||HW.light;
+  var bdg={ok:'<span class="badge ok">תקין</span>',warn:'<span class="badge warn">מלאי נמוך</span>',crit:'<span class="badge crit">מלאי קריטי</span>',offline:'<span class="badge off">לא מחובר</span>'}[st];
+  var qc={ok:'var(--text)',warn:'var(--warn)',crit:'var(--crit)',offline:'var(--muted)'}[st];
+  var pct=100, av=parseFloat(sh.alertValue)||0;
+  if(r&&av>0){var cv=sh.alertType==='weight'?r.netWeight:r.qty;pct=Math.min(100,Math.round(cv/(av*2)*100));}
+  var pc=pct>50?'var(--ok)':pct>25?'var(--warn)':'var(--crit)';
+  var html='<div class="card" style="text-align:center;">'+bdg+
+    '<div style="font-size:52px;font-weight:800;margin:12px 0 4px;color:'+qc+';">'+(r?r.qty:'—')+'</div>'+
+    '<div class="muted">'+ul+'</div>'+
+    '<div style="font-size:17px;font-weight:600;margin-top:4px;">'+(r?fmtW(r.netWeight):'')+'</div>'+
+    (av>0?'<div class="prog" style="margin-top:12px;"><div class="prog-fill" style="width:'+pct+'%;background:'+pc+';"></div></div><div class="muted" style="font-size:11px;">סף: '+(sh.alertType==='weight'?av+'גרם':av+' '+ul)+'</div>':'')+'</div>';
+  if(it){
+    var cat=cats.find(function(c){return c.id===it.categoryId;});
+    var chip=cat?'<span class="cat-chip" style="background:'+cat.color+'22;color:'+cat.color+';">'+cat.icon+' '+cat.name+'</span> ':'';
+    var cur=getCurrency();
+    html+='<div class="card" style="background:var(--card2);">'+
+      '<div style="font-weight:700;font-size:15px;margin-bottom:6px;">'+chip+it.name+'</div>'+
+      '<div class="row" style="font-size:13px;"><div><div class="muted">יחידה</div><b>'+ul+'</b></div><div><div class="muted">משקל ליח\'</div><b>'+it.unitWeight+'גרם</b></div><div><div class="muted">פרופיל</div><b>'+hw.label+'</b></div></div>'+
+      (it.sku?'<div class="row" style="font-size:13px;margin-top:8px;"><div><div class="muted">מק"ט</div><b>'+it.sku+'</b></div>'+(it.barcode?'<div><div class="muted">ברקוד</div><b>'+it.barcode+'</b></div>':'<div></div>')+'<div></div></div>':'')+
+      (it.price>0?'<div class="row" style="font-size:13px;margin-top:8px;"><div><div class="muted">מחיר</div><b>'+cur+parseFloat(it.price).toFixed(2)+'</b></div>'+(it.minOrder?'<div><div class="muted">הזמנה מינ\'</div><b>'+it.minOrder+' '+ul+'</b></div>':'<div></div>')+'<div></div></div>':'')+
+      (it.supplier?'<div style="font-size:13px;margin-top:8px;"><div class="muted">ספק</div><b>'+it.supplier+(it.supplierPhone?' · '+it.supplierPhone:'')+'</b></div>':'')+
+      '<div class="row" style="font-size:13px;margin-top:8px;"><div><div class="muted">טרה</div><b>'+(sh.tare||0)+'גרם</b></div><div><div class="muted">קריאה</div><b>'+(r?ago(r.ts):'—')+'</b></div><div><div class="muted">מקור</div><b>'+(r?(r.src==='auto'?'ESP32':'ידני'):'—')+'</b></div></div>'+
+      (sh.notes?'<div style="font-size:12px;color:var(--muted);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">'+sh.notes+'</div>':'')+
+      '</div>';
+  }
+  html+='<button class="btn" onclick="manualRead(\''+id+'\')">קרא עכשיו (ידני)</button>';
+  if(reads.length>1)html+='<div class="card"><b style="font-size:13px;">היסטוריה (14 יום)</b>'+mkChart(reads,sh,ul)+'</div>';
+  var rec=reads.slice(-10).reverse();
+  if(rec.length){
+    html+='<div class="card"><b style="font-size:13px;">קריאות אחרונות</b>';
+    rec.forEach(function(rd){html+='<div class="rrow"><div><div>'+rd.qty+' '+ul+' · '+fmtW(rd.netWeight)+'</div><div class="muted" style="font-size:11px;">'+(rd.src==='auto'?'אוטו':'ידני')+' · '+fmtTs(rd.ts)+'</div></div><div style="font-size:11px;color:var(--muted);">'+rd.rawWeight+'גרם</div></div>';});
+    html+='</div>';
+  }
+  document.getElementById('sd-content').innerHTML=html;
+}
+window.renderSh=renderSh;
+
+function mkChart(reads,sh,ul){
+  var days={}, now=new Date(); now.setHours(23,59,59,999);
+  for(var d=13;d>=0;d--){var day=new Date(now);day.setDate(day.getDate()-d);days[day.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})]=[]; }
+  reads.forEach(function(r){var k=new Date(r.ts).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});if(days[k]!==undefined)days[k].push(r.qty);});
+  var ks=Object.keys(days);
+  var avgs=ks.map(function(k){var a=days[k];return a.length?Math.round(a.reduce(function(x,y){return x+y;},0)/a.length):null;});
+  var mx=Math.max.apply(null,avgs.filter(function(v){return v!==null;})); if(!mx)return '';
+  var av=parseFloat(sh.alertValue)||0, W=26,H=75,gap=4,tW=ks.length*(W+gap);
+  var bars=ks.map(function(k,i){
+    var v=avgs[i]; if(v===null)return '';
+    var bh=Math.round((v/mx)*H), y=H-bh;
+    var c=av>0?(v<=av*0.5?'var(--crit)':v<=av?'var(--warn)':'var(--ok)'):'var(--accent)';
+    return '<rect x="'+(i*(W+gap))+'" y="'+y+'" width="'+W+'" height="'+bh+'" rx="3" fill="'+c+'" opacity=".85"/>'+
+      '<text x="'+(i*(W+gap)+W/2)+'" y="'+(H+13)+'" text-anchor="middle" font-size="8" fill="var(--muted)">'+k+'</text>'+
+      '<text x="'+(i*(W+gap)+W/2)+'" y="'+(y-3)+'" text-anchor="middle" font-size="8" fill="var(--text)">'+v+'</text>';
+  }).join('');
+  var al=''; if(av>0&&mx>0){var ly=H-Math.round((av/mx)*H);if(ly>0&&ly<H)al='<line x1="0" y1="'+ly+'" x2="'+tW+'" y2="'+ly+'" stroke="var(--warn)" stroke-dasharray="4,3" stroke-width="1.5"/>';}
+  return '<div class="chart-wrap" style="margin-top:8px;"><svg width="'+tW+'" height="'+(H+20)+'" style="display:block;">'+bars+al+'</svg></div>';
+}
+
+function manualRead(id){
+  var sh=getShelves().find(function(s){return s.id===id;}); if(!sh)return;
+  var it=getItems().find(function(i){return i.id===sh.itemId;});
+  var reads=getReadings(id), uw=it?parseFloat(it.unitWeight)||5:5, tare=parseFloat(sh.tare)||0;
+  var lastRaw=reads.length?reads[reads.length-1].rawWeight:tare+uw*60;
+  var raw=Math.max(tare,lastRaw-Math.random()*20);
+  var noise=(Math.random()-0.5)*(HW[sh.profile]||HW.light).acc;
+  raw=Math.max(0,Math.round((raw+noise)*10)/10);
+  switchToUser();
+  var r=addReading(id,raw); r.src='manual';
+  var all=LS.get('readings',{}); if(all[id]&&all[id].length)all[id][all[id].length-1].src='manual'; LS.set('readings',all);
+  document.getElementById('read-result').innerHTML=
+    '<div style="font-size:48px;font-weight:800;color:var(--accent);">'+r.qty+'</div>'+
+    '<div class="muted">'+unitL(it)+'</div>'+
+    '<div style="font-size:18px;margin-top:8px;">'+fmtW(r.netWeight)+'</div>'+
+    '<div class="muted" style="margin-top:4px;">גולמי: '+r.rawWeight+'גרם | טרה: '+tare+'גרם</div>';
+  openModal('modal-read');
+  if(activeSc==='screen-shelf-detail')renderSh(id);
+  renderDash();
+}
+window.manualRead=manualRead;
+
+/* ════════════════════════════════════════════════════
+   ITEMS
+════════════════════════════════════════════════════ */
+var catF='';
+function renderItemsSc(){
+  fillUS('im-utype'); var cats=getCats(), its=getItems();
+  var tabs='<button class="ftab'+(catF===''?' active':'')+'" onclick="setF(\'\')">הכל ('+its.length+')</button>';
+  cats.forEach(function(c){var n=its.filter(function(i){return i.categoryId===c.id;}).length;tabs+='<button class="ftab'+(catF===c.id?' active':'')+'" onclick="setF(\''+c.id+'\')">'+c.icon+' '+c.name+' ('+n+')</button>';});
+  var nc=its.filter(function(i){return !i.categoryId;}).length;
+  if(nc)tabs+='<button class="ftab'+(catF==='none'?' active':'')+'" onclick="setF(\'none\')">ללא קטגוריה ('+nc+')</button>';
+  document.getElementById('item-tabs').innerHTML=tabs;
+  var f=catF===''?its:catF==='none'?its.filter(function(i){return !i.categoryId;}):its.filter(function(i){return i.categoryId===catF;});
+  if(!its.length){document.getElementById('items-list').innerHTML='<div class="empty"><div class="ic">📦</div><div>אין פריטים</div><div class="muted">לחץ + להוסיף</div></div>';return;}
+  if(!f.length){document.getElementById('items-list').innerHTML='<div class="empty"><div class="ic">🔍</div><div class="muted">אין פריטים בקטגוריה זו</div></div>';return;}
+  var cur=getCurrency(), shs=getShelves();
+  document.getElementById('items-list').innerHTML=f.map(function(it){
+    var cat=cats.find(function(c){return c.id===it.categoryId;}), used=shs.filter(function(s){return s.itemId===it.id;}).length, ul=unitL(it);
+    var chip=cat?'<span class="cat-chip" style="background:'+cat.color+'22;color:'+cat.color+';">'+cat.icon+' '+cat.name+'</span><br>':'';
+    return '<div class="icard" style="display:flex;justify-content:space-between;align-items:flex-start;">'+
+      '<div style="flex:1;">'+(chip?'<div style="margin-bottom:3px;">'+chip+'</div>':'')+
+      '<div style="font-weight:700;font-size:15px;">'+it.name+'</div>'+
+      '<div class="muted">'+it.unitWeight+'גרם/'+ul+(it.sku?' · '+it.sku:'')+(it.price>0?' · '+cur+parseFloat(it.price).toFixed(2):'')+'</div>'+
+      (it.supplier?'<div class="muted">'+it.supplier+(it.supplierPhone?' · '+it.supplierPhone:'')+'</div>':'')+
+      '<div class="muted">'+used+' משטחים</div></div>'+
+      '<button class="btn sec sm" onclick="openEditItem(\''+it.id+'\')" style="margin-right:8px;">ערוך</button></div>';
+  }).join('');
+}
+window.renderItemsSc=renderItemsSc;
+function setF(v){catF=v;renderItemsSc();}
+window.setF=setF;
+
+function openAddItem(){
+  document.getElementById('item-modal-title').textContent='פריט חדש';
+  ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('im-id').value=''; document.getElementById('im-del').style.display='none';
+  document.getElementById('adv-wrap').classList.remove('open');
+  document.querySelector('.adv-btn').textContent='פרטים נוספים (מק"ט, מחיר, ספק...)';
+  fillUS('im-utype','unit'); fillCS('im-cat','');
+  document.getElementById('im-price-lbl').textContent='מחיר ליחידה ('+getCurrency()+')';
+  openModal('modal-item');
+}
+window.openAddItem=openAddItem;
+
+function openEditItem(id){
+  var it=getItems().find(function(i){return i.id===id;}); if(!it)return;
+  document.getElementById('item-modal-title').textContent='עריכת פריט';
+  document.getElementById('im-name').value=it.name||'';
+  document.getElementById('im-sku').value=it.sku||''; document.getElementById('im-bar').value=it.barcode||'';
+  document.getElementById('im-price').value=it.price||''; document.getElementById('im-minord').value=it.minOrder||'';
+  document.getElementById('im-sup').value=it.supplier||''; document.getElementById('im-suptel').value=it.supplierPhone||'';
+  document.getElementById('im-notes').value=it.notes||''; document.getElementById('im-id').value=id;
+  document.getElementById('im-del').style.display='';
+  var hasA=it.sku||it.barcode||it.price||it.minOrder||it.supplier||it.notes;
+  document.getElementById('adv-wrap').classList.toggle('open',!!hasA);
+  document.querySelector('.adv-btn').textContent=hasA?'פרטים נוספים (פתוח)':'פרטים נוספים (מק"ט, מחיר, ספק...)';
+  fillUS('im-utype',it.unitType||'unit'); fillCS('im-cat',it.categoryId||'');
+  document.getElementById('im-price-lbl').textContent='מחיר ליחידה ('+getCurrency()+')';
+  openModal('modal-item');
+}
+window.openEditItem=openEditItem;
+function toggleAdv(){var w=document.getElementById('adv-wrap');w.classList.toggle('open');document.querySelector('.adv-btn').textContent=w.classList.contains('open')?'פרטים נוספים (פתוח)':'פרטים נוספים (מק"ט, מחיר, ספק...)';}
+window.toggleAdv=toggleAdv;
+
+function saveItem(){
+  var name=document.getElementById('im-name').value.trim(), uw=parseFloat(document.getElementById('im-uwt').value);
+  if(!name){alert('יש להזין שם פריט');return;} if(!uw||uw<=0){alert('יש להזין משקל סגולי');return;}
+  switchToUser(); var its=getItems(), eid=document.getElementById('im-id').value;
+  var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),notes:document.getElementById('im-notes').value.trim()};
+  if(eid){var idx=its.findIndex(function(i){return i.id===eid;});if(idx>=0)Object.assign(its[idx],d);}else{d.id='i'+Date.now();its.push(d);}
+  LS.set('items',its); closeModal('modal-item'); if(activeSc==='screen-items')renderItemsSc();
+}
+window.saveItem=saveItem;
+function deleteItem(){
+  var id=document.getElementById('im-id').value; if(!id)return;
+  if(getShelves().some(function(s){return s.itemId===id;})){alert('הפריט משויך למשטח — לא ניתן למחוק');return;}
+  if(!confirm('למחוק פריט?'))return;
+  switchToUser(); LS.set('items',getItems().filter(function(i){return i.id!==id;}));
+  closeModal('modal-item'); if(activeSc==='screen-items')renderItemsSc();
+}
+window.deleteItem=deleteItem;
+
+/* ════════════════════════════════════════════════════
+   CATEGORIES
+════════════════════════════════════════════════════ */
+var selI=CAT_ICONS[0], selC=CAT_COLORS[0];
+function renderCatsSc(){
+  var cats=getCats(), its=getItems();
+  if(!cats.length){document.getElementById('cat-list').innerHTML='<div class="empty"><div class="ic">🏷️</div><b>אין קטגוריות</b><div class="muted">הוסף קטגוריות לארגון הפריטים</div></div>';return;}
+  document.getElementById('cat-list').innerHTML=cats.map(function(c){
+    var n=its.filter(function(i){return i.categoryId===c.id;}).length;
+    return '<div class="ccard" onclick="openEditCat(\''+c.id+'\')">'+
+      '<div style="font-size:28px;width:44px;height:44px;border-radius:12px;background:'+c.color+'22;display:flex;align-items:center;justify-content:center;">'+c.icon+'</div>'+
+      '<div style="flex:1;"><div style="font-weight:700;font-size:15px;">'+c.name+'</div><div class="muted">'+n+' פריטים</div></div>'+
+      '<div style="color:var(--muted);font-size:18px;">›</div></div>';
+  }).join('');
+}
+window.renderCatsSc=renderCatsSc;
+
+function openAddCat(){
+  document.getElementById('cat-modal-title').textContent='קטגוריה חדשה';
+  document.getElementById('cm-name').value=''; document.getElementById('cm-id').value='';
+  document.getElementById('cm-del').style.display='none';
+  selI=CAT_ICONS[0]; selC=CAT_COLORS[0]; mkIcons(); mkColors(); openModal('modal-cat');
+}
+window.openAddCat=openAddCat;
+function openEditCat(id){
+  var c=getCats().find(function(x){return x.id===id;}); if(!c)return;
+  document.getElementById('cat-modal-title').textContent='עריכת קטגוריה';
+  document.getElementById('cm-name').value=c.name||''; document.getElementById('cm-id').value=id;
+  document.getElementById('cm-del').style.display='';
+  selI=c.icon||CAT_ICONS[0]; selC=c.color||CAT_COLORS[0]; mkIcons(); mkColors(); openModal('modal-cat');
+}
+window.openEditCat=openEditCat;
+function mkIcons(){document.getElementById('cm-icons').innerHTML=CAT_ICONS.map(function(ic){return '<button class="isel'+(ic===selI?' on':'')+'" onclick="pickI(\''+ic+'\')">'+ic+'</button>';}).join('');}
+function mkColors(){document.getElementById('cm-colors').innerHTML=CAT_COLORS.map(function(col){return '<div class="cswatch'+(col===selC?' on':'')+'" style="background:'+col+';" onclick="pickC(\''+col+'\')"></div>';}).join('');}
+function pickI(ic){selI=ic;mkIcons();} function pickC(c){selC=c;mkColors();}
+window.pickI=pickI; window.pickC=pickC;
+function saveCat(){
+  var name=document.getElementById('cm-name').value.trim(); if(!name){alert('יש להזין שם');return;}
+  switchToUser(); var cats=getCats(), id=document.getElementById('cm-id').value;
+  if(id){var idx=cats.findIndex(function(c){return c.id===id;});if(idx>=0){cats[idx].name=name;cats[idx].icon=selI;cats[idx].color=selC;}}else cats.push({id:'c'+Date.now(),name:name,icon:selI,color:selC});
+  LS.set('cats',cats); closeModal('modal-cat'); if(activeSc==='screen-categories')renderCatsSc(); if(activeSc==='screen-items')renderItemsSc();
+}
+window.saveCat=saveCat;
+function deleteCat(){
+  var id=document.getElementById('cm-id').value; if(!confirm('למחוק קטגוריה?'))return;
+  switchToUser(); LS.set('cats',getCats().filter(function(c){return c.id!==id;})); LS.set('items',getItems().map(function(i){if(i.categoryId===id)i.categoryId='';return i;}));
+  closeModal('modal-cat'); if(activeSc==='screen-categories')renderCatsSc(); if(activeSc==='screen-items')renderItemsSc();
+}
+window.deleteCat=deleteCat;
+
+/* ════════════════════════════════════════════════════
+   ALERTS
+════════════════════════════════════════════════════ */
+function renderAlerts(){
+  var als=getAlerts(); if(!als.length){document.getElementById('alerts-list').innerHTML='<div class="empty"><div class="ic">✅</div><div>אין התראות פעילות</div></div>';return;}
+  als=als.slice().sort(function(a,b){return b.ts-a.ts;});
+  document.getElementById('alerts-list').innerHTML=als.map(function(al){
+    var ic=al.severity==='crit'?'🔴':'⚠️', sl=al.status==='active'?'פעילה':al.status==='ordered'?'הוזמן מלאי':'טופלה';
+    var sc=al.status==='active'?(al.severity==='crit'?'var(--crit)':'var(--warn)'):'var(--ok)';
+    return '<div class="alert-item '+(al.severity==='warn'?'warn':'')+'">'+
+      '<div style="font-size:24px;">'+ic+'</div>'+
+      '<div style="flex:1;"><div style="font-weight:700;">'+al.shelfName+'</div><div class="muted">'+al.itemName+' · '+ago(al.ts)+'</div><div style="font-size:12px;color:'+sc+';margin-top:3px;">'+sl+'</div></div>'+
+      (al.status==='active'?'<div style="display:flex;flex-direction:column;gap:4px;"><button class="btn sm ok" onclick="markAl(\''+al.id+'\',\'ordered\')">הוזמן</button><button class="btn sm sec" onclick="markAl(\''+al.id+'\',\'done\')">טופל</button></div>':'')+'</div>';
+  }).join('');
+}
+window.renderAlerts=renderAlerts;
+function markAl(id,st){switchToUser();var als=getAlerts().slice(),a=als.find(function(x){return x.id===id;});if(a)a.status=st;LS.set('alerts',als);renderAlerts();updBell();}
+window.markAl=markAl;
+
+/* ════════════════════════════════════════════════════
+   EDIT SHELF
+════════════════════════════════════════════════════ */
+function openEditShelf(){
+  var sh=getShelves().find(function(s){return s.id===curSh;}); if(!sh)return;
+  document.getElementById('es-id').value=sh.id; document.getElementById('es-name').value=sh.name||'';
+  document.getElementById('es-zone').value=sh.zone||''; document.getElementById('es-tare').value=sh.tare||0;
+  document.getElementById('es-atype').value=sh.alertType||'qty'; document.getElementById('es-aval').value=sh.alertValue||'';
+  document.getElementById('es-notes').value=sh.notes||''; openModal('modal-eshelf');
+}
+window.openEditShelf=openEditShelf;
+function saveEditShelf(){
+  var id=document.getElementById('es-id').value; switchToUser();
+  var shs=getShelves(), idx=shs.findIndex(function(s){return s.id===id;}); if(idx<0)return;
+  shs[idx].name=document.getElementById('es-name').value.trim()||shs[idx].name;
+  shs[idx].zone=document.getElementById('es-zone').value.trim();
+  shs[idx].tare=parseFloat(document.getElementById('es-tare').value)||0;
+  shs[idx].alertType=document.getElementById('es-atype').value;
+  shs[idx].alertValue=parseFloat(document.getElementById('es-aval').value)||0;
+  shs[idx].notes=document.getElementById('es-notes').value.trim();
+  LS.set('shelves',shs); closeModal('modal-eshelf'); renderSh(id);
+}
+window.saveEditShelf=saveEditShelf;
+function deleteShelf(){
+  if(!confirm('למחוק משטח ואת כל הקריאות?'))return;
+  var id=document.getElementById('es-id').value; switchToUser();
+  LS.set('shelves',getShelves().filter(function(s){return s.id!==id;}));
+  var all=LS.get('readings',{}); delete all[id]; LS.set('readings',all);
+  closeModal('modal-eshelf'); navTo('screen-dashboard');
+}
+window.deleteShelf=deleteShelf;
+
+/* ════════════════════════════════════════════════════
+   SETTINGS
+════════════════════════════════════════════════════ */
+function openSettings(){
+  var s=getSettings();
+  document.getElementById('st-biz').value=s.bizName||''; document.getElementById('st-type').value=s.bizType||'';
+  document.getElementById('st-cur').value=s.currency||'₪'; document.getElementById('st-defalert').value=s.defaultAlert||'';
+  document.getElementById('st-notes').value=s.bizNotes||'';
+  document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);
+  openModal('modal-settings');
+}
+window.openSettings=openSettings;
+function saveSettings(){
+  switchToUser(); var s=getSettings();
+  s.bizName=document.getElementById('st-biz').value.trim(); s.bizType=document.getElementById('st-type').value.trim();
+  s.currency=document.getElementById('st-cur').value; s.defaultAlert=parseInt(document.getElementById('st-defalert').value)||0;
+  s.bizNotes=document.getElementById('st-notes').value.trim();
+  LS.set('settings',s); closeModal('modal-settings'); renderDash();
+}
+window.saveSettings=saveSettings;
+function toggleDemo(){var s=getSettings();s.demo=!(s.demo!==false);if(!isDemo())LS.set('settings',s);document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);}
+window.toggleDemo=toggleDemo;
+function resetAll(){
+  if(!confirm('לאפס הכל?'))return;
+  ['mode','shelves','items','cats','readings','alerts','settings','tmpl'].forEach(function(k){LS.del(k);});
+  _DR=null; closeModal('modal-settings'); location.reload();
+}
+window.resetAll=resetAll;
+function resetToOnboarding(){
+  if(!confirm('לחזור לבחירת תחום עסקי? הנתונים ישמרו.'))return;
+  LS.del('tmpl'); _DR=null; closeModal('modal-settings'); location.reload();
+}
+window.resetToOnboarding=resetToOnboarding;
+
+/* ════════════════════════════════════════════════════
+   WIZARD
+════════════════════════════════════════════════════ */
+var wD={}, wSI=null;
+function openSetupWizard(){
+  wD={}; wSI=null;
+  document.querySelectorAll('.wstep').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('wiz-s1').classList.add('active');
+  document.getElementById('wiz-prog').style.width='25%';
+  document.getElementById('wiz-name').value=''; document.getElementById('wiz-zone').value='';
+  document.getElementById('wiz-profile').value='light'; document.getElementById('wiz-hwcheck').innerHTML='';
+  fillUS('wiz-utype'); openModal('modal-setup');
+}
+window.openSetupWizard=openSetupWizard;
+
+function wizGo(step){
+  if(step===1){
+    var n=document.getElementById('wiz-name').value.trim(); if(!n){alert('יש להזין שם');return;}
+    wD.name=n; wD.zone=document.getElementById('wiz-zone').value.trim(); wD.profile=document.getElementById('wiz-profile').value;
+    gS(1,2);
+  } else if(step===2){
+    if(!wSI){
+      var iname=document.getElementById('wiz-iname').value.trim(), uw=parseFloat(document.getElementById('wiz-uwt').value);
+      if(!iname){alert('יש להזין שם פריט');return;} if(!uw||uw<=0){alert('יש להזין משקל');return;}
+      var hw=HW[wD.profile]; if(hw&&uw<hw.min){if(!confirm('אזהרה: '+uw+'גרם נמוך מהמינימום ('+hw.min+'גרם). להמשיך?'))return;}
+      switchToUser(); var its=getItems();
+      var ni={id:'i'+Date.now(),name:iname,unitType:document.getElementById('wiz-utype').value||'unit',unitWeight:uw,supplier:'',categoryId:'',sku:'',barcode:'',price:0,minOrder:0,supplierPhone:'',notes:''};
+      its.push(ni); LS.set('items',its); wSI=ni.id;
+    }
+    wD.itemId=wSI; gS(2,3); wizAlertInput();
+  } else if(step===3){
+    wD.tare=parseFloat(document.getElementById('wiz-tare').value)||0;
+    wD.aType=document.getElementById('wiz-atype').value;
+    wD.aVal=parseFloat(document.getElementById('wiz-aval').value)||0;
+    var it2=getItems().find(function(i){return i.id===wD.itemId;}), hw2=HW[wD.profile];
+    document.getElementById('wiz-sum').innerHTML=
+      'שם: '+wD.name+(wD.zone?' ('+wD.zone+')':'')+'<br>פרופיל: '+(hw2?hw2.label+' · '+hw2.range:'')+'<br>פריט: '+(it2?it2.name:'—')+' · '+(it2?it2.unitWeight:'?')+'גרם<br>טרה: '+wD.tare+'גרם<br>סף: '+wD.aVal+(wD.aType==='weight'?' גרם':' יחידות');
+    gS(3,4);
+  }
+}
+window.wizGo=wizGo;
+function wizBack(step){gS(step,step-1);}
+window.wizBack=wizBack;
+function gS(from,to){document.getElementById('wiz-s'+from).classList.remove('active');document.getElementById('wiz-s'+to).classList.add('active');document.getElementById('wiz-prog').style.width=(to*25)+'%';}
+function wizFinish(){
+  switchToUser();
+  var sh={id:'s'+Date.now(),name:wD.name,zone:wD.zone||'',profile:wD.profile,itemId:wD.itemId,tare:wD.tare,alertType:wD.aType,alertValue:wD.aVal,notes:''};
+  var shs=getShelves(); shs.push(sh); LS.set('shelves',shs);
+  closeModal('modal-setup'); renderDash();
+}
+window.wizFinish=wizFinish;
+function wizShowNew(){document.getElementById('wiz-existing').style.display='none';document.getElementById('wiz-new').style.display='block';document.getElementById('wiz-sel-info').style.display='none';wSI=null;wizHwCheck();}
+window.wizShowNew=wizShowNew;
+function wizShowExisting(){
+  var its=getItems(); if(!its.length){wizShowNew();return;}
+  document.getElementById('wiz-new').style.display='none'; document.getElementById('wiz-sel-info').style.display='none';
+  var cats=getCats();
+  document.getElementById('wiz-existing').innerHTML=its.map(function(it){
+    var c=cats.find(function(x){return x.id===it.categoryId;});
+    return '<div onclick="wizPick(\''+it.id+'\')" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;">'+(c?'<span style="font-size:11px;color:'+c.color+';">'+c.icon+' '+c.name+'</span><br>':'')+'<div style="font-weight:700;">'+it.name+'</div><div class="muted">'+it.unitWeight+'גרם/'+unitL(it)+'</div></div>';
+  }).join('');
+  document.getElementById('wiz-existing').style.display='block';
+}
+window.wizShowExisting=wizShowExisting;
+function wizPick(id){
+  var it=getItems().find(function(i){return i.id===id;}); if(!it)return;
+  wSI=id; document.getElementById('wiz-existing').style.display='none';
+  var hw=HW[document.getElementById('wiz-profile').value||'light'], ok=!hw||it.unitWeight>=hw.min;
+  var el=document.getElementById('wiz-sel-info'); el.className=ok?'hwok':'hwwarn';
+  el.textContent=(ok?'✓ ':'⚠ ')+it.name+' ('+it.unitWeight+'גרם/'+unitL(it)+') — '+(ok?'תואם ל'+hw.label:'נמוך מהמינימום '+hw.min+'גרם');
+  el.style.display='block';
+}
+window.wizPick=wizPick;
+function wizHwCheck(){
+  var uw=parseFloat((document.getElementById('wiz-uwt')||{}).value||0), pr=(document.getElementById('wiz-profile')||{}).value||'light';
+  var el=document.getElementById('wiz-hwcheck'); if(!el)return; if(!uw){el.innerHTML='';return;}
+  var hw=HW[pr]; el.innerHTML=uw<hw.min?'<div class="hwwarn">'+uw+'גרם נמוך מהמינימום ('+hw.min+'גרם) לפרופיל '+hw.label+'</div>':'<div class="hwok">'+uw+'גרם תואם לפרופיל '+hw.label+'</div>';
+}
+window.wizHwCheck=wizHwCheck;
+function wizAlertInput(){var t=document.getElementById('wiz-atype').value;document.getElementById('wiz-athresh').innerHTML='<label>סף מינימלי ('+(t==='weight'?'גרם':'יחידות')+')</label><input id="wiz-aval" type="number" placeholder="'+(t==='weight'?'100':'20')+'">';}
+window.wizAlertInput=wizAlertInput;
+
+/* ════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════ */
+function fillUS(elId,sel){var el=document.getElementById(elId);if(!el)return;el.innerHTML=UNITS.map(function(u){return '<option value="'+u.v+'"'+(u.v===(sel||'unit')?' selected':'')+'>'+u.l+'</option>';}).join('');}
+function fillCS(elId,sel){var el=document.getElementById(elId);if(!el)return;el.innerHTML='<option value="">— ללא קטגוריה —</option>'+getCats().map(function(c){return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+c.icon+' '+c.name+'</option>';}).join('');}
+
+/* ════════════════════════════════════════════════════
+   BOOT
+════════════════════════════════════════════════════ */
+(function boot(){
+  var vm=LS.get('tmpl',null);
+  if(!vm){showOnboarding();return;}
+  renderDash();
+  updBell();
+})();
+
+setInterval(function(){
+  if(isDemo())return;
+  var s=getSettings(); if(s.demo===false)return;
+  getShelves().forEach(function(sh){
+    var it=getItems().find(function(i){return i.id===sh.itemId;});
+    var uw=it?parseFloat(it.unitWeight)||5:5, tare=parseFloat(sh.tare)||0;
+    var reads=getReadings(sh.id), hw=HW[sh.profile]||HW.light;
+    var raw=reads.length?Math.max(tare,reads[reads.length-1].rawWeight-Math.floor(Math.random()*4)*uw+(Math.random()-0.5)*hw.acc*2):tare+uw*(50+Math.floor(Math.random()*50));
+    addReading(sh.id,Math.round(raw*10)/10);
+  });
+  if(activeSc==='screen-dashboard')renderDash();
+  if(activeSc==='screen-shelf-detail'&&curSh)renderSh(curSh);
+},30000);
+
+})();
+</script>
+</body>
+</html>
