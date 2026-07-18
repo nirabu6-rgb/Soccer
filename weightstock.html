@@ -983,6 +983,20 @@ function renderSh(id){
       '</div>';
   }
   html+='<button class="btn" onclick="manualRead(\''+id+'\')">קרא עכשיו (ידני)</button>';
+  if(it&&(it.supplierPhone||it.supplierWhatsApp||it.supplierEmail)){
+    var biz=getSettings().bizName||'';
+    var ul2=unitL(it);
+    var qty2=r?r.qty:0;
+    var msg='הזמנה'+(biz?' מ-'+biz:'')+':'+(it.name?'\n• '+it.name+' — כמות נוכחית: '+qty2+' '+ul2:'');
+    var waNum=fmtPhone(it.supplierWhatsApp||it.supplierPhone);
+    html+='<div class="card" style="background:var(--card2);margin-top:8px;">';
+    html+='<div style="font-weight:700;font-size:14px;margin-bottom:10px;">📋 הזמנה מספק</div>';
+    if(it.supplier)html+='<div class="muted" style="margin-bottom:8px;">'+it.supplier+(it.supplierPhone?' · '+it.supplierPhone:'')+'</div>';
+    html+='<div class="send-row">';
+    if(waNum)html+='<a class="send-btn wa" href="https://wa.me/'+waNum+'?text='+encodeURIComponent(msg)+'" target="_blank">📱 WhatsApp</a>';
+    if(it.supplierEmail)html+='<a class="send-btn em" href="mailto:'+it.supplierEmail+'?subject='+encodeURIComponent('הזמנה - '+biz)+'&body='+encodeURIComponent(msg)+'" target="_blank">✉️ מייל</a>';
+    html+='</div></div>';
+  }
   if(reads.length>1)html+='<div class="card"><b style="font-size:13px;">היסטוריה (14 יום)</b>'+mkChart(reads,sh,ul)+'</div>';
   var rec=reads.slice(-10).reverse();
   if(rec.length){
