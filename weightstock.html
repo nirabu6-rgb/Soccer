@@ -192,6 +192,9 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <div class="screen" id="screen-items">
   <div class="topbar"><h2>&#x1F4E6; פריטים</h2><button class="icon-btn" onclick="openAddItem()">+</button></div>
+  <div style="padding:0 0 8px;position:relative;">
+    <input id="item-search" placeholder="🔍 חיפוש פריט..." oninput="renderItemsSc()" style="padding-right:14px;border-radius:20px;background:var(--card2);border:1px solid var(--border);">
+  </div>
   <div class="ftabs" id="item-tabs"></div>
   <div id="items-list"></div>
 </div>
@@ -1061,9 +1064,12 @@ function renderItemsSc(){
   var nc=its.filter(function(i){return !i.categoryId;}).length;
   if(nc)tabs+='<button class="ftab'+(catF==='none'?' active':'')+'" onclick="setF(\'none\')">ללא קטגוריה ('+nc+')</button>';
   document.getElementById('item-tabs').innerHTML=tabs;
+  var q=(document.getElementById('item-search')||{}).value||'';
+  var qLow=q.trim().toLowerCase();
   var f=catF===''?its:catF==='none'?its.filter(function(i){return !i.categoryId;}):its.filter(function(i){return i.categoryId===catF;});
+  if(qLow)f=f.filter(function(i){return (i.name||'').toLowerCase().indexOf(qLow)>=0||(i.sku||'').toLowerCase().indexOf(qLow)>=0||(i.supplier||'').toLowerCase().indexOf(qLow)>=0;});
   if(!its.length){document.getElementById('items-list').innerHTML='<div class="empty"><div class="ic">📦</div><div>אין פריטים</div><div class="muted">לחץ + להוסיף</div></div>';return;}
-  if(!f.length){document.getElementById('items-list').innerHTML='<div class="empty"><div class="ic">🔍</div><div class="muted">אין פריטים בקטגוריה זו</div></div>';return;}
+  if(!f.length){document.getElementById('items-list').innerHTML='<div class="empty"><div class="ic">🔍</div><div class="muted">לא נמצאו פריטים</div></div>';return;}
   var cur=getCurrency(), shs=getShelves();
   document.getElementById('items-list').innerHTML=f.map(function(it){
     var cat=cats.find(function(c){return c.id===it.categoryId;}), used=shs.filter(function(s){return s.itemId===it.id;}).length, ul=unitL(it);
