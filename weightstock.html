@@ -191,7 +191,11 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 </div>
 
 <div class="screen" id="screen-items">
-  <div class="topbar"><h2>&#x1F4E6; פריטים</h2><button class="icon-btn" onclick="openAddItem()">+</button></div>
+  <div class="topbar"><h2>&#x1F4E6; פריטים</h2><button class="icon-btn" onclick="toggleItemMenu()">+</button></div>
+  <div id="item-fab-menu" style="display:none;background:var(--card);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.12);margin-bottom:10px;overflow:hidden;border:1px solid var(--border);">
+    <button onclick="openAddItem();toggleItemMenu()" style="width:100%;background:none;border:none;border-bottom:1px solid var(--border);padding:14px 16px;text-align:right;font-size:15px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">📦 פריט חדש</button>
+    <button onclick="openSuppliers();toggleItemMenu()" style="width:100%;background:none;border:none;padding:14px 16px;text-align:right;font-size:15px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">🏭 ספקים</button>
+  </div>
   <div style="padding:0 0 8px;position:relative;">
     <input id="item-search" placeholder="🔍 חיפוש פריט..." oninput="renderItemsSc()" style="padding-right:14px;border-radius:20px;background:var(--card2);border:1px solid var(--border);">
   </div>
@@ -419,6 +423,16 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     </div>
     <div id="cart-content"></div>
     <button class="btn sec" style="margin-top:12px;font-size:13px;" onclick="clearCart()">🗑️ נקה סל</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-suppliers">
+  <div class="modal-box" style="width:calc(100% - 28px);max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--card);padding-bottom:8px;">
+      <h3 style="margin:0;">🏭 ספקים</h3>
+      <button class="modal-close" onclick="closeModal('modal-suppliers')">&#x2715;</button>
+    </div>
+    <div id="suppliers-list"></div>
   </div>
 </div>
 
@@ -1086,6 +1100,41 @@ function renderItemsSc(){
 window.renderItemsSc=renderItemsSc;
 function setF(v){catF=v;renderItemsSc();}
 window.setF=setF;
+
+function toggleItemMenu(){
+  var m=document.getElementById('item-fab-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+window.toggleItemMenu=toggleItemMenu;
+
+function openSuppliers(){
+  var items=getItems();
+  var map={};
+  items.forEach(function(it){
+    var sup=it.supplier||it.sup||'';
+    if(!sup)return;
+    if(!map[sup])map[sup]={name:sup,tel:it.supplierPhone||'',wa:it.supplierWhatsApp||'',email:it.supplierEmail||'',items:[]};
+    map[sup].items.push(it.name||it.sku||'פריט');
+  });
+  var keys=Object.keys(map);
+  var html='';
+  if(!keys.length){html='<p style="color:var(--muted);text-align:center;padding:20px;">אין ספקים רשומים בפריטים</p>';}
+  else{
+    keys.forEach(function(k){
+      var s=map[k];
+      html+='<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:12px;">';
+      html+='<div style="font-size:16px;font-weight:700;margin-bottom:8px;">🏭 '+s.name+'</div>';
+      if(s.tel){html+='<div style="margin-bottom:6px;"><a href="tel:'+s.tel+'" style="color:var(--accent);text-decoration:none;">📞 '+s.tel+'</a></div>';}
+      if(s.wa){var waNum=fmtPhone(s.wa);html+='<div style="margin-bottom:6px;"><a href="https://wa.me/'+encodeURIComponent(waNum)+'" target="_blank" style="color:var(--ok);text-decoration:none;">💬 WhatsApp</a></div>';}
+      if(s.email){html+='<div style="margin-bottom:6px;"><a href="mailto:'+s.email+'" style="color:var(--accent);text-decoration:none;">✉️ '+s.email+'</a></div>';}
+      if(s.items.length){html+='<div style="margin-top:8px;font-size:12px;color:var(--muted);">פריטים: '+s.items.join(', ')+'</div>';}
+      html+='</div>';
+    });
+  }
+  document.getElementById('suppliers-list').innerHTML=html;
+  openModal('modal-suppliers');
+}
+window.openSuppliers=openSuppliers;
 
 function openAddItem(){
   document.getElementById('item-modal-title').textContent='פריט חדש';
