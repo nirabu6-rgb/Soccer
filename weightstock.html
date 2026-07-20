@@ -223,7 +223,11 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <button class="navbtn" id="nav-screen-categories" onclick="navTo('screen-categories')"><span class="ic">&#x1F3F7;&#xFE0F;</span>קטגוריות</button>
   <button class="navbtn" id="nav-screen-alerts" onclick="navTo('screen-alerts')"><span class="ic">&#x1F514;</span><span id="nav-alert-lbl">התראות</span></button>
 </nav>
-<button class="fab" onclick="openSetupWizard()">+</button>
+<div id="fab-menu" style="display:none;position:fixed;bottom:140px;left:18px;z-index:60;background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.18);overflow:hidden;border:1px solid var(--border);min-width:180px;">
+  <button onclick="closeFabMenu();openSetupWizard();" style="width:100%;background:none;border:none;border-bottom:1px solid var(--border);padding:14px 16px;text-align:right;font-size:15px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">⚖️ משטח שקילה חדש</button>
+  <button onclick="closeFabMenu();openSuppliers();" style="width:100%;background:none;border:none;padding:14px 16px;text-align:right;font-size:15px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">🏭 ספקים</button>
+</div>
+<button class="fab" id="main-fab" onclick="toggleFabMenu()">+</button>
 
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-setup">
@@ -1139,6 +1143,19 @@ function renderItemsSc(){
 window.renderItemsSc=renderItemsSc;
 function setF(v){catF=v;renderItemsSc();}
 window.setF=setF;
+
+function toggleFabMenu(){
+  var m=document.getElementById('fab-menu');
+  var open=m.style.display!=='none';
+  m.style.display=open?'none':'block';
+  document.getElementById('main-fab').textContent=open?'+':'✕';
+}
+function closeFabMenu(){
+  document.getElementById('fab-menu').style.display='none';
+  document.getElementById('main-fab').textContent='+';
+}
+window.toggleFabMenu=toggleFabMenu;
+window.closeFabMenu=closeFabMenu;
 
 function toggleItemMenu(){
   var m=document.getElementById('item-fab-menu');
