@@ -741,7 +741,7 @@ function submitForm(e) {
   fetch('https://formspree.io/f/xdaqzqqp', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-    body: JSON.stringify({name: name, phone: phone, message: msg, _replyto: 'nirabu6@gmail.com'})
+    body: JSON.stringify({name: name, phone: phone, message: msg, _replyto: 'nir.sport.aviv@gmail.com', _subject: 'ליד חדש מהאתר - PRO KIDS'})
   }).catch(function(){});
   // Open WhatsApp with details
   window.open('https://wa.me/972526443323?text=' + encodeURIComponent(text), '_blank');
