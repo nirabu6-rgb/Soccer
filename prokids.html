@@ -363,6 +363,16 @@ footer p{font-size:11px;color:var(--w3);letter-spacing:.5px}
   white-space:nowrap;
 }
 .share-toast.show{opacity:1}
+
+/* Thank you modal */
+.ty-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:none;align-items:center;justify-content:center}
+.ty-overlay.show{display:flex}
+.ty-box{background:#181818;border:1px solid rgba(196,28,28,0.4);border-radius:16px;padding:40px 32px;text-align:center;max-width:320px;width:90%;animation:popIn .3s ease}
+@keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.ty-icon{font-size:52px;margin-bottom:16px}
+.ty-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:10px}
+.ty-sub{font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:24px;line-height:1.6}
+.ty-close{background:#C41C1C;color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
 </style>
 
 <!-- NAV -->
@@ -723,9 +733,20 @@ function submitForm(e) {
   var name = document.getElementById('cf-name').value;
   var phone = document.getElementById('cf-phone').value;
   var msg = document.getElementById('cf-msg').value;
-  var text = 'שלום ניר! 👋\nשם: ' + name + '\nטלפון: ' + phone + (msg ? '\nהודעה: ' + msg : '');
+  var text = 'שלום ניר! 👋
+שם: ' + name + '
+טלפון: ' + phone + (msg ? '
+הודעה: ' + msg : '');
+  // Send to email via Formspree
+  fetch('https://formspree.io/f/xyzgpkqd', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    body: JSON.stringify({name: name, phone: phone, message: msg, _replyto: 'nirabu6@gmail.com'})
+  }).catch(function(){});
+  // Open WhatsApp with details
   window.open('https://wa.me/972526443323?text=' + encodeURIComponent(text), '_blank');
-  document.getElementById('cf-thanks').style.display = 'block';
+  // Show thank you modal
+  document.getElementById('tyModal').classList.add('show');
   e.target.reset();
 }
 
