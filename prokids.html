@@ -733,14 +733,11 @@ function submitForm(e) {
   var name = document.getElementById('cf-name').value;
   var phone = document.getElementById('cf-phone').value;
   var msg = document.getElementById('cf-msg').value;
-  var nl = '%0A';
-  var waText = 'שלום ניר! 👋' + nl + 'שם: ' + name + nl + 'טלפון: ' + phone + (msg ? nl + 'הודעה: ' + msg : '');
   fetch('https://formspree.io/f/xdaqzqqp', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
     body: JSON.stringify({name: name, phone: phone, message: msg, _subject: 'ליד חדש - PRO KIDS'})
   }).catch(function(){});
-  window.open('https://wa.me/972526443323?text=' + encodeURIComponent(waText), '_blank');
   document.getElementById('tyModal').style.display='flex';
   e.target.reset();
 }
