@@ -733,19 +733,16 @@ function submitForm(e) {
   var name = document.getElementById('cf-name').value;
   var phone = document.getElementById('cf-phone').value;
   var msg = document.getElementById('cf-msg').value;
-  var text = 'שלום ניר! 👋
+  var waText = 'שלום ניר! 👋
 שם: ' + name + '
 טלפון: ' + phone + (msg ? '
 הודעה: ' + msg : '');
-  // Send to email via Formspree
   fetch('https://formspree.io/f/xdaqzqqp', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-    body: JSON.stringify({name: name, phone: phone, message: msg, _replyto: 'nir.sport.aviv@gmail.com', _subject: 'ליד חדש מהאתר - PRO KIDS'})
+    body: JSON.stringify({name: name, phone: phone, message: msg, _subject: 'ליד חדש - PRO KIDS'})
   }).catch(function(){});
-  // Open WhatsApp with details
-  window.open('https://wa.me/972526443323?text=' + encodeURIComponent(text), '_blank');
-  // Show thank you modal
+  window.open('https://wa.me/972526443323?text=' + encodeURIComponent(waText), '_blank');
   document.getElementById('tyModal').classList.add('show');
   e.target.reset();
 }
