@@ -1413,7 +1413,10 @@ function renderSuppliersList(){
       html+='<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:10px;">';
       html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
       html+='<div style="font-size:16px;font-weight:700;">🏭 '+s.name+'</div>';
-      html+='<button onclick="openEditSupplier(\''+s.id+'\')" style="background:var(--card);border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:var(--accent);cursor:pointer;">עריכה</button>';
+      html+='<div style="display:flex;gap:6px;">';
+      html+='<button onclick="addItemForSupplier(\''+s.name+'\')" style="background:rgba(37,99,235,.1);border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:var(--accent);cursor:pointer;font-weight:700;">+ פריט</button>';
+      html+='<button onclick="openEditSupplier(\''+s.id+'\')" style="background:var(--card);border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:var(--muted);cursor:pointer;">עריכה</button>';
+      html+='</div>';
       html+='</div>';
       if(s.contact){html+='<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">👤 '+s.contact+'</div>';}
       var btns='';
@@ -1522,6 +1525,25 @@ function openAddSupplierFromItem(){
   window._supFromItem=true;
 }
 window.openAddSupplierFromItem=openAddSupplierFromItem;
+
+function addItemForSupplier(supName){
+  closeModal('modal-suppliers');
+  var sups=getSuppliers(), s=sups.find(function(x){return x.name===supName;});
+  openAddItem();
+  document.getElementById('im-sup').value=supName;
+  if(s){
+    document.getElementById('im-suptel').value=s.tel||'';
+    document.getElementById('im-supwa').value=s.wa||s.tel||'';
+    document.getElementById('im-supemail').value=s.email||'';
+    document.getElementById('im-ordermail').value=s.orderEmail||'';
+  }
+  // פתח פרטים נוספים כדי שיראה את שדה הספק
+  document.getElementById('adv-wrap').classList.add('open');
+  document.querySelector('.adv-btn').textContent='פרטים נוספים (פתוח)';
+  var det=document.getElementById('im-sup-details');
+  if(s&&(s.tel||s.email)){det.textContent=(s.tel?'📞 '+s.tel+'  ':'')+( s.email?'✉️ '+s.email:'');det.style.display='block';}
+}
+window.addItemForSupplier=addItemForSupplier;
 
 function openAddItem(){
   document.getElementById('item-modal-title').textContent='פריט חדש';
