@@ -187,6 +187,25 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <div id="app">
 <div id="main-content">
 
+<!-- ── LOGIN ── -->
+<div class="ob-overlay" id="login-overlay">
+  <div class="ob-wrap" style="max-width:400px;">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:52px;margin-bottom:8px;">⚖️</div>
+      <div style="font-size:24px;font-weight:800;" id="login-bizname">WeightStock</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;">מערכת מלאי חכם</div>
+    </div>
+    <div class="ob-biz">
+      <div id="login-err" style="display:none;background:rgba(185,28,28,.1);color:var(--crit);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px;text-align:center;"></div>
+      <label>מספר תעודת זהות</label>
+      <input id="login-id" type="tel" placeholder="000000000" inputmode="numeric" maxlength="9">
+      <label style="margin-top:14px;">סיסמה</label>
+      <input id="login-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn ok" style="margin-top:20px;" onclick="doLogin()">כניסה למערכת</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── ONBOARDING ── -->
 <div class="ob-overlay" id="ob-overlay">
   <div class="ob-wrap">
@@ -200,11 +219,11 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div class="ob-step" id="ob-s2">
       <div class="ob-logo" id="ob-s2-icon">🏪</div>
       <div class="ob-title" id="ob-s2-name">הגדרת עסק</div>
-      <div class="ob-sub">שלב אחרון — מה שם העסק שלך?</div>
+      <div class="ob-sub">שלב 2 מתוך 3 — פרטי העסק</div>
       <div class="ob-biz">
         <label>שם העסק</label>
         <input id="ob-bizname" placeholder="חנות כהן בע&quot;מ">
-        <label style="margin-top:16px;">סוג מטבע</label>
+        <label style="margin-top:14px;">סוג מטבע</label>
         <select id="ob-cur">
           <option value="₪">₪ שקל</option>
           <option value="$">$ דולר</option>
@@ -212,7 +231,29 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
         </select>
         <div class="row" style="margin-top:18px;">
           <button class="btn sec" onclick="obBack()">חזור</button>
-          <button class="btn ok" onclick="obFinish()">כניסה למערכת ✓</button>
+          <button class="btn" onclick="obToReg()">הבא ›</button>
+        </div>
+      </div>
+    </div>
+    <div class="ob-step" id="ob-s3">
+      <div class="ob-logo">🔐</div>
+      <div class="ob-title">הרשמה</div>
+      <div class="ob-sub">שלב 3 מתוך 3 — פרטים אישיים לכניסה</div>
+      <div class="ob-biz">
+        <div id="reg-err" style="display:none;background:rgba(185,28,28,.1);color:var(--crit);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px;text-align:center;"></div>
+        <label>שם מלא</label>
+        <input id="ob-fullname" placeholder="ישראל ישראלי">
+        <label style="margin-top:14px;">מספר תעודת זהות</label>
+        <input id="ob-idnum" type="tel" placeholder="000000000" inputmode="numeric" maxlength="9">
+        <label style="margin-top:14px;">מספר טלפון</label>
+        <input id="ob-phone" type="tel" placeholder="050-0000000">
+        <label style="margin-top:14px;">סיסמה</label>
+        <input id="ob-pw" type="password" placeholder="לפחות 4 תווים">
+        <label style="margin-top:14px;">אימות סיסמה</label>
+        <input id="ob-pw2" type="password" placeholder="הכנס שוב את הסיסמה">
+        <div class="row" style="margin-top:18px;">
+          <button class="btn sec" onclick="obBack2()">חזור</button>
+          <button class="btn ok" onclick="obFinish()">סיום ✓</button>
         </div>
       </div>
     </div>
@@ -1103,9 +1144,25 @@ function showOnboarding(){
       '<div class="tc-name">'+t.name+'</div>'+
       '<div class="tc-desc">'+t.desc+'</div></div>';
   }).join('');
+  ['ob-s1','ob-s2','ob-s3'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  document.getElementById('ob-s1').classList.add('active');
   document.getElementById('ob-overlay').classList.add('show');
 }
 window.showOnboarding=showOnboarding;
+
+function showLogin(){
+  var acc=LS.get('account',null);
+  var lo=document.getElementById('login-overlay');
+  var bizname=acc?LS.get('settings',{}).bizName||'WeightStock':'WeightStock';
+  document.getElementById('login-bizname').textContent=bizname;
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pw').value='';
+  document.getElementById('login-err').style.display='none';
+  lo.classList.add('show');
+}
+window.showLogin=showLogin;
+
+function pwHash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h.toString(36);}
 
 function obSelect(key){
   _obTmpl=key;
@@ -1124,18 +1181,63 @@ function obBack(){
 }
 window.obBack=obBack;
 
+function obToReg(){
+  var biz=document.getElementById('ob-bizname').value.trim();
+  if(!biz){alert('הכנס שם עסק');return;}
+  document.getElementById('ob-s2').classList.remove('active');
+  document.getElementById('ob-s3').classList.add('active');
+}
+window.obToReg=obToReg;
+
+function obBack2(){
+  document.getElementById('ob-s3').classList.remove('active');
+  document.getElementById('ob-s2').classList.add('active');
+}
+window.obBack2=obBack2;
+
 function obFinish(){
   if(!_obTmpl)return;
+  var idnum=document.getElementById('ob-idnum').value.trim();
+  var pw=document.getElementById('ob-pw').value;
+  var pw2=document.getElementById('ob-pw2').value;
+  var fullname=document.getElementById('ob-fullname').value.trim();
+  var phone=document.getElementById('ob-phone').value.trim();
+  var errEl=document.getElementById('reg-err');
+  errEl.style.display='none';
+  if(!fullname){errEl.textContent='הכנס שם מלא';errEl.style.display='block';return;}
+  if(!idnum||idnum.length<7){errEl.textContent='הכנס מספר תעודת זהות תקין';errEl.style.display='block';return;}
+  if(pw.length<4){errEl.textContent='הסיסמה חייבת לפחות 4 תווים';errEl.style.display='block';return;}
+  if(pw!==pw2){errEl.textContent='הסיסמאות לא תואמות';errEl.style.display='block';return;}
   LS.set('tmpl',_obTmpl);
   _DR=null;
   var biz=document.getElementById('ob-bizname').value.trim();
   var cur=document.getElementById('ob-cur').value;
   var td=TEMPLATES[_obTmpl];
   LS.set('settings',{bizName:biz,bizType:td.bizType||'',currency:cur,defaultAlert:20,demo:true,bizNotes:''});
+  LS.set('account',{fullname:fullname,idnum:idnum,phone:phone,pwHash:pwHash(pw)});
+  LS.set('session',true);
   document.getElementById('ob-overlay').classList.remove('show');
-  renderDash(); updBell();
+  renderDash(); updBell(); updateDashLogo();
 }
 window.obFinish=obFinish;
+
+function doLogin(){
+  var idnum=document.getElementById('login-id').value.trim();
+  var pw=document.getElementById('login-pw').value;
+  var errEl=document.getElementById('login-err');
+  errEl.style.display='none';
+  var acc=LS.get('account',null);
+  if(!acc){errEl.textContent='לא נמצא חשבון — הרשם תחילה';errEl.style.display='block';return;}
+  if(acc.idnum!==idnum||acc.pwHash!==pwHash(pw)){
+    errEl.textContent='תעודת זהות או סיסמה שגויים';errEl.style.display='block';
+    document.getElementById('login-pw').value='';
+    return;
+  }
+  LS.set('session',true);
+  document.getElementById('login-overlay').classList.remove('show');
+  renderDash(); updBell(); updateDashLogo();
+}
+window.doLogin=doLogin;
 
 /* ════════════════════════════════════════════════════
    NAV
@@ -1769,15 +1871,10 @@ function resetToOnboarding(){
 window.resetToOnboarding=resetToOnboarding;
 function logoutApp(){
   if(!confirm('להתנתק? הנתונים ישמרו.'))return;
-  LS.del('tmpl'); LS.del('mode'); _DR=null;
+  LS.del('session'); _DR=null;
   closeModal('modal-settings');
-  // סגור את כל המודלים
   document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('show');});
-  // חזור לדשבורד
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  document.getElementById('screen-dashboard').classList.add('active');
-  // פתח onboarding
-  showOnboarding();
+  showLogin();
 }
 window.logoutApp=logoutApp;
 function handleLogoUpload(inp){
@@ -2187,12 +2284,15 @@ document.addEventListener('click',function(e){
 
 (function boot(){
   applyTheme(LS.get('theme','light'));
-  var vm=LS.get('tmpl',null);
   setTimeout(function(){
     var sp=document.getElementById('splash');
     if(sp){sp.style.opacity='0';setTimeout(function(){sp.style.display='none';},500);}
   },1800);
-  if(!vm){showOnboarding();return;}
+  var acc=LS.get('account',null);
+  var vm=LS.get('tmpl',null);
+  var sess=LS.get('session',false);
+  if(!acc||!vm){showOnboarding();return;}  // הרשמה ראשונה
+  if(!sess){showLogin();return;}           // יש חשבון, צריך להתחבר
   renderDash();
   updBell();
   updateDashLogo();
