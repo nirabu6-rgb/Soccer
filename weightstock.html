@@ -1536,6 +1536,36 @@ function resetToOnboarding(){
   LS.del('tmpl'); _DR=null; closeModal('modal-settings'); location.reload();
 }
 window.resetToOnboarding=resetToOnboarding;
+function logoutApp(){
+  if(!confirm('להתנתק? הנתונים ישמרו.'))return;
+  LS.del('tmpl'); _DR=null; closeModal('modal-settings'); location.reload();
+}
+window.logoutApp=logoutApp;
+function handleLogoUpload(inp){
+  if(!inp.files||!inp.files[0])return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var data=e.target.result;
+    localStorage.setItem('ws3_logo',data);
+    document.getElementById('logo-img').src=data;
+    document.getElementById('logo-img').style.display='block';
+    document.getElementById('logo-placeholder').style.display='none';
+    updateDashLogo();
+  };
+  reader.readAsDataURL(inp.files[0]);
+}
+window.handleLogoUpload=handleLogoUpload;
+function updateDashLogo(){
+  var logo=localStorage.getItem('ws3_logo');
+  var el=document.getElementById('dash-logo');
+  if(!el)return;
+  if(logo){
+    el.innerHTML='<img src="'+logo+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-left:6px;" alt="לוגו">';
+  } else {
+    el.innerHTML='&#x2696;&#xFE0F;';
+  }
+}
+window.updateDashLogo=updateDashLogo;
 
 /* ════════════════════════════════════════════════════
    WIZARD
@@ -1850,7 +1880,7 @@ document.addEventListener('click',function(e){
   if(!vm){showOnboarding();return;}
   renderDash();
   updBell();
-  updCartBadge();
+  updateDashLogo();
 })();
 
 setInterval(function(){
