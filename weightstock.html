@@ -442,65 +442,106 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <div class="modal-overlay" id="modal-settings">
   <div class="modal-box mid" style="width:calc(100% - 28px);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-      <h3 style="margin:0;">הגדרות עסק</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;">⚙️ הגדרות</h3>
       <button class="modal-close" onclick="closeModal('modal-settings')">&#x2715;</button>
     </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">לוגו ופרופיל</div>
-    <div style="display:flex;justify-content:center;margin-bottom:8px;">
-      <div style="position:relative;width:120px;height:120px;">
-        <div id="logo-circle" style="width:120px;height:120px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;">
+    <!-- לוגו -->
+    <div style="display:flex;justify-content:center;margin-bottom:16px;">
+      <div style="position:relative;width:90px;height:90px;">
+        <div id="logo-circle" style="width:90px;height:90px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;">
           <img id="logo-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
           <span id="logo-placeholder">&#x1F3EA;</span>
         </div>
-        <button onclick="document.getElementById('logo-file').click()" style="position:absolute;bottom:4px;left:4px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);">+</button>
+        <button onclick="document.getElementById('logo-file').click()" style="position:absolute;bottom:2px;left:2px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:15px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);">+</button>
         <input type="file" id="logo-file" accept="image/*" style="display:none;" onchange="handleLogoUpload(this)">
       </div>
     </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">שם העסק</div>
-    <label>שם העסק</label><input id="st-biz" placeholder="שם העסק שלך">
-    <label>סוג עסק</label><input id="st-type" placeholder="חנות חומרי בניין, פרזול, מחסן...">
+    <!-- כרטיסי הגדרות -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
 
-    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">פרטי העסק</div>
-    <label>טלפון</label><input id="st-phone" type="tel" placeholder="03-0000000">
-    <label>מייל</label><input id="st-email" type="email" placeholder="info@mybusiness.co.il">
-    <label>רחוב</label><input id="st-street" placeholder="רחוב הרצל 1">
-    <label>עיר</label><input id="st-city" placeholder="תל אביב">
-    <label>אתר אינטרנט</label><input id="st-web" type="url" placeholder="https://www.mybusiness.co.il">
-
-    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">הגדרות מערכת</div>
-    <div class="row">
-      <div><label>מטבע</label>
-        <select id="st-cur">
-          <option value="&#x20AA;">&#x20AA; שקל</option>
-          <option value="$">$ דולר</option>
-          <option value="&#x20AC;">&#x20AC; אירו</option>
-          <option value="&#xA3;">&#xA3; פאונד</option>
-        </select>
+      <!-- פרטי העסק -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="stToggle('st-biz-sec')" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">🏢 פרטי העסק</div>
+          <span id="st-biz-sec-ic" style="color:var(--muted);">›</span>
+        </button>
+        <div id="st-biz-sec" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">
+          <label>שם העסק</label><input id="st-biz" placeholder="שם העסק שלך">
+          <label>סוג עסק</label><input id="st-type" placeholder="חנות חומרי בניין, מחסן...">
+          <label>טלפון</label><input id="st-phone" type="tel" placeholder="03-0000000">
+          <label>מייל</label><input id="st-email" type="email" placeholder="info@mybusiness.co.il">
+          <label>רחוב</label><input id="st-street" placeholder="רחוב הרצל 1">
+          <label>עיר</label><input id="st-city" placeholder="תל אביב">
+          <label>אתר אינטרנט</label><input id="st-web" type="url" placeholder="https://www.mybusiness.co.il">
+          <button class="btn" style="margin-top:14px;" onclick="saveSettings()">שמור</button>
+        </div>
       </div>
-      <div><label>סף ברירת מחדל</label><input id="st-defalert" type="number" placeholder="20"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
-      <div><b>מצב כהה</b><div class="muted" style="font-size:11px;">החלף בין ערכת צבעים בהירה לכהה</div></div>
-      <button class="toggle" id="theme-tog" onclick="toggleTheme()"><span class="knob"></span></button>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
-      <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות ESP32 כל 30 שניות</div></div>
-      <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
-    </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">תחום עסקי</div>
-    <button class="btn sec" style="font-size:13px;" onclick="resetToOnboarding()">בחר תחום עסקי אחר</button>
+      <!-- הגדרות מערכת -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="stToggle('st-sys-sec')" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">🔧 הגדרות מערכת</div>
+          <span id="st-sys-sec-ic" style="color:var(--muted);">›</span>
+        </button>
+        <div id="st-sys-sec" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">
+          <div class="row" style="margin-top:12px;">
+            <div><label>מטבע</label>
+              <select id="st-cur">
+                <option value="&#x20AA;">&#x20AA; שקל</option>
+                <option value="$">$ דולר</option>
+                <option value="&#x20AC;">&#x20AC; אירו</option>
+                <option value="&#xA3;">&#xA3; פאונד</option>
+              </select>
+            </div>
+            <div><label>סף ברירת מחדל</label><input id="st-defalert" type="number" placeholder="20"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+            <div><b>מצב כהה</b><div class="muted" style="font-size:11px;">החלף ערכת צבעים</div></div>
+            <button class="toggle" id="theme-tog" onclick="toggleTheme()"><span class="knob"></span></button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+            <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות כל 30 שניות</div></div>
+            <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
+          </div>
+          <button class="btn" style="margin-top:14px;" onclick="saveSettings()">שמור</button>
+        </div>
+      </div>
 
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
-      <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openReport()">📊 דוח מלאי</button>
-      <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openOrderHistory()">📋 היסטוריית הזמנות</button>
-    </div>
-    <div class="row" style="margin-top:18px;">
-      <button class="btn sec sm" style="color:var(--crit);background:rgba(239,68,68,.1);border:none;" onclick="logoutApp()">התנתק</button>
-      <button class="btn" onclick="saveSettings()">שמור</button>
+      <!-- דוחות -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="closeModal('modal-settings');openReport()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">📊 דוח מלאי</div>
+          <span style="color:var(--muted);">›</span>
+        </button>
+      </div>
+
+      <!-- היסטוריה -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="closeModal('modal-settings');openOrderHistory()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">📋 היסטוריית הזמנות</div>
+          <span style="color:var(--muted);">›</span>
+        </button>
+      </div>
+
+      <!-- תחום עסקי -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="resetToOnboarding()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">🏷️ שנה תחום עסקי</div>
+          <span style="color:var(--muted);">›</span>
+        </button>
+      </div>
+
+      <!-- התנתק -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="logoutApp()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--crit);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">🚪 התנתק</div>
+          <span>›</span>
+        </button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1501,6 +1542,12 @@ window.deleteShelf=deleteShelf;
 /* ════════════════════════════════════════════════════
    SETTINGS
 ════════════════════════════════════════════════════ */
+function stToggle(id){
+  var el=document.getElementById(id), ic=document.getElementById(id+'-ic');
+  var open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(ic)ic.textContent=open?'›':'˅';
+}
 function openSettings(){
   var s=getSettings();
   document.getElementById('st-biz').value=s.bizName||'';
@@ -1556,7 +1603,7 @@ function resetToOnboarding(){
 window.resetToOnboarding=resetToOnboarding;
 function logoutApp(){
   if(!confirm('להתנתק? הנתונים ישמרו.'))return;
-  LS.del('tmpl'); _DR=null; closeModal('modal-settings'); location.reload();
+  LS.del('tmpl'); LS.del('mode'); _DR=null; closeModal('modal-settings'); location.reload();
 }
 window.logoutApp=logoutApp;
 function handleLogoUpload(inp){
