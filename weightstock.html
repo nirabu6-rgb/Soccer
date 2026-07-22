@@ -1769,7 +1769,15 @@ function resetToOnboarding(){
 window.resetToOnboarding=resetToOnboarding;
 function logoutApp(){
   if(!confirm('להתנתק? הנתונים ישמרו.'))return;
-  LS.del('tmpl'); LS.del('mode'); _DR=null; closeModal('modal-settings'); location.reload();
+  LS.del('tmpl'); LS.del('mode'); _DR=null;
+  closeModal('modal-settings');
+  // סגור את כל המודלים
+  document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('show');});
+  // חזור לדשבורד
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('screen-dashboard').classList.add('active');
+  // פתח onboarding
+  showOnboarding();
 }
 window.logoutApp=logoutApp;
 function handleLogoUpload(inp){
