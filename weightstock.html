@@ -332,6 +332,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <label>טלפון ספק</label><input id="im-suptel" type="tel" placeholder="050-0000000">
       <label>WhatsApp ספק</label><input id="im-supwa" type="tel" placeholder="050-0000000 (אם שונה מהטלפון)">
       <label>מייל ספק</label><input id="im-supemail" type="email" placeholder="supplier@example.com">
+      <label>מייל להזמנות</label><input id="im-ordermail" type="email" placeholder="orders@supplier.com (אם שונה ממייל הספק)">
       <label>הערות</label><textarea id="im-notes" placeholder="הערות על הפריט..."></textarea>
     </div>
     <input type="hidden" id="im-id">
@@ -1164,7 +1165,8 @@ function openOrder(shelfId){
   var waNum=fmtPhone(it&&(it.supplierWhatsApp||it.supplierPhone)||'');
   var html='';
   if(waNum)html+='<a class="send-btn wa" href="https://wa.me/'+waNum+'?text='+encodeURIComponent(msg)+'" target="_blank" style="justify-content:flex-start;gap:12px;padding:14px 16px;font-size:15px;border-radius:12px;">📱 <span>שלח הודעת WhatsApp</span></a>';
-  if(it&&it.supplierEmail)html+='<a class="send-btn em" href="mailto:'+it.supplierEmail+'?subject='+encodeURIComponent('הזמנה - '+biz)+'&body='+encodeURIComponent(msg)+'" target="_blank" style="justify-content:flex-start;gap:12px;padding:14px 16px;font-size:15px;border-radius:12px;">✉️ <span>שלח מייל</span></a>';
+  var orderMail=it&&(it.orderEmail||it.supplierEmail)||'';
+  if(orderMail)html+='<a class="send-btn em" href="mailto:'+orderMail+'?subject='+encodeURIComponent('הזמנה - '+biz)+'&body='+encodeURIComponent(msg)+'" target="_blank" style="justify-content:flex-start;gap:12px;padding:14px 16px;font-size:15px;border-radius:12px;">✉️ <span>שלח מייל הזמנה</span></a>';
   if(it&&it.supplierPhone)html+='<a href="tel:'+it.supplierPhone+'" style="display:flex;align-items:center;gap:12px;padding:14px 16px;font-size:15px;border-radius:12px;background:rgba(16,185,129,.12);color:var(--ok);text-decoration:none;font-weight:700;">📞 <span>התקשר — '+it.supplierPhone+'</span></a>';
   html+='<a href="https://www.rivhit.co.il/%D7%A1%D7%95%D7%9B%D7%9F-%D7%94%D7%96%D7%9E%D7%A0%D7%95%D7%AA-%D7%90%D7%95%D7%A0%D7%9C%D7%99%D7%99%D7%9F/" target="_blank" style="display:flex;align-items:center;gap:12px;padding:14px 16px;font-size:15px;border-radius:12px;background:rgba(37,99,235,.1);color:var(--accent);text-decoration:none;font-weight:700;">🔗 <span>הזמנה דרך Rivhit</span></a>';
   var bizEmail=getSettings().bizEmail||'';
@@ -1225,7 +1227,7 @@ window.openSuppliers=openSuppliers;
 
 function openAddItem(){
   document.getElementById('item-modal-title').textContent='פריט חדש';
-  ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-supwa','im-supemail','im-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-supwa','im-supemail','im-ordermail','im-notes'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('im-id').value=''; document.getElementById('im-del').style.display='none';
   document.getElementById('adv-wrap').classList.remove('open');
   document.querySelector('.adv-btn').textContent='פרטים נוספים (מק"ט, מחיר, ספק...)';
@@ -1246,6 +1248,7 @@ function openEditItem(id){
   document.getElementById('im-notes').value=it.notes||'';
   document.getElementById('im-supwa').value=it.supplierWhatsApp||'';
   document.getElementById('im-supemail').value=it.supplierEmail||'';
+  document.getElementById('im-ordermail').value=it.orderEmail||'';
   document.getElementById('im-id').value=id;
   document.getElementById('im-del').style.display='';
   var hasA=it.sku||it.barcode||it.price||it.minOrder||it.supplier||it.notes;
@@ -1263,7 +1266,7 @@ function saveItem(){
   var name=document.getElementById('im-name').value.trim(), uw=parseFloat(document.getElementById('im-uwt').value);
   if(!name){alert('יש להזין שם פריט');return;} if(!uw||uw<=0){alert('יש להזין משקל סגולי');return;}
   switchToUser(); var its=getItems(), eid=document.getElementById('im-id').value;
-  var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),supplierWhatsApp:document.getElementById('im-supwa').value.trim(),supplierEmail:document.getElementById('im-supemail').value.trim(),notes:document.getElementById('im-notes').value.trim()};
+  var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),supplierWhatsApp:document.getElementById('im-supwa').value.trim(),supplierEmail:document.getElementById('im-supemail').value.trim(),orderEmail:document.getElementById('im-ordermail').value.trim(),notes:document.getElementById('im-notes').value.trim()};
   if(eid){var idx=its.findIndex(function(i){return i.id===eid;});if(idx>=0)Object.assign(its[idx],d);}else{d.id='i'+Date.now();its.push(d);}
   LS.set('items',its); closeModal('modal-item'); if(activeSc==='screen-items')renderItemsSc();
 }
