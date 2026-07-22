@@ -226,6 +226,14 @@ body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgro
   <div class="builder-body" id="teamScreenBody"></div>
 </div>
 
+<div class="builder-screen" id="matchScreen" style="display:none">
+  <div class="builder-header">
+    <button class="icon-btn" id="btnCloseMatchScreen" title="סגור">→</button>
+    <b id="matchScreenTitle" style="flex:1"></b>
+  </div>
+  <div class="builder-body" id="matchScreenBody"></div>
+</div>
+
 <div class="builder-screen" id="pitchScreen" style="display:none">
   <div class="builder-header">
     <button class="icon-btn" id="btnClosePitchScreen" title="סגור">→</button>
@@ -304,7 +312,8 @@ var NAV_TABS = [
   {id:0, ic:'📋', t:'תוכניות אימון'},
   {id:1, ic:'👥', t:'קבוצות'},
   {id:2, ic:'🏟', t:'מגרשים'},
-  {id:3, ic:'⚙️', t:'הגדרות'}
+  {id:3, ic:'⚙️', t:'הגדרות'},
+  {id:4, ic:'🎥', t:'ניתוח משחקים'}
 ];
 var TRAINING_PLANS = [];
 var TRAINING_PLANS_LOADED = false;
@@ -538,6 +547,289 @@ function renderPlayerMetricsModal(){
     closeModal();
   };
 }
+
+/* ---------------- Match video analysis ---------------- */
+var MATCHES = [];
+var MATCHES_LOADED = false;
+var MATCH_EVENTS = [];
+var MATCH_EVENTS_LOADED = false;
+var currentMatchId = null;
+var MATCH_EVENT_TYPES = [
+  {k:'goal', ic:'⚽', t:'שער'},
+  {k:'assist', ic:'🎯', t:'בישול'},
+  {k:'key_pass', ic:'🔑', t:'מסירה מפתחת'},
+  {k:'shot', ic:'🥅', t:'בעיטה לשער'},
+  {k:'save', ic:'🧤', t:'הצלה'},
+  {k:'tackle', ic:'🛡', t:'שלילת כדור'},
+  {k:'yellow', ic:'🟨', t:'כרטיס צהוב'},
+  {k:'red', ic:'🟥', t:'כרטיס אדום'},
+  {k:'sub_in', ic:'🔼', t:'החלפה — נכנס/ת'},
+  {k:'sub_out', ic:'🔽', t:'החלפה — יצא/ה'},
+  {k:'other', ic:'📝', t:'הערה כללית'}
+];
+function matchEventTypeInfo(k){
+  for(var i=0;i<MATCH_EVENT_TYPES.length;i++) if(MATCH_EVENT_TYPES[i].k===k) return MATCH_EVENT_TYPES[i];
+  return {k:k, ic:'📝', t:k};
+}
+function loadMatches(){
+  if(!ME.uid) return;
+  db.collection(P+'matches').where('coachUid','==',ME.uid).get().then(function(snap){
+    MATCHES = snap.docs.map(function(d){ return d.data(); });
+    MATCHES_LOADED = true;
+    if(TAB===4) renderTab(4);
+    if(currentMatchId) renderMatchDetail();
+  });
+}
+function loadMatchEvents(){
+  if(!ME.uid) return;
+  db.collection(P+'matchevents').where('coachUid','==',ME.uid).get().then(function(snap){
+    MATCH_EVENTS = snap.docs.map(function(d){ return d.data(); });
+    MATCH_EVENTS_LOADED = true;
+    if(TAB===4) renderTab(4);
+    if(currentMatchId) renderMatchDetail();
+  });
+}
+function matchById(id){
+  for(var i=0;i<MATCHES.length;i++) if(MATCHES[i].id===id) return MATCHES[i];
+  return null;
+}
+function eventsForMatch(matchId){
+  return MATCH_EVENTS.filter(function(e){ return e.matchId===matchId; })
+    .sort(function(a,b){ return (a.minute||0)-(b.minute||0); });
+}
+function tplMatches(){
+  if(!MATCHES_LOADED || !CLUB_TEAMS_LOADED){
+    loadMatches();
+    return '<div class="section-title">🎥 ניתוח משחקים</div><div class="muted" style="text-align:center">טוען...</div>';
+  }
+  var visible = MATCHES.filter(function(m){ return categoryAllowed(m.category); })
+    .slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  return '<div class="section-title">🎥 ניתוח משחקים</div>'+
+    '<div class="muted" style="margin-bottom:10px">קשר/י סרטון משחק, תייג/י אירועים על ציר הזמן וקבל/י ניתוח לכל שחקן</div>'+
+    '<button class="btn" id="btnAddMatch" style="margin-bottom:14px">+ משחק חדש</button>'+
+    (visible.length===0
+      ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוספו משחקים</div>'
+      : visible.map(function(m){
+          var hasScore = m.score_us!==''&&m.score_us!=null && m.score_them!==''&&m.score_them!=null;
+          return '<div class="card" data-openmatch="'+m.id+'" style="cursor:pointer">'+
+            '<div class="row"><b>'+(m.opponent||'משחק')+'</b><span class="badge">'+m.category+'</span></div>'+
+            '<div class="muted" style="margin-top:4px">'+(m.date||'')+(hasScore?' · '+m.score_us+' - '+m.score_them:'')+'</div>'+
+            (m.videoUrl ? '<div class="muted" style="margin-top:2px">🎬 סרטון מקושר</div>' : '')+
+            (m.aiAnalysis ? '<div style="margin-top:4px;color:var(--good);font-size:12px">✅ נותח</div>' : '')+
+          '</div>';
+        }).join('')
+    );
+}
+function openAddMatchModal(){
+  var cats = AGE_GROUPS.filter(function(c){ return categoryAllowed(c); });
+  var html = '<h3 style="margin-bottom:14px">+ משחק חדש</h3>'+
+    '<div class="field"><label>קבוצת גילאים</label><select id="mCategoryInput">'+
+      cats.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>יריבה</label><input id="mOpponentInput" placeholder="שם הקבוצה היריבה"></div>'+
+    '<div class="field"><label>תאריך</label><input type="date" id="mDateInput" value="'+todayIso()+'"></div>'+
+    '<div class="field"><label>קישור לסרטון (YouTube / Drive וכו׳)</label><input id="mVideoInput" placeholder="https://..."></div>'+
+    '<button class="btn" id="btnSaveMatch">שמור משחק</button>';
+  openModal(html);
+  document.getElementById('btnSaveMatch').onclick = function(){
+    var opponent = document.getElementById('mOpponentInput').value.trim();
+    if(!opponent) return;
+    var m = {
+      id: genCode(8),
+      coachUid: ME.uid,
+      category: document.getElementById('mCategoryInput').value,
+      opponent: opponent,
+      date: document.getElementById('mDateInput').value || todayIso(),
+      videoUrl: document.getElementById('mVideoInput').value.trim(),
+      score_us: '', score_them: '',
+      aiAnalysis: null,
+      aiStatus: 'idle',
+      createdAt: Date.now()
+    };
+    db.collection(P+'matches').doc(m.id).set(m).then(function(){
+      MATCHES.push(m);
+      closeModal();
+      openMatchDetail(m.id);
+    });
+  };
+}
+function openMatchDetail(id){
+  currentMatchId = id;
+  document.getElementById('matchScreen').style.display = 'flex';
+  renderMatchDetail();
+}
+function closeMatchDetail(){
+  document.getElementById('matchScreen').style.display = 'none';
+  currentMatchId = null;
+}
+function videoEmbedHtml(url){
+  if(!url) return '';
+  var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/);
+  if(yt){
+    return '<div style="position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;margin-bottom:12px">'+
+      '<iframe src="https://www.youtube.com/embed/'+yt[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen></iframe>'+
+    '</div>';
+  }
+  return '<a href="'+url+'" target="_blank" rel="noopener" class="btn ghost" style="margin-bottom:12px;display:block;text-align:center">🎬 פתח סרטון</a>';
+}
+/* Single integration point for real AI video analysis: once a
+   server-side endpoint (e.g. a Firebase Cloud Function holding the
+   model API key) exists, replace the body of this function with a
+   fetch() call to it. Never call an AI provider directly from the
+   client with a secret key. Until then this returns a clearly-labeled
+   mock analysis built from the manually tagged events. */
+function analyzeMatchVideo(m){
+  m.aiStatus = 'analyzing';
+  renderMatchDetail();
+  setTimeout(function(){
+    var roster = (CLUB_TEAMS[m.category] || {players:[]}).players || [];
+    var evs = eventsForMatch(m.id);
+    var analysis = mockMatchAnalysis(m, roster, evs);
+    m.aiAnalysis = analysis;
+    m.aiStatus = 'done';
+    db.collection(P+'matches').doc(m.id).update({aiAnalysis:analysis, aiStatus:'done'});
+    renderMatchDetail();
+  }, 1800);
+}
+function mockMatchAnalysis(m, roster, evs){
+  var goals = evs.filter(function(e){ return e.type==='goal'; });
+  var summary = evs.length
+    ? 'סיכום ראשוני שנבנה מהאירועים שתויגו ידנית: '+evs.length+' אירועים תועדו במשחק מול '+(m.opponent||'היריבה')+', כולל '+goals.length+' שערים. לאחר חיבור מודל AI אמיתי לניתוח וידאו, כאן יופיע ניתוח מלא שנגזר ישירות מקובץ המשחק (תנועה, החזקת כדור, אזורי פעילות ועוד).'
+    : 'עדיין לא תויגו אירועים למשחק זה. תייג/י שערים, מסירות מפתח וכרטיסים על ציר הזמן כדי לקבל כאן סיכום עשיר יותר, עד לחיבור ניתוח AI אמיתי מקובץ הווידאו.';
+  var keyMoments = goals.slice(0,5).map(function(g){
+    return {minute:g.minute||0, text:'⚽ שער'+(g.playerName?' — '+g.playerName:'')+(g.note?' ('+g.note+')':'')};
+  });
+  var playerRatings = roster.slice(0,8).map(function(p){
+    var pEvs = evs.filter(function(e){ return e.playerName===p.name; });
+    var rating = Math.max(1, Math.min(5, 3 + Math.floor(pEvs.length/2)));
+    return {name:p.name, rating:rating};
+  });
+  return {summary:summary, keyMoments:keyMoments, playerRatings:playerRatings, generatedAt:Date.now(), demo:true};
+}
+function aiAnalysisSectionHtml(m){
+  if(!m.videoUrl){
+    return '<div class="card"><div class="muted" style="text-align:center">הוסיפו קישור לסרטון כדי לאפשר ניתוח AI</div></div>';
+  }
+  if(m.aiStatus==='analyzing'){
+    return '<div class="card" style="text-align:center"><div class="muted">🔄 מנתח את הסרטון...</div></div>';
+  }
+  if(!m.aiAnalysis){
+    return '<button class="btn" id="btnRunAiAnalysis" style="margin-bottom:14px">🤖 הרץ ניתוח AI</button>';
+  }
+  var a = m.aiAnalysis;
+  return '<div class="card">'+
+    '<div class="row"><b>🤖 ניתוח AI</b><span class="badge">תצוגה לדוגמה</span></div>'+
+    '<div class="muted" style="font-size:11px;margin:4px 0 10px">זו הדגמה של מבנה הפיצ׳ר; תוחלף בניתוח AI אמיתי ברגע שיחובר מודל ניתוח וידאו בצד שרת.</div>'+
+    '<div style="font-size:13px;line-height:1.6;margin-bottom:10px">'+a.summary+'</div>'+
+    (a.keyMoments && a.keyMoments.length
+      ? '<div class="section-title" style="font-size:13px">רגעי מפתח</div>'+
+        a.keyMoments.map(function(km){ return '<div class="muted" style="font-size:12px;padding:3px 0">⏱ '+km.minute+'\' — '+km.text+'</div>'; }).join('')
+      : '')+
+    (a.playerRatings && a.playerRatings.length
+      ? '<div class="section-title" style="font-size:13px;margin-top:10px">דירוגי שחקנים</div>'+
+        a.playerRatings.map(function(pr){ return '<div class="row" style="padding:4px 0;border-bottom:1px solid #e3e6ec;font-size:12px"><span>'+pr.name+'</span><span>'+'⭐'.repeat(pr.rating)+'</span></div>'; }).join('')
+      : '')+
+    '<button class="btn ghost sm" id="btnRunAiAnalysis" style="margin-top:10px">🔄 הרץ ניתוח מחדש</button>'+
+  '</div>';
+}
+function renderMatchDetail(){
+  var m = matchById(currentMatchId);
+  var body = document.getElementById('matchScreenBody');
+  if(!m){ document.getElementById('matchScreenTitle').textContent = ''; body.innerHTML = ''; return; }
+  document.getElementById('matchScreenTitle').textContent = (m.opponent||'משחק')+' · '+(m.date||'');
+  var roster = (CLUB_TEAMS[m.category] || {players:[]}).players || [];
+  var evs = eventsForMatch(m.id);
+  body.innerHTML =
+    '<div class="card">'+
+      '<div class="row"><b>'+m.category+'</b><span class="muted">'+(m.date||'')+'</span></div>'+
+      '<div class="field" style="margin-top:10px"><label>תוצאה (אנחנו — הם)</label>'+
+        '<div class="row" style="gap:8px;justify-content:flex-start">'+
+          '<input id="mScoreUsInput" type="number" style="width:70px" value="'+(m.score_us!=null?m.score_us:'')+'">'+
+          '<span>—</span>'+
+          '<input id="mScoreThemInput" type="number" style="width:70px" value="'+(m.score_them!=null?m.score_them:'')+'">'+
+          '<button class="btn ghost sm" id="btnSaveScore">שמור</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    videoEmbedHtml(m.videoUrl)+
+    aiAnalysisSectionHtml(m)+
+    '<div class="section-title" style="font-size:16px">⏱ ציר אירועים</div>'+
+    (evs.length===0 ? '<div class="muted" style="margin-bottom:10px">אין עדיין אירועים מתויגים</div>' :
+      evs.map(function(e){
+        var info = matchEventTypeInfo(e.type);
+        return '<div class="card" style="padding:10px 12px"><div class="row">'+
+          '<div>'+info.ic+' <b>'+(e.minute!=null&&e.minute!==''?e.minute+'\' ':'')+info.t+'</b>'+(e.playerName?' — '+e.playerName:'')+
+            (e.note ? '<div class="muted" style="font-size:11px;margin-top:2px">'+e.note+'</div>' : '')+
+          '</div>'+
+          '<button class="logout-btn" data-delevent="'+e.id+'" title="מחק">🗑</button>'+
+        '</div></div>';
+      }).join('')
+    )+
+    '<button class="btn ghost sm" id="btnAddEvent" style="margin-bottom:16px">+ הוסף אירוע</button>'+
+    '<button class="logout-btn" id="btnDeleteMatch" style="color:var(--bad);font-size:13px">🗑 מחק משחק</button>';
+  document.getElementById('btnSaveScore').onclick = function(){
+    var su = document.getElementById('mScoreUsInput').value;
+    var st = document.getElementById('mScoreThemInput').value;
+    m.score_us = su; m.score_them = st;
+    db.collection(P+'matches').doc(m.id).update({score_us:su, score_them:st});
+  };
+  var aiBtn = document.getElementById('btnRunAiAnalysis');
+  if(aiBtn) aiBtn.onclick = function(){ analyzeMatchVideo(m); };
+  document.getElementById('btnAddEvent').onclick = function(){ openAddEventModal(m, roster); };
+  document.getElementById('btnDeleteMatch').onclick = function(){ deleteMatch(m); };
+  document.querySelectorAll('[data-delevent]').forEach(function(btn){
+    btn.onclick = function(){ deleteMatchEvent(btn.dataset.delevent); };
+  });
+}
+function openAddEventModal(m, roster){
+  var playerOptions = roster.map(function(p){ return '<option value="'+p.name+'">'+p.name+'</option>'; }).join('');
+  var typeOptions = MATCH_EVENT_TYPES.map(function(t){ return '<option value="'+t.k+'">'+t.ic+' '+t.t+'</option>'; }).join('');
+  var html = '<h3 style="margin-bottom:14px">+ הוספת אירוע</h3>'+
+    '<div class="field"><label>שחקן/ית</label><select id="evPlayerInput"><option value="">-</option>'+playerOptions+'</select></div>'+
+    '<div class="field"><label>סוג אירוע</label><select id="evTypeInput">'+typeOptions+'</select></div>'+
+    '<div class="field"><label>דקה</label><input id="evMinuteInput" type="number" min="0" max="130" placeholder="לדוגמה: 23"></div>'+
+    '<div class="field"><label>הערה (אופציונלי)</label><textarea id="evNoteInput" rows="2"></textarea></div>'+
+    '<button class="btn" id="btnSaveEvent">שמור אירוע</button>';
+  openModal(html);
+  document.getElementById('btnSaveEvent').onclick = function(){
+    var ev = {
+      id: genCode(8),
+      matchId: m.id,
+      coachUid: ME.uid,
+      category: m.category,
+      playerName: document.getElementById('evPlayerInput').value,
+      type: document.getElementById('evTypeInput').value,
+      minute: parseInt(document.getElementById('evMinuteInput').value,10) || 0,
+      note: document.getElementById('evNoteInput').value.trim(),
+      createdAt: Date.now()
+    };
+    db.collection(P+'matchevents').doc(ev.id).set(ev).then(function(){
+      MATCH_EVENTS.push(ev);
+      closeModal();
+      renderMatchDetail();
+    });
+  };
+}
+function deleteMatchEvent(id){
+  if(!confirm('למחוק את האירוע?')) return;
+  db.collection(P+'matchevents').doc(id).delete().then(function(){
+    MATCH_EVENTS = MATCH_EVENTS.filter(function(e){ return e.id!==id; });
+    renderMatchDetail();
+  });
+}
+function deleteMatch(m){
+  if(!confirm('למחוק את המשחק וכל האירועים המתויגים בו?')) return;
+  db.collection(P+'matches').doc(m.id).delete().then(function(){
+    MATCHES = MATCHES.filter(function(x){ return x.id!==m.id; });
+  });
+  var toDelete = MATCH_EVENTS.filter(function(e){ return e.matchId===m.id; });
+  toDelete.forEach(function(e){ db.collection(P+'matchevents').doc(e.id).delete(); });
+  MATCH_EVENTS = MATCH_EVENTS.filter(function(e){ return e.matchId!==m.id; });
+  closeMatchDetail();
+  document.querySelectorAll('.nav-btn').forEach(function(b,i){ b.classList.toggle('sel', i===4); });
+  renderTab(4);
+}
+
 function todayIso(){
   var d = new Date();
   var mm = (''+(d.getMonth()+1)).padStart ? (''+(d.getMonth()+1)).padStart(2,'0') : ((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);
@@ -962,6 +1254,8 @@ function enterApp(){
   loadClubTeams();
   loadPlayerClips();
   loadPlayerMetrics();
+  loadMatches();
+  loadMatchEvents();
 }
 function buildNav(){
   var list = document.getElementById('navBtnsList');
@@ -1001,6 +1295,7 @@ function renderTab(i){
   else if(i===1) c.innerHTML = tplTeams();
   else if(i===2) c.innerHTML = tplPitches();
   else if(i===3) c.innerHTML = tplSettings();
+  else if(i===4) c.innerHTML = tplMatches();
   wireTab(i);
 }
 
@@ -2893,6 +3188,12 @@ function wireTab(i){
     });
     var btnOpenTeamPlans = document.getElementById('btnOpenTeamPlans');
     if(btnOpenTeamPlans) btnOpenTeamPlans.onclick = function(){ openTeamPlansView(); };
+  } else if(i===4){
+    var nbm = document.getElementById('btnAddMatch');
+    if(nbm) nbm.onclick = function(){ openAddMatchModal(); };
+    document.querySelectorAll('[data-openmatch]').forEach(function(el){
+      el.onclick = function(){ openMatchDetail(el.dataset.openmatch); };
+    });
   }
 }
 
@@ -4083,6 +4384,11 @@ function goHome(){
   renderTab(0);
 }
 document.getElementById('btnCloseTeamScreen').onclick = function(){ closeTeamDetail(); goHome(); };
+document.getElementById('btnCloseMatchScreen').onclick = function(){
+  closeMatchDetail();
+  document.querySelectorAll('.nav-btn').forEach(function(b,i){ b.classList.toggle('sel', i===4); });
+  renderTab(4);
+};
 document.getElementById('btnClosePitchScreen').onclick = function(){ closePitchDetail(); goHome(); };
 document.getElementById('btnCloseDrillLib').onclick = function(){ closeDrillLib(); };
 document.getElementById('btnCloseCoachTrainingLib').onclick = function(){ closeCoachTrainingLib(); };
