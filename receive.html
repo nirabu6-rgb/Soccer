@@ -23,8 +23,8 @@ input,select{width:100%;background:var(--card2);border:1.5px solid var(--border)
 input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent;}
 .search-wrap{position:relative;}
 .search-wrap input{padding-left:36px;}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted);}
-.results{border:1.5px solid var(--accent);border-radius:14px;margin:8px 0 0;overflow:hidden;display:none;background:var(--card);box-shadow:0 4px 16px rgba(37,99,235,.15);}
+.search-icon{position:absolute;left:11px;top:14px;font-size:16px;color:var(--muted);}
+.results{border:1.5px solid var(--accent);border-radius:14px;margin:6px 0 0;overflow:hidden;display:none;background:var(--card);box-shadow:0 6px 24px rgba(37,99,235,.18);}
 .results.show{display:block;}
 .result-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;}
 .result-item:last-child{border-bottom:none;}
@@ -73,9 +73,9 @@ input:focus,select:focus{outline:2px solid var(--accent);border-color:transparen
       <span class="search-icon">🔍</span>
       <input id="search-inp" placeholder="התחל להקליד שם / ברקוד / מק&quot;ט..." oninput="doSearch(this.value)" autocomplete="off" onkeydown="if(event.key==='Enter')doSearch(this.value)">
     </div>
+    <div class="results" id="results-list"></div>
     <button class="btn" style="margin-top:10px;" onclick="doSearch(document.getElementById('search-inp').value)">חפש</button>
   </div>
-  <div class="results" id="results-list"></div>
 
   <div class="card" id="scan-card" style="margin-top:10px;">
     <label style="margin-bottom:8px;">סרוק ברקוד</label>
@@ -165,7 +165,7 @@ function init(){
 function doSearch(q){
   var list=document.getElementById('results-list');
   q=(q||'').trim().toLowerCase();
-  if(!q){list.classList.remove('show');list.innerHTML='';return;}
+  if(q.length<1){list.classList.remove('show');list.innerHTML='';return;}
 
   var matches=[];
   items.forEach(function(it){
@@ -185,10 +185,16 @@ function doSearch(q){
   list.innerHTML=matches.slice(0,8).map(function(m){
     var r=getLatest(m.sh.id);
     var cur=r?r.qty+' '+unitL(m.it):'לא נמדד';
+    var extra='';
+    if(m.it.barcode) extra+=' · ברקוד: '+m.it.barcode;
+    if(m.it.sku) extra+=' · מק"ט: '+m.it.sku;
     return '<div class="result-item" onclick="selectShelf(\''+m.sh.id+'\')">'
-      +'<div style="font-size:20px;">'+(m.it.icon||'📦')+'</div>'
-      +'<div><div class="ri-name">'+m.it.name+'</div>'
-      +'<div class="ri-info">'+m.sh.name+(m.it.sku?' · '+m.it.sku:'')+(r?' · במלאי: '+cur:'')+'</div></div>'
+      +'<div style="font-size:22px;flex:0 0 32px;">'+(m.it.icon||'📦')+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div class="ri-name">'+m.it.name+'</div>'
+      +'<div class="ri-info">'+m.sh.name+(r?' · מלאי: '+cur:'')+extra+'</div>'
+      +'</div>'
+      +'<div style="font-size:18px;color:var(--accent);">›</div>'
       +'</div>';
   }).join('');
 }
