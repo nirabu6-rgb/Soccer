@@ -131,10 +131,68 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 .tmpl-card .tc-desc{font-size:11px;color:var(--muted);line-height:1.4;}
 .ob-step{display:none;}.ob-step.active{display:block;}
 .ob-biz{background:var(--card);border-radius:18px;padding:20px;}
+
+/* ── GLOBAL SEARCH ── */
+#search-bar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 14px;display:none;position:sticky;top:57px;z-index:39;}
+#search-bar.open{display:block;}
+#search-bar input{border-radius:20px;background:var(--card2);border:1px solid var(--border);}
+#search-results{background:var(--card);border-radius:16px;margin:8px 14px 0;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);display:none;border:1px solid var(--border);}
+#search-results.show{display:block;}
+.sr-section{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;padding:8px 14px 4px;background:var(--card2);}
+.sr-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;}
+.sr-item:last-child{border-bottom:none;}
+.sr-item:hover{background:var(--card2);}
+.sr-item .sr-badge{font-size:10px;background:var(--card2);color:var(--muted);border-radius:8px;padding:2px 7px;}
+
+/* ── RESPONSIVE ── */
+@media(min-width:600px){
+  #app{max-width:100%;padding-bottom:72px;}
+  .shelf-grid{grid-template-columns:1fr 1fr 1fr;}
+  .bottomnav{max-width:100%;}
+}
+@media(min-width:1024px){
+  #app{display:flex;min-height:100vh;padding-bottom:0;max-width:none;}
+  .bottomnav{display:none;}
+  #sidebar-nav{display:flex !important;flex-direction:column;width:200px;min-height:100vh;background:var(--nav-bg);border-left:1px solid var(--border);padding:20px 10px;position:fixed;right:0;top:0;z-index:50;gap:4px;}
+  .sidebtn{background:none;border:none;color:var(--muted);font-size:14px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;cursor:pointer;text-align:right;width:100%;}
+  .sidebtn.active{background:rgba(37,99,235,.1);color:var(--accent);font-weight:700;}
+  .sidebtn .ic{font-size:20px;flex:0 0 24px;}
+  #main-content{flex:1;margin-right:200px;min-width:0;}
+  .fab{left:auto;right:228px;}
+  #fab-menu{left:auto;right:228px;}
+  .shelf-grid{grid-template-columns:1fr 1fr 1fr;}
+  .modal-box{max-width:540px;}
+}
+
+/* ── PRINT ── */
+@media print{
+  body>*:not(#modal-report){display:none!important;}
+  #modal-report{position:static!important;display:block!important;}
+  #modal-report .modal-overlay{position:static!important;background:none!important;display:block!important;}
+  #modal-report .modal-box{box-shadow:none!important;border-radius:0!important;max-height:none!important;}
+  .no-print{display:none!important;}
+  .report-table{font-size:11px;}
+}
+
+/* ── RECEIVE / HISTORY ── */
+.recv-qty{font-size:48px;font-weight:800;color:var(--accent);text-align:center;padding:8px 0;}
+.hist-item{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.hist-item:last-child{border-bottom:none;}
+.method-badge{font-size:11px;border-radius:8px;padding:2px 8px;background:var(--card2);color:var(--muted);}
+.method-badge.wa{background:rgba(37,211,102,.12);color:#0a7a6e;}
+[data-theme="dark"] .method-badge.wa{color:#25D366;}
+.method-badge.em{background:rgba(37,99,235,.1);color:var(--accent);}
+.method-badge.ph{background:rgba(5,150,105,.12);color:var(--ok);}
+
+/* ── BARCODE MODAL ── */
+#barcode-video-wrap{background:#000;border-radius:12px;overflow:hidden;margin:10px 0;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;}
+#barcode-video{width:100%;border-radius:12px;}
+#barcode-crosshair{position:absolute;width:60%;height:2px;background:rgba(37,99,235,.7);left:20%;top:50%;box-shadow:0 0 8px rgba(37,99,235,.5);}
 </style>
 </head>
 <body>
 <div id="app">
+<div id="main-content">
 
 <!-- ── ONBOARDING ── -->
 <div class="ob-overlay" id="ob-overlay">
@@ -172,10 +230,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div class="topbar">
     <div><h2>&#x2696;&#xFE0F; WeightStock</h2><div class="muted" id="db-sub" style="font-size:12px;">מערכת מלאי חכם לפי משקל</div></div>
     <div style="display:flex;gap:8px;">
+      <button class="icon-btn" onclick="toggleSearch()" id="search-btn" title="חיפוש">&#x1F50D;</button>
       <button class="icon-btn" id="cart-btn" onclick="openCart()">🛒<span class="cart-badge" id="cart-badge"></span></button>
       <button class="icon-btn" id="bell-btn" onclick="navTo('screen-alerts')">&#x1F514;</button>
       <button class="icon-btn" onclick="openSettings()">&#x2699;&#xFE0F;</button>
     </div>
+  </div>
+  <div id="search-bar">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="global-search-input" placeholder="חיפוש משטחים, פריטים, ספקים..." oninput="runSearch(this.value)" autofocus style="flex:1;margin-top:0;">
+      <button class="icon-btn" onclick="closeSearch()" style="flex:0 0 38px;">&#x2715;</button>
+    </div>
+    <div id="search-results"></div>
   </div>
   <div class="summary-row" id="db-summary"></div>
   <div id="db-shelves"></div>
@@ -217,6 +283,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div id="alerts-list"></div>
 </div>
 
+</div><!-- /main-content -->
 <nav class="bottomnav">
   <button class="navbtn active" id="nav-screen-dashboard" onclick="navTo('screen-dashboard')"><span class="ic">&#x1F4CA;</span>דשבורד</button>
   <button class="navbtn" id="nav-screen-items" onclick="navTo('screen-items')"><span class="ic">&#x1F4E6;</span>פריטים</button>
@@ -322,7 +389,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div class="adv-wrap" id="adv-wrap">
       <div class="row">
         <div><label>מק"ט / קטלוג</label><input id="im-sku" placeholder="ABC-123"></div>
-        <div><label>ברקוד</label><input id="im-bar" placeholder="7290000000000"></div>
+        <div><label>ברקוד</label><div style="display:flex;gap:6px;align-items:flex-end;"><input id="im-bar" placeholder="7290000000000" style="margin-top:4px;flex:1;"><button class="icon-btn" onclick="openBarcode()" title="סרוק ברקוד" style="margin-bottom:0;flex:0 0 38px;">📷</button></div></div>
       </div>
       <div class="row">
         <div><label id="im-price-lbl">מחיר ליחידה</label><input id="im-price" type="number" step="0.01" placeholder="0.00"></div>
@@ -414,6 +481,10 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">החלפת תחום עסקי</div>
       <button class="btn sec" style="font-size:13px;" onclick="resetToOnboarding()">בחר תחום עסקי אחר</button>
     </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
+      <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openReport()">📊 דוח מלאי</button>
+      <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openOrderHistory()">📋 היסטוריית הזמנות</button>
+    </div>
     <div class="row" style="margin-top:18px;">
       <button class="btn danger sm" onclick="resetAll()">איפוס הכל</button>
       <button class="btn" onclick="saveSettings()">שמור</button>
@@ -465,6 +536,89 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <button class="btn" style="margin-top:12px;" onclick="closeModal('modal-read')">סגור</button>
   </div>
 </div>
+
+<!-- MODAL: INVENTORY REPORT -->
+<div class="modal-overlay" id="modal-report">
+  <div class="modal-box mid" style="width:calc(100% - 28px);max-width:700px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;" class="no-print">
+      <h3 style="margin:0;">📊 דוח מלאי</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn sm ok no-print" onclick="window.print()">🖨️ הדפס</button>
+        <button class="modal-close no-print" onclick="closeModal('modal-report')">&#x2715;</button>
+      </div>
+    </div>
+    <div id="report-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+    <div style="overflow-x:auto;">
+      <table class="ptable report-table" id="report-table" style="width:100%;font-size:13px;">
+        <thead><tr><th style="text-align:right;">משטח</th><th>אזור</th><th>פריט</th><th>כמות</th><th>יחידה</th><th>סטטוס</th></tr></thead>
+        <tbody id="report-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ORDER HISTORY -->
+<div class="modal-overlay" id="modal-history">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">📋 היסטוריית הזמנות</h3>
+      <button class="modal-close" onclick="closeModal('modal-history')">&#x2715;</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- MODAL: RECEIVE STOCK -->
+<div class="modal-overlay" id="modal-receive">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">📥 קבלת סחורה</h3>
+      <button class="modal-close" onclick="closeModal('modal-receive')">&#x2715;</button>
+    </div>
+    <div id="receive-current" class="muted" style="text-align:center;margin-bottom:10px;"></div>
+    <div class="recv-qty" id="receive-current-qty">—</div>
+    <label>כמות שהתקבלה</label>
+    <input id="receive-qty" type="number" min="1" placeholder="הזן כמות...">
+    <input type="hidden" id="receive-shelf-id">
+    <div id="receive-confirm" style="margin-top:10px;"></div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn sec" onclick="closeModal('modal-receive')">ביטול</button>
+      <button class="btn ok" onclick="saveReceive()">אשר קבלה</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BARCODE SCANNER -->
+<div class="modal-overlay" id="modal-barcode">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">📷 סריקת ברקוד</h3>
+      <button class="modal-close" onclick="closeBarcode()">&#x2715;</button>
+    </div>
+    <div id="barcode-video-wrap" style="display:none;">
+      <video id="barcode-video" autoplay playsinline muted></video>
+      <div id="barcode-crosshair"></div>
+    </div>
+    <div id="barcode-status" class="muted" style="text-align:center;padding:10px 0;"></div>
+    <label>ברקוד</label>
+    <input id="barcode-manual-input" type="text" placeholder="הזן ברקוד ידנית...">
+    <div class="row" style="margin-top:14px;">
+      <button class="btn sec" onclick="closeBarcode()">ביטול</button>
+      <button class="btn" onclick="confirmBarcode()">אישור</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR NAV (desktop) -->
+<nav id="sidebar-nav" style="display:none;">
+  <div style="font-size:20px;font-weight:800;color:var(--accent);padding:10px 14px 18px;border-bottom:1px solid var(--border);margin-bottom:8px;">⚖️ WeightStock</div>
+  <button class="sidebtn active" id="side-screen-dashboard" onclick="navTo('screen-dashboard')"><span class="ic">📊</span>דשבורד</button>
+  <button class="sidebtn" id="side-screen-items" onclick="navTo('screen-items')"><span class="ic">📦</span>פריטים</button>
+  <button class="sidebtn" id="side-screen-categories" onclick="navTo('screen-categories')"><span class="ic">🏷️</span>קטגוריות</button>
+  <button class="sidebtn" id="side-screen-alerts" onclick="navTo('screen-alerts')"><span class="ic">🔔</span>התראות</button>
+  <div style="flex:1;"></div>
+  <button class="sidebtn" onclick="openSettings()"><span class="ic">⚙️</span>הגדרות</button>
+</nav>
 
 <!-- SPLASH -->
 <div id="splash" style="position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0f172a;transition:opacity .5s ease;">
@@ -1059,7 +1213,8 @@ function renderSh(id){
       (sh.notes?'<div style="font-size:12px;color:var(--muted);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">'+sh.notes+'</div>':'')+
       '</div>';
   }
-  html+='<button class="btn" onclick="manualRead(\''+id+'\')">קרא עכשיו (ידני)</button>';
+  html+='<button class="btn sec" onclick="manualRead(\''+id+'\')">קרא עכשיו (ידני)</button>';
+  html+='<button class="btn" style="margin-top:8px;background:var(--ok);" onclick="openReceive(\''+id+'\')">📥 קבלת סחורה</button>';
   if(it){
     var urgColor=st==='crit'?'var(--crit)':st==='warn'?'var(--warn)':'var(--accent)';
     html+='<button class="btn" style="margin-top:8px;background:'+urgColor+';" onclick="openOrder(\''+id+'\')">'+
