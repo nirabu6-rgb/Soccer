@@ -387,11 +387,19 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
         <div><label id="im-price-lbl">מחיר ליחידה</label><input id="im-price" type="number" step="0.01" placeholder="0.00"></div>
         <div><label>כמות הזמנה מינ'</label><input id="im-minord" type="number" placeholder="100"></div>
       </div>
-      <label>ספק</label><input id="im-sup" placeholder="שם הספק">
+      <label>ספק</label>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div style="flex:1;position:relative;">
+          <input id="im-sup" placeholder="בחר או הקלד שם ספק..." list="sup-datalist" oninput="onSupplierInput(this.value)" autocomplete="off" style="margin-top:4px;">
+          <datalist id="sup-datalist"></datalist>
+        </div>
+        <button class="btn sm" style="flex:0 0 auto;margin-bottom:0;" onclick="openAddSupplierFromItem()">+ חדש</button>
+      </div>
+      <div id="im-sup-details" style="display:none;background:var(--card2);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:13px;color:var(--muted);"></div>
       <label>טלפון ספק</label><input id="im-suptel" type="tel" placeholder="050-0000000">
-      <label>WhatsApp ספק</label><input id="im-supwa" type="tel" placeholder="050-0000000 (אם שונה מהטלפון)">
+      <label>WhatsApp ספק</label><input id="im-supwa" type="tel" placeholder="050-0000000">
       <label>מייל ספק</label><input id="im-supemail" type="email" placeholder="supplier@example.com">
-      <label>מייל להזמנות</label><input id="im-ordermail" type="email" placeholder="orders@supplier.com (אם שונה ממייל הספק)">
+      <label>מייל להזמנות</label><input id="im-ordermail" type="email" placeholder="orders@supplier.com">
       <label>הערות</label><textarea id="im-notes" placeholder="הערות על הפריט..."></textarea>
     </div>
     <input type="hidden" id="im-id">
@@ -549,11 +557,35 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <div class="modal-overlay" id="modal-suppliers">
   <div class="modal-box" style="width:calc(100% - 28px);max-height:85vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--card);padding-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--card);padding-bottom:8px;z-index:1;">
       <h3 style="margin:0;">🏭 ספקים</h3>
-      <button class="modal-close" onclick="closeModal('modal-suppliers')">&#x2715;</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn sm" onclick="openAddSupplier()">+ ספק חדש</button>
+        <button class="modal-close" onclick="closeModal('modal-suppliers')">&#x2715;</button>
+      </div>
     </div>
     <div id="suppliers-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-supplier-edit">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 id="sup-edit-title" style="margin:0;">ספק חדש</h3>
+      <button class="modal-close" onclick="closeModal('modal-supplier-edit')">&#x2715;</button>
+    </div>
+    <label>שם הספק *</label><input id="se-name" placeholder="מחסן הברגים בע&quot;מ">
+    <label>טלפון</label><input id="se-tel" type="tel" placeholder="03-0000000">
+    <label>WhatsApp</label><input id="se-wa" type="tel" placeholder="050-0000000">
+    <label>מייל</label><input id="se-email" type="email" placeholder="info@supplier.co.il">
+    <label>מייל להזמנות</label><input id="se-ordermail" type="email" placeholder="orders@supplier.co.il">
+    <label>איש קשר</label><input id="se-contact" placeholder="שם איש הקשר">
+    <label>הערות</label><textarea id="se-notes" placeholder="מידע נוסף על הספק..."></textarea>
+    <input type="hidden" id="se-id">
+    <div class="row" style="margin-top:14px;">
+      <button class="btn danger sm" id="se-del" onclick="deleteSupplier()" style="display:none;">מחק ספק</button>
+      <button class="btn" onclick="saveSupplier()">שמור ספק</button>
+    </div>
   </div>
 </div>
 
@@ -1354,34 +1386,142 @@ function toggleItemMenu(){
 }
 window.toggleItemMenu=toggleItemMenu;
 
+function getSuppliers(){return LS.get('suppliers',[]);}
+function saveSuppliersList(arr){LS.set('suppliers',arr);}
+
 function openSuppliers(){
+  renderSuppliersList();
+  openModal('modal-suppliers');
+}
+window.openSuppliers=openSuppliers;
+
+function renderSuppliersList(){
+  var sups=getSuppliers();
   var items=getItems();
-  var map={};
+  // merge suppliers from items that aren't in sups yet
   items.forEach(function(it){
-    var sup=it.supplier||it.sup||'';
-    if(!sup)return;
-    if(!map[sup])map[sup]={name:sup,tel:it.supplierPhone||'',wa:it.supplierWhatsApp||'',email:it.supplierEmail||'',items:[]};
-    map[sup].items.push(it.name||it.sku||'פריט');
+    var n=it.supplier||''; if(!n)return;
+    if(!sups.find(function(s){return s.name===n;})){
+      sups.push({id:'s'+Date.now()+Math.random(),name:n,tel:it.supplierPhone||'',wa:it.supplierWhatsApp||'',email:it.supplierEmail||'',orderEmail:it.orderEmail||'',contact:'',notes:''});
+    }
   });
-  var keys=Object.keys(map);
   var html='';
-  if(!keys.length){html='<p style="color:var(--muted);text-align:center;padding:20px;">אין ספקים רשומים בפריטים</p>';}
+  if(!sups.length){html='<div class="empty"><div class="ic">🏭</div><div>אין ספקים עדיין</div><div class="muted" style="font-size:13px;margin-top:6px;">לחץ "+ ספק חדש" להוסיף</div></div>';}
   else{
-    keys.forEach(function(k){
-      var s=map[k];
-      html+='<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:12px;">';
-      html+='<div style="font-size:16px;font-weight:700;margin-bottom:8px;">🏭 '+s.name+'</div>';
-      if(s.tel){html+='<div style="margin-bottom:6px;"><a href="tel:'+s.tel+'" style="color:var(--accent);text-decoration:none;">📞 '+s.tel+'</a></div>';}
-      if(s.wa){var waNum=fmtPhone(s.wa);html+='<div style="margin-bottom:6px;"><a href="https://wa.me/'+encodeURIComponent(waNum)+'" target="_blank" style="color:var(--ok);text-decoration:none;">💬 WhatsApp</a></div>';}
-      if(s.email){html+='<div style="margin-bottom:6px;"><a href="mailto:'+s.email+'" style="color:var(--accent);text-decoration:none;">✉️ '+s.email+'</a></div>';}
-      if(s.items.length){html+='<div style="margin-top:8px;font-size:12px;color:var(--muted);">פריטים: '+s.items.join(', ')+'</div>';}
+    sups.forEach(function(s){
+      var its=items.filter(function(i){return i.supplier===s.name;});
+      html+='<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:10px;">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html+='<div style="font-size:16px;font-weight:700;">🏭 '+s.name+'</div>';
+      html+='<button onclick="openEditSupplier(\''+s.id+'\')" style="background:var(--card);border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:var(--accent);cursor:pointer;">עריכה</button>';
+      html+='</div>';
+      if(s.contact){html+='<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">👤 '+s.contact+'</div>';}
+      var btns='';
+      if(s.tel){btns+='<a href="tel:'+s.tel+'" style="flex:1;text-align:center;background:var(--card);border-radius:10px;padding:8px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;">📞 שיחה</a>';}
+      if(s.wa){var wn=fmtPhone(s.wa||s.tel);btns+='<a href="https://wa.me/'+encodeURIComponent(wn)+'" target="_blank" style="flex:1;text-align:center;background:var(--card);border-radius:10px;padding:8px;color:#25D366;text-decoration:none;font-size:13px;font-weight:600;">💬 WhatsApp</a>';}
+      if(s.email){btns+='<a href="mailto:'+(s.orderEmail||s.email)+'" style="flex:1;text-align:center;background:var(--card);border-radius:10px;padding:8px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;">✉️ מייל</a>';}
+      if(btns){html+='<div style="display:flex;gap:8px;margin-top:6px;">'+btns+'</div>';}
+      if(its.length){html+='<div style="margin-top:8px;font-size:11px;color:var(--muted);">פריטים: '+its.map(function(i){return i.name;}).join(', ')+'</div>';}
       html+='</div>';
     });
   }
   document.getElementById('suppliers-list').innerHTML=html;
-  openModal('modal-suppliers');
 }
-window.openSuppliers=openSuppliers;
+
+function openAddSupplier(){
+  ['se-name','se-tel','se-wa','se-email','se-ordermail','se-contact','se-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('se-id').value='';
+  document.getElementById('se-del').style.display='none';
+  document.getElementById('sup-edit-title').textContent='ספק חדש';
+  openModal('modal-supplier-edit');
+}
+window.openAddSupplier=openAddSupplier;
+
+function openEditSupplier(id){
+  var sups=getSuppliers(), s=sups.find(function(x){return x.id===id;}); if(!s)return;
+  document.getElementById('se-name').value=s.name||'';
+  document.getElementById('se-tel').value=s.tel||'';
+  document.getElementById('se-wa').value=s.wa||'';
+  document.getElementById('se-email').value=s.email||'';
+  document.getElementById('se-ordermail').value=s.orderEmail||'';
+  document.getElementById('se-contact').value=s.contact||'';
+  document.getElementById('se-notes').value=s.notes||'';
+  document.getElementById('se-id').value=id;
+  document.getElementById('se-del').style.display='';
+  document.getElementById('sup-edit-title').textContent='עריכת ספק';
+  openModal('modal-supplier-edit');
+}
+window.openEditSupplier=openEditSupplier;
+
+function saveSupplier(){
+  var name=document.getElementById('se-name').value.trim();
+  if(!name){alert('הכנס שם ספק');return;}
+  var sups=getSuppliers(), id=document.getElementById('se-id').value;
+  var obj={id:id||'s'+Date.now(),name:name,tel:document.getElementById('se-tel').value.trim(),wa:document.getElementById('se-wa').value.trim(),email:document.getElementById('se-email').value.trim(),orderEmail:document.getElementById('se-ordermail').value.trim(),contact:document.getElementById('se-contact').value.trim(),notes:document.getElementById('se-notes').value.trim()};
+  if(id){var idx=sups.findIndex(function(s){return s.id===id;});if(idx>=0)sups[idx]=obj;else sups.push(obj);}
+  else sups.push(obj);
+  saveSuppliersList(sups);
+  fillSupplierDatalist();
+  if(window._supFromItem){
+    window._supFromItem=false;
+    closeModal('modal-supplier-edit');
+    document.getElementById('im-sup').value=obj.name;
+    onSupplierInput(obj.name);
+  } else {
+    closeModal('modal-supplier-edit');
+    renderSuppliersList();
+  }
+}
+window.saveSupplier=saveSupplier;
+
+function deleteSupplier(){
+  var id=document.getElementById('se-id').value; if(!id)return;
+  if(!confirm('למחוק ספק זה?'))return;
+  saveSuppliersList(getSuppliers().filter(function(s){return s.id!==id;}));
+  closeModal('modal-supplier-edit');
+  renderSuppliersList();
+  fillSupplierDatalist();
+}
+window.deleteSupplier=deleteSupplier;
+
+function fillSupplierDatalist(){
+  var dl=document.getElementById('sup-datalist'); if(!dl)return;
+  var sups=getSuppliers();
+  dl.innerHTML=sups.map(function(s){return '<option value="'+s.name+'">';}).join('');
+}
+
+function onSupplierInput(val){
+  var sups=getSuppliers(), s=sups.find(function(x){return x.name===val;});
+  var det=document.getElementById('im-sup-details');
+  if(s){
+    document.getElementById('im-suptel').value=s.tel||'';
+    document.getElementById('im-supwa').value=s.wa||s.tel||'';
+    document.getElementById('im-supemail').value=s.email||'';
+    document.getElementById('im-ordermail').value=s.orderEmail||'';
+    var info='';
+    if(s.tel)info+='📞 '+s.tel+'  ';
+    if(s.email)info+='✉️ '+s.email;
+    det.textContent=info||s.name;
+    det.style.display=info?'block':'none';
+  } else {
+    det.style.display='none';
+  }
+}
+window.onSupplierInput=onSupplierInput;
+
+function openAddSupplierFromItem(){
+  // save current name as pre-fill
+  var cur=document.getElementById('im-sup').value.trim();
+  ['se-name','se-tel','se-wa','se-email','se-ordermail','se-contact','se-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('se-name').value=cur;
+  document.getElementById('se-id').value='';
+  document.getElementById('se-del').style.display='none';
+  document.getElementById('sup-edit-title').textContent='ספק חדש';
+  openModal('modal-supplier-edit');
+  // after save, return to item modal
+  window._supFromItem=true;
+}
+window.openAddSupplierFromItem=openAddSupplierFromItem;
 
 function openAddItem(){
   document.getElementById('item-modal-title').textContent='פריט חדש';
@@ -1389,7 +1529,9 @@ function openAddItem(){
   document.getElementById('im-id').value=''; document.getElementById('im-del').style.display='none';
   document.getElementById('adv-wrap').classList.remove('open');
   document.querySelector('.adv-btn').textContent='פרטים נוספים (מק"ט, מחיר, ספק...)';
+  document.getElementById('im-sup-details').style.display='none';
   fillUS('im-utype','unit'); fillCS('im-cat','');
+  fillSupplierDatalist();
   document.getElementById('im-price-lbl').textContent='מחיר ליחידה ('+getCurrency()+')';
   openModal('modal-item');
 }
@@ -1402,7 +1544,9 @@ function openEditItem(id){
   document.getElementById('im-uwt').value=it.unitWeight||'';
   document.getElementById('im-sku').value=it.sku||''; document.getElementById('im-bar').value=it.barcode||'';
   document.getElementById('im-price').value=it.price||''; document.getElementById('im-minord').value=it.minOrder||'';
+  fillSupplierDatalist();
   document.getElementById('im-sup').value=it.supplier||''; document.getElementById('im-suptel').value=it.supplierPhone||'';
+  onSupplierInput(it.supplier||'');
   document.getElementById('im-notes').value=it.notes||'';
   document.getElementById('im-supwa').value=it.supplierWhatsApp||'';
   document.getElementById('im-supemail').value=it.supplierEmail||'';
