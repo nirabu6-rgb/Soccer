@@ -939,6 +939,8 @@ window.obFinish=obFinish;
 ════════════════════════════════════════════════════ */
 var activeSc='screen-dashboard', curSh=null;
 function navTo(id){
+  closeFabMenu();
+  var im=document.getElementById('item-fab-menu'); if(im)im.style.display='none';
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
   document.getElementById(id).classList.add('active'); activeSc=id;
   document.querySelectorAll('.navbtn').forEach(function(b){b.classList.remove('active');});
@@ -1115,7 +1117,7 @@ window.manualRead=manualRead;
 ════════════════════════════════════════════════════ */
 var catF='';
 function renderItemsSc(){
-  fillUS('im-utype'); var cats=getCats(), its=getItems();
+  var cats=getCats(), its=getItems();
   var tabs='<button class="ftab'+(catF===''?' active':'')+'" onclick="setF(\'\')">הכל ('+its.length+')</button>';
   cats.forEach(function(c){var n=its.filter(function(i){return i.categoryId===c.id;}).length;tabs+='<button class="ftab'+(catF===c.id?' active':'')+'" onclick="setF(\''+c.id+'\')">'+c.icon+' '+c.name+' ('+n+')</button>';});
   var nc=its.filter(function(i){return !i.categoryId;}).length;
@@ -1208,6 +1210,7 @@ function openEditItem(id){
   var it=getItems().find(function(i){return i.id===id;}); if(!it)return;
   document.getElementById('item-modal-title').textContent='עריכת פריט';
   document.getElementById('im-name').value=it.name||'';
+  document.getElementById('im-uwt').value=it.unitWeight||'';
   document.getElementById('im-sku').value=it.sku||''; document.getElementById('im-bar').value=it.barcode||'';
   document.getElementById('im-price').value=it.price||''; document.getElementById('im-minord').value=it.minOrder||'';
   document.getElementById('im-sup').value=it.supplier||''; document.getElementById('im-suptel').value=it.supplierPhone||'';
@@ -1368,7 +1371,7 @@ function saveSettings(){
   LS.set('settings',s); closeModal('modal-settings'); renderDash();
 }
 window.saveSettings=saveSettings;
-function toggleDemo(){var s=getSettings();s.demo=!(s.demo!==false);if(!isDemo())LS.set('settings',s);document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);}
+function toggleDemo(){var s=getSettings();s.demo=!(s.demo!==false);LS.set('settings',s);document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);}
 window.toggleDemo=toggleDemo;
 function resetAll(){
   if(!confirm('לאפס הכל?'))return;
@@ -1473,6 +1476,13 @@ function fillCS(elId,sel){var el=document.getElementById(elId);if(!el)return;el.
 /* ════════════════════════════════════════════════════
    BOOT
 ════════════════════════════════════════════════════ */
+document.addEventListener('click',function(e){
+  var fab=document.getElementById('fab-menu'), mf=document.getElementById('main-fab');
+  if(fab&&fab.style.display!=='none'&&!fab.contains(e.target)&&e.target!==mf)closeFabMenu();
+  var im=document.getElementById('item-fab-menu'), ti=document.querySelector('#screen-items .topbar .icon-btn');
+  if(im&&im.style.display!=='none'&&!im.contains(e.target)&&e.target!==ti)im.style.display='none';
+});
+
 (function boot(){
   applyTheme(LS.get('theme','light'));
   var vm=LS.get('tmpl',null);
