@@ -574,20 +574,38 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <!-- MODAL: RECEIVE STOCK -->
 <div class="modal-overlay" id="modal-receive">
   <div class="modal-box mid" style="width:calc(100% - 28px);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <h3 style="margin:0;">📥 קבלת סחורה</h3>
       <button class="modal-close" onclick="closeModal('modal-receive')">&#x2715;</button>
     </div>
-    <div id="receive-current" class="muted" style="text-align:center;margin-bottom:10px;"></div>
-    <div class="recv-qty" id="receive-current-qty">—</div>
-    <label>כמות שהתקבלה</label>
-    <input id="receive-qty" type="number" min="1" placeholder="הזן כמות...">
-    <input type="hidden" id="receive-shelf-id">
-    <div id="receive-confirm" style="margin-top:10px;"></div>
-    <div class="row" style="margin-top:14px;">
-      <button class="btn sec" onclick="closeModal('modal-receive')">ביטול</button>
-      <button class="btn ok" onclick="saveReceive()">אשר קבלה</button>
+
+    <!-- חיפוש / סריקת ברקוד -->
+    <div id="receive-search-wrap" style="margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">חפש פריט לפי שם, ברקוד או מק"ט</div>
+      <div style="display:flex;gap:8px;">
+        <input id="receive-search" placeholder="🔍 שם / ברקוד / מק&quot;ט..." oninput="receiveSearch()" style="flex:1;">
+        <button class="icon-btn" onclick="receiveScan()" title="סרוק ברקוד">📷</button>
+      </div>
+      <div id="receive-results" style="max-height:180px;overflow-y:auto;border-radius:10px;border:1px solid var(--border);margin-top:6px;display:none;"></div>
     </div>
+
+    <!-- פריט נבחר -->
+    <div id="receive-item-wrap" style="display:none;">
+      <div style="background:var(--card2);border-radius:12px;padding:12px;margin-bottom:12px;">
+        <div id="receive-item-name" style="font-weight:700;font-size:15px;"></div>
+        <div id="receive-item-info" class="muted" style="font-size:12px;margin-top:3px;"></div>
+        <div style="margin-top:8px;font-size:13px;">כמות נוכחית: <b id="receive-current-qty">—</b></div>
+      </div>
+      <label>כמות שהתקבלה</label>
+      <input id="receive-qty" type="number" min="1" placeholder="הזן כמות...">
+      <input type="hidden" id="receive-shelf-id">
+      <div class="row" style="margin-top:14px;">
+        <button class="btn sec" onclick="receiveReset()">← שנה פריט</button>
+        <button class="btn ok" onclick="saveReceive()">אשר קבלה ✓</button>
+      </div>
+    </div>
+
+    <button class="btn sec" style="margin-top:8px;" onclick="closeModal('modal-receive')">סגור</button>
   </div>
 </div>
 
@@ -1775,16 +1793,92 @@ window.openOrderHistory=openOrderHistory;window.markReceived=markReceived;window
    RECEIVE STOCK
 ════════════════════════════════════════════════════ */
 function openReceive(id){
+  document.getElementById('receive-search').value='';
+  document.getElementById('receive-results').style.display='none';
+  document.getElementById('receive-results').innerHTML='';
+  document.getElementById('receive-qty').value='';
+  document.getElementById('receive-item-wrap').style.display='none';
+  document.getElementById('receive-search-wrap').style.display='block';
+  if(id){
+    receivePickShelf(id);
+  }
+  openModal('modal-receive');
+}
+function receivePickShelf(id){
   var sh=getShelves().find(function(s){return s.id===id;}); if(!sh)return;
   var it=getItems().find(function(i){return i.id===sh.itemId;});
   var r=latestR(id), ul=unitL(it);
   document.getElementById('receive-shelf-id').value=id;
-  document.getElementById('receive-current').textContent=(it?it.name:'')+ ' — כמות נוכחית:';
-  document.getElementById('receive-current-qty').textContent=(r?r.qty:'—')+' '+ul;
+  document.getElementById('receive-item-name').textContent=it?it.name:'פריט לא ידוע';
+  document.getElementById('receive-item-info').textContent=(sh.name)+(it&&it.sku?' · '+it.sku:'')+(it&&it.barcode?' · '+it.barcode:'');
+  document.getElementById('receive-current-qty').textContent=(r?r.qty:'0')+' '+ul;
   document.getElementById('receive-qty').value='';
-  document.getElementById('receive-confirm').innerHTML='';
-  openModal('modal-receive');
+  document.getElementById('receive-item-wrap').style.display='block';
+  document.getElementById('receive-search-wrap').style.display='none';
 }
+function receiveReset(){
+  document.getElementById('receive-item-wrap').style.display='none';
+  document.getElementById('receive-search-wrap').style.display='block';
+  document.getElementById('receive-search').value='';
+  document.getElementById('receive-results').style.display='none';
+  document.getElementById('receive-shelf-id').value='';
+}
+function receiveSearch(){
+  var q=(document.getElementById('receive-search').value||'').trim().toLowerCase();
+  var el=document.getElementById('receive-results');
+  if(!q){el.style.display='none';el.innerHTML='';return;}
+  var shs=getShelves(), its=getItems();
+  var matches=[];
+  shs.forEach(function(sh){
+    var it=its.find(function(i){return i.id===sh.itemId;});
+    if(!it)return;
+    var hay=(it.name+' '+(it.sku||'')+' '+(it.barcode||'')+' '+sh.name).toLowerCase();
+    if(hay.indexOf(q)>=0)matches.push({sh:sh,it:it});
+  });
+  if(!matches.length){el.innerHTML='<div style="padding:12px;color:var(--muted);text-align:center;">לא נמצא</div>';el.style.display='block';return;}
+  el.innerHTML=matches.map(function(m){
+    return '<div onclick="receivePickShelf(\''+m.sh.id+'\')" style="padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;">'+
+      '<div style="font-weight:700;">'+m.it.name+'</div>'+
+      '<div style="font-size:12px;color:var(--muted);">'+m.sh.name+(m.it.sku?' · '+m.it.sku:'')+(m.it.barcode?' · '+m.it.barcode:'')+'</div></div>';
+  }).join('');
+  el.style.display='block';
+}
+function receiveScan(){
+  if(typeof BarcodeDetector==='undefined'){
+    var b=prompt('הכנס ברקוד ידנית:');
+    if(b){document.getElementById('receive-search').value=b;receiveSearch();}
+    return;
+  }
+  var v=document.createElement('video');
+  v.style.cssText='position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:9999;background:#000;';
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:60px;';
+  ov.innerHTML='<button style="background:#fff;border:none;border-radius:20px;padding:12px 30px;font-size:16px;font-weight:700;cursor:pointer;">ביטול</button>';
+  document.body.appendChild(v); document.body.appendChild(ov);
+  var stream;
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){
+    stream=s; v.srcObject=s; v.play();
+    var bd=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code','upc_a']});
+    var interval=setInterval(function(){
+      bd.detect(v).then(function(codes){
+        if(codes.length){
+          clearInterval(interval);
+          stream.getTracks().forEach(function(t){t.stop();});
+          document.body.removeChild(v); document.body.removeChild(ov);
+          var code=codes[0].rawValue;
+          document.getElementById('receive-search').value=code;
+          receiveSearch();
+        }
+      });
+    },400);
+    ov.querySelector('button').onclick=function(){
+      clearInterval(interval);
+      stream.getTracks().forEach(function(t){t.stop();});
+      document.body.removeChild(v); document.body.removeChild(ov);
+    };
+  });
+}
+window.receiveSearch=receiveSearch; window.receiveReset=receiveReset; window.receiveScan=receiveScan; window.receivePickShelf=receivePickShelf;
 function saveReceive(){
   var id=document.getElementById('receive-shelf-id').value;
   var recvd=parseInt(document.getElementById('receive-qty').value)||0;
