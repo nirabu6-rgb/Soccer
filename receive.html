@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>קבלת סחורה — WeightStock</title>
+<style>
+:root{
+  --bg:#f1f5f9;--card:#ffffff;--card2:#e8eef5;
+  --accent:#2563eb;--ok:#059669;--text:#0f172a;--muted:#64748b;--border:#cbd5e1;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;}
+body{padding:0 0 40px;}
+.header{background:var(--accent);color:#fff;padding:18px 16px 14px;text-align:center;}
+.header h1{font-size:20px;font-weight:800;margin-bottom:2px;}
+.header .sub{font-size:13px;opacity:.8;}
+.wrap{max-width:480px;margin:0 auto;padding:16px;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;margin-top:12px;}
+label:first-child{margin-top:0;}
+input,select{width:100%;background:var(--card2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font-size:15px;font-family:inherit;}
+input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent;}
+.search-wrap{position:relative;}
+.search-wrap input{padding-left:36px;}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted);}
+.results{border:1.5px solid var(--border);border-radius:10px;margin-top:6px;overflow:hidden;display:none;background:var(--card);}
+.results.show{display:block;}
+.result-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;}
+.result-item:last-child{border-bottom:none;}
+.result-item:active{background:var(--card2);}
+.result-item .ri-name{font-size:14px;font-weight:600;}
+.result-item .ri-info{font-size:11px;color:var(--muted);margin-top:2px;}
+.selected-item{background:rgba(37,99,235,.06);border:1.5px solid rgba(37,99,235,.25);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:none;}
+.selected-item.show{display:block;}
+.selected-item .si-name{font-size:16px;font-weight:700;}
+.selected-item .si-info{font-size:12px;color:var(--muted);margin-top:3px;}
+.si-qty{font-size:13px;margin-top:6px;}
+.si-qty span{font-weight:700;color:var(--accent);}
+.qty-big input{font-size:32px;font-weight:800;text-align:center;color:var(--accent);border-color:var(--accent);padding:16px;}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;width:100%;cursor:pointer;}
+.btn:active{opacity:.85;}
+.btn.sec{background:var(--card2);color:var(--text);}
+.btn.ok{background:var(--ok);}
+.row{display:flex;gap:10px;margin-top:10px;}
+.row>*{flex:1;}
+.success{text-align:center;padding:32px 20px;display:none;}
+.success.show{display:block;}
+.success .ic{font-size:64px;margin-bottom:14px;}
+.success h2{font-size:22px;font-weight:800;color:var(--ok);margin-bottom:8px;}
+.success p{color:var(--muted);font-size:14px;line-height:1.5;}
+.badge-ok{display:inline-flex;align-items:center;gap:4px;background:rgba(5,150,105,.1);color:var(--ok);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;margin-top:8px;}
+.no-data{text-align:center;padding:40px 16px;color:var(--muted);}
+.no-data .ic{font-size:48px;margin-bottom:10px;}
+.step{display:none;}.step.active{display:block;}
+.note-wrap{background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚖️ קבלת סחורה</h1>
+  <div class="sub" id="hdr-biz">WeightStock</div>
+</div>
+
+<div class="wrap">
+
+<!-- STEP 1: חיפוש פריט -->
+<div class="step active" id="step-search">
+  <div class="card">
+    <label>חפש פריט לקבלה</label>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="search-inp" placeholder="שם פריט / ברקוד / מק&quot;ט..." oninput="doSearch(this.value)" autocomplete="off">
+    </div>
+    <div class="results" id="results-list"></div>
+  </div>
+
+  <div class="card" id="scan-card">
+    <label style="margin-bottom:8px;">או סרוק ברקוד</label>
+    <button class="btn sec" onclick="startScan()">📷 סריקת ברקוד</button>
+  </div>
+
+  <div class="note-wrap">
+    💡 הזן שם פריט, ברקוד או מק"ט כדי למצוא את המשטח לעדכון
+  </div>
+</div>
+
+<!-- STEP 2: אישור כמות -->
+<div class="step" id="step-qty">
+  <div class="selected-item show" id="sel-item">
+    <div class="si-name" id="sel-name"></div>
+    <div class="si-info" id="sel-info"></div>
+    <div class="si-qty">כמות נוכחית: <span id="sel-cur">—</span></div>
+  </div>
+
+  <div class="card">
+    <label>כמות שהתקבלה</label>
+    <div class="qty-big">
+      <input id="qty-inp" type="number" min="1" placeholder="0" inputmode="numeric">
+    </div>
+    <label>הערה (אופציונלי)</label>
+    <input id="note-inp" placeholder="מס' חשבונית, שם ספק...">
+  </div>
+
+  <div class="row">
+    <button class="btn sec" onclick="goSearch()">← חזור</button>
+    <button class="btn ok" onclick="confirm()">✓ אשר קבלה</button>
+  </div>
+</div>
+
+<!-- STEP 3: הצלחה -->
+<div class="step" id="step-done">
+  <div class="success show">
+    <div class="ic">✅</div>
+    <h2>הקבלה נרשמה!</h2>
+    <p id="done-msg"></p>
+    <div class="badge-ok" id="done-badge"></div>
+    <div class="row" style="margin-top:24px;">
+      <button class="btn" onclick="resetForm()">קבלה נוספת</button>
+    </div>
+  </div>
+</div>
+
+<!-- NO DATA -->
+<div id="no-data" style="display:none;">
+  <div class="no-data">
+    <div class="ic">📭</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">אין נתונים</div>
+    <div>פתח את WeightStock ממחשב או נייד<br>ולאחר מכן שוב את הדף הזה</div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+var LS={
+  get:function(k,d){try{var v=localStorage.getItem('ws3_'+k);return v!=null?JSON.parse(v):d;}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem('ws3_'+k,JSON.stringify(v));}catch(e){}}
+};
+
+var shelves=[], items=[], curShelf=null;
+
+function init(){
+  var biz=LS.get('bizname','');
+  if(biz) document.getElementById('hdr-biz').textContent=biz;
+
+  var mode=LS.get('mode','demo');
+  if(mode==='demo'){
+    document.getElementById('no-data').style.display='block';
+    document.getElementById('step-search').style.display='none';
+    document.getElementById('scan-card').style.display='none';
+    return;
+  }
+
+  shelves=LS.get('shelves',[]);
+  items=LS.get('items',[]);
+
+  if(!shelves.length){
+    document.getElementById('no-data').style.display='block';
+    document.querySelector('.step.active').classList.remove('active');
+  }
+}
+
+function doSearch(q){
+  var list=document.getElementById('results-list');
+  q=(q||'').trim().toLowerCase();
+  if(!q){list.classList.remove('show');list.innerHTML='';return;}
+
+  var matches=[];
+  items.forEach(function(it){
+    var sh=shelves.find(function(s){return s.itemId===it.id;});
+    if(!sh) return;
+    var hay=(it.name+' '+(it.sku||'')+' '+(it.barcode||'')).toLowerCase();
+    if(hay.indexOf(q)>=0) matches.push({it:it,sh:sh});
+  });
+
+  if(!matches.length){
+    list.classList.add('show');
+    list.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px;">לא נמצאו פריטים</div>';
+    return;
+  }
+
+  list.classList.add('show');
+  list.innerHTML=matches.slice(0,8).map(function(m){
+    var r=getLatest(m.sh.id);
+    var cur=r?r.qty+' '+unitL(m.it):'לא נמדד';
+    return '<div class="result-item" onclick="selectShelf(\''+m.sh.id+'\')">'
+      +'<div style="font-size:20px;">'+(m.it.icon||'📦')+'</div>'
+      +'<div><div class="ri-name">'+m.it.name+'</div>'
+      +'<div class="ri-info">'+m.sh.name+(m.it.sku?' · '+m.it.sku:'')+(r?' · במלאי: '+cur:'')+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function selectShelf(id){
+  var sh=shelves.find(function(s){return s.id===id;}); if(!sh) return;
+  var it=items.find(function(i){return i.id===sh.itemId;}); if(!it) return;
+  var r=getLatest(id);
+  curShelf=id;
+
+  document.getElementById('sel-name').textContent=it.name;
+  document.getElementById('sel-info').textContent=sh.name+(it.sku?' · מק"ט: '+it.sku:'')+(it.barcode?' · ברקוד: '+it.barcode:'');
+  document.getElementById('sel-cur').textContent=r?(r.qty+' '+unitL(it)):'לא נמדד';
+  document.getElementById('qty-inp').value='';
+  document.getElementById('note-inp').value='';
+
+  goStep('step-qty');
+  setTimeout(function(){document.getElementById('qty-inp').focus();},300);
+}
+
+function confirm(){
+  var qtyVal=parseInt(document.getElementById('qty-inp').value)||0;
+  if(qtyVal<=0){alert('הזן כמות תקינה');return;}
+  if(!curShelf){goSearch();return;}
+
+  var sh=shelves.find(function(s){return s.id===curShelf;});
+  var it=items.find(function(i){return i.id===sh.itemId;});
+  var uw=it?parseFloat(it.unitWeight)||1:1;
+  var tare=parseFloat(sh.tare)||0;
+  var rawW=Math.round((qtyVal*uw+tare)*10)/10;
+
+  var r={ts:Date.now(),rawWeight:rawW,netWeight:Math.round(qtyVal*uw*10)/10,qty:qtyVal,src:'manual'};
+  var all=LS.get('readings',{}); if(!all[curShelf])all[curShelf]=[];
+  all[curShelf].push(r); if(all[curShelf].length>500)all[curShelf]=all[curShelf].slice(-500);
+  LS.set('readings',all);
+
+  var note=document.getElementById('note-inp').value.trim();
+  var ord=LS.get('orders',[])||[];
+  ord.unshift({id:'o'+Date.now(),ts:Date.now(),shelfId:curShelf,shelfName:sh.name,itemName:it?it.name:'',qty:qtyVal,unit:unitL(it),note:note,method:'form',src:'receive-form'});
+  if(ord.length>200)ord=ord.slice(0,200);
+  LS.set('orders',ord);
+
+  document.getElementById('done-msg').textContent=(it?it.name:'')+' — '+sh.name;
+  document.getElementById('done-badge').textContent='✓ '+qtyVal+' '+unitL(it)+' נרשמו בהצלחה'+(note?' · '+note:'');
+
+  goStep('step-done');
+}
+
+function goSearch(){goStep('step-search');curShelf=null;document.getElementById('search-inp').value='';document.getElementById('results-list').classList.remove('show');}
+function resetForm(){goStep('step-search');curShelf=null;document.getElementById('search-inp').value='';document.getElementById('results-list').classList.remove('show');document.getElementById('search-inp').focus();}
+
+function goStep(id){
+  document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+}
+
+function getLatest(id){var r=LS.get('readings',{})[id]||[];return r.length?r[r.length-1]:null;}
+
+function unitL(it){
+  var UNITS=[{v:'unit',l:'יחידות'},{v:'kg',l:'ק"ג'},{v:'g',l:'גרם'},{v:'l',l:'ליטר'},{v:'m',l:'מטר'},{v:'box',l:'קופסאות'},{v:'bag',l:'שקיות'}];
+  if(!it)return 'יחידות';
+  var u=UNITS.find(function(x){return x.v===(it.unitType||'unit');}); return u?u.l:'יחידות';
+}
+
+function startScan(){
+  if(!('BarcodeDetector' in window)){
+    var code=prompt('הזן ברקוד ידנית:');
+    if(code){document.getElementById('search-inp').value=code.trim();doSearch(code.trim());}
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream){
+    var v=document.createElement('video');
+    v.srcObject=stream; v.setAttribute('playsinline','');
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:#000;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    ov.innerHTML='<video id="sv" playsinline style="width:100%;max-width:420px;border-radius:12px;"></video>'
+      +'<div style="color:#fff;margin-top:14px;font-size:14px;">כוון את הברקוד למצלמה</div>'
+      +'<button onclick="this.parentNode.remove();window._scanStream&&window._scanStream.getTracks().forEach(function(t){t.stop();});" '
+      +'style="margin-top:14px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;cursor:pointer;">ביטול</button>';
+    document.body.appendChild(ov);
+    window._scanStream=stream;
+    var sv=document.getElementById('sv');
+    sv.srcObject=stream; sv.play();
+    var det=new BarcodeDetector();
+    var loop=setInterval(function(){
+      det.detect(sv).then(function(codes){
+        if(codes.length){
+          clearInterval(loop);
+          stream.getTracks().forEach(function(t){t.stop();});
+          ov.remove();
+          var code=codes[0].rawValue;
+          document.getElementById('search-inp').value=code;
+          doSearch(code);
+        }
+      }).catch(function(){});
+    },300);
+  }).catch(function(){alert('לא ניתן לגשת למצלמה');});
+}
+
+init();
+</script>
+</body>
+</html>
