@@ -442,12 +442,35 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <div class="modal-overlay" id="modal-settings">
   <div class="modal-box mid" style="width:calc(100% - 28px);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <h3 style="margin:0;">הגדרות עסק</h3>
       <button class="modal-close" onclick="closeModal('modal-settings')">&#x2715;</button>
     </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">לוגו ופרופיל</div>
+    <div style="display:flex;justify-content:center;margin-bottom:8px;">
+      <div style="position:relative;width:120px;height:120px;">
+        <div id="logo-circle" style="width:120px;height:120px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;">
+          <img id="logo-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
+          <span id="logo-placeholder">&#x1F3EA;</span>
+        </div>
+        <button onclick="document.getElementById('logo-file').click()" style="position:absolute;bottom:4px;left:4px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:16px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);">+</button>
+        <input type="file" id="logo-file" accept="image/*" style="display:none;" onchange="handleLogoUpload(this)">
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">שם העסק</div>
     <label>שם העסק</label><input id="st-biz" placeholder="שם העסק שלך">
     <label>סוג עסק</label><input id="st-type" placeholder="חנות חומרי בניין, פרזול, מחסן...">
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">פרטי העסק</div>
+    <label>טלפון</label><input id="st-phone" type="tel" placeholder="03-0000000">
+    <label>מייל</label><input id="st-email" type="email" placeholder="info@mybusiness.co.il">
+    <label>רחוב</label><input id="st-street" placeholder="רחוב הרצל 1">
+    <label>עיר</label><input id="st-city" placeholder="תל אביב">
+    <label>אתר אינטרנט</label><input id="st-web" type="url" placeholder="https://www.mybusiness.co.il">
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">הגדרות מערכת</div>
     <div class="row">
       <div><label>מטבע</label>
         <select id="st-cur">
@@ -459,8 +482,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       </div>
       <div><label>סף ברירת מחדל</label><input id="st-defalert" type="number" placeholder="20"></div>
     </div>
-    <label>מייל לקבלת הזמנות</label><input id="st-email" type="email" placeholder="orders@mybusiness.co.il">
-    <label>הערות (כתובת, טלפון...)</label><textarea id="st-notes"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
       <div><b>מצב כהה</b><div class="muted" style="font-size:11px;">החלף בין ערכת צבעים בהירה לכהה</div></div>
       <button class="toggle" id="theme-tog" onclick="toggleTheme()"><span class="knob"></span></button>
@@ -469,31 +490,21 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות ESP32 כל 30 שניות</div></div>
       <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
     </div>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">החלפת תחום עסקי</div>
-      <button class="btn sec" style="font-size:13px;" onclick="resetToOnboarding()">בחר תחום עסקי אחר</button>
-    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:18px 0 8px;text-transform:uppercase;">תחום עסקי</div>
+    <button class="btn sec" style="font-size:13px;" onclick="resetToOnboarding()">בחר תחום עסקי אחר</button>
+
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
       <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openReport()">📊 דוח מלאי</button>
       <button class="btn sec" style="font-size:13px;" onclick="closeModal('modal-settings');openOrderHistory()">📋 היסטוריית הזמנות</button>
     </div>
     <div class="row" style="margin-top:18px;">
-      <button class="btn danger sm" onclick="resetAll()">איפוס הכל</button>
+      <button class="btn sec sm" style="color:var(--crit);background:rgba(239,68,68,.1);border:none;" onclick="logoutApp()">התנתק</button>
       <button class="btn" onclick="saveSettings()">שמור</button>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-cart">
-  <div class="modal-box mid" style="width:calc(100% - 28px);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h3 style="margin:0;">🛒 סל הזמנות</h3>
-      <button class="modal-close" onclick="closeModal('modal-cart')">&#x2715;</button>
-    </div>
-    <div id="cart-content"></div>
-    <button class="btn sec" style="margin-top:12px;font-size:13px;" onclick="clearCart()">🗑️ נקה סל</button>
-  </div>
-</div>
 
 <div class="modal-overlay" id="modal-suppliers">
   <div class="modal-box" style="width:calc(100% - 28px);max-height:85vh;overflow-y:auto;">
@@ -655,64 +666,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 <script>
 (function(){"use strict";
 
-var _cart={};
-
-function addToCart(id,e){
-  if(e)e.stopPropagation();
-  _cart[id]=(_cart[id]||0)+1;
-  updCartBadge(); renderDash();
-}
-function updCartBadge(){
-  var n=Object.keys(_cart).filter(function(k){return _cart[k]>0;}).length;
-  var b=document.getElementById('cart-badge');
-  if(b){b.textContent=n||'';b.style.display=n?'flex':'none';}
-}
-function openCart(){renderCartModal();openModal('modal-cart');}
-function renderCartModal(){
-  var keys=Object.keys(_cart).filter(function(k){return _cart[k]>0;});
-  var el=document.getElementById('cart-content');
-  if(!keys.length){el.innerHTML='<div class="empty"><div class="ic">🛒</div><div>הסל ריק</div><div class="muted">לחץ "+ סל" על כרטיסיית מלאי</div></div>';return;}
-  var shs=getShelves(),its=getItems(),biz=getSettings().bizName||'';
-  var groups={};
-  keys.forEach(function(sid){
-    var sh=shs.find(function(s){return s.id===sid;}); if(!sh)return;
-    var it=its.find(function(i){return i.id===sh.itemId;});
-    var sup=(it&&it.supplier)||'ללא ספק';
-    if(!groups[sup])groups[sup]={items:[],phone:'',wa:'',email:''};
-    groups[sup].items.push({sh:sh,it:it,qty:_cart[sid]});
-    if(it&&it.supplierPhone&&!groups[sup].phone)groups[sup].phone=it.supplierPhone;
-    if(it&&it.supplierWhatsApp&&!groups[sup].wa)groups[sup].wa=it.supplierWhatsApp;
-    if(it&&it.supplierEmail&&!groups[sup].email)groups[sup].email=it.supplierEmail;
-  });
-  var html='';
-  Object.keys(groups).forEach(function(sup){
-    var g=groups[sup];
-    var msg='הזמנה'+(biz?' מ-'+biz:'')+' — '+sup+':\n'+g.items.map(function(x){return '• '+(x.it?x.it.name:'פריט')+' — '+x.qty+' '+unitL(x.it);}).join('\n');
-    var waNum=fmtPhone(g.wa||g.phone);
-    html+='<div class="cart-sup">';
-    html+='<div class="cart-sup-title">🏭 '+sup+'</div>';
-    html+=g.items.map(function(x){
-      return '<div class="rrow"><div><b>'+(x.it?x.it.name:'פריט')+'</b><div class="muted" style="font-size:11px;">'+x.sh.name+'</div></div>'+
-        '<div class="qty-ctrl">'+
-        '<button onclick="cartQty(\''+x.sh.id+'\',-1)">−</button>'+
-        '<span>'+x.qty+'</span>'+
-        '<button onclick="cartQty(\''+x.sh.id+'\',1)">+</button>'+
-        '</div></div>';
-    }).join('');
-    html+='<div class="send-row">';
-    if(waNum)html+='<a class="send-btn wa" href="https://wa.me/'+waNum+'?text='+encodeURIComponent(msg)+'" target="_blank">📱 WhatsApp</a>';
-    if(g.email)html+='<a class="send-btn em" href="mailto:'+g.email+'?subject='+encodeURIComponent('הזמנה - '+biz)+'&body='+encodeURIComponent(msg)+'" target="_blank">✉️ מייל</a>';
-    if(!waNum&&!g.email)html+='<div class="muted" style="font-size:12px;padding:6px 0;">אין פרטי קשר לספק — ערוך פריט להוסיף</div>';
-    html+='</div></div>';
-  });
-  el.innerHTML=html;
-}
-function cartQty(id,d){
-  _cart[id]=Math.max(0,(_cart[id]||0)+d);
-  if(!_cart[id])delete _cart[id];
-  updCartBadge(); renderCartModal(); renderDash();
-}
-function clearCart(){_cart={};updCartBadge();renderCartModal();renderDash();}
 function fmtPhone(p){
   if(!p)return '';
   var n=p.replace(/[^\d]/g,'');
@@ -720,8 +673,6 @@ function fmtPhone(p){
   if(n.startsWith('0'))return '972'+n.slice(1);
   return n.length>=9?'972'+n:n;
 }
-window.addToCart=addToCart;window.openCart=openCart;window.cartQty=cartQty;window.clearCart=clearCart;
-
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t||'light');}
 function toggleTheme(){
   var cur=document.documentElement.getAttribute('data-theme')||'light';
@@ -946,7 +897,7 @@ function getSettings(){
   var s=LS.get('settings',null);
   if(s)return s;
   var t=activeTmpl(),td=t&&TEMPLATES[t]?TEMPLATES[t]:{};
-  return {bizName:'',bizType:td.bizType||'',currency:'₪',defaultAlert:20,demo:true,bizNotes:''};
+  return {bizName:'',bizType:td.bizType||'',currency:'₪',defaultAlert:20,demo:true,phone:'',email:'',street:'',city:'',web:''};
 }
 function getCurrency(){return getSettings().currency||'₪';}
 
@@ -1160,17 +1111,14 @@ function shCard(sh,its){
   var r=latestR(sh.id), st=calcSt(sh,r), it=its.find(function(i){return i.id===sh.itemId;});
   var qc={ok:'var(--text)',warn:'var(--warn)',crit:'var(--crit)',offline:'var(--muted)'}[st];
   var bdg={ok:'<span class="badge ok">✓ תקין</span>',warn:'<span class="badge warn">⚠ נמוך</span>',crit:'<span class="badge crit">🔴 קריטי</span>',offline:'<span class="badge off">לא מחובר</span>'}[st];
-  var inCart=_cart[sh.id]>0;
   return '<div class="shelf-card '+st+'" onclick="openSh(\''+sh.id+'\')">'+bdg+
     '<div class="qty" style="color:'+qc+';">'+(r?r.qty:'—')+'</div>'+
     '<div style="font-size:10px;color:var(--muted);">'+unitL(it)+'</div>'+
     '<div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(it?it.name:'—')+'</div>'+
     '<div style="font-size:10px;color:var(--muted);">'+(r?fmtW(r.netWeight):'—')+'</div>'+
     '<div style="font-size:10px;color:var(--muted);">'+sh.name+'</div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'+
-    '<div style="font-size:10px;color:var(--muted);">'+(r?ago(r.ts):'אין קריאה')+'</div>'+
-    '<button data-cid="'+sh.id+'" style="background:'+(inCart?'var(--ok)':'var(--card2)')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;color:'+(inCart?'#fff':'var(--text)')+';cursor:pointer;" onclick="addToCart(\''+sh.id+'\',event)">'+(inCart?'✓ בסל':'+ סל')+'</button>'+
-    '</div></div>';
+    '<div style="font-size:10px;color:var(--muted);margin-top:6px;">'+(r?ago(r.ts):'אין קריאה')+'</div>'+
+    '</div>';
 }
 
 /* ════════════════════════════════════════════════════
@@ -1537,10 +1485,24 @@ window.deleteShelf=deleteShelf;
 ════════════════════════════════════════════════════ */
 function openSettings(){
   var s=getSettings();
-  document.getElementById('st-biz').value=s.bizName||''; document.getElementById('st-type').value=s.bizType||'';
-  document.getElementById('st-cur').value=s.currency||'₪'; document.getElementById('st-defalert').value=s.defaultAlert||'';
-  document.getElementById('st-email').value=s.bizEmail||'';
-  document.getElementById('st-notes').value=s.bizNotes||'';
+  document.getElementById('st-biz').value=s.bizName||'';
+  document.getElementById('st-type').value=s.bizType||'';
+  document.getElementById('st-cur').value=s.currency||'₪';
+  document.getElementById('st-defalert').value=s.defaultAlert||'';
+  document.getElementById('st-phone').value=s.phone||'';
+  document.getElementById('st-email').value=s.email||'';
+  document.getElementById('st-street').value=s.street||'';
+  document.getElementById('st-city').value=s.city||'';
+  document.getElementById('st-web').value=s.web||'';
+  var logo=localStorage.getItem('ws3_logo');
+  if(logo){
+    document.getElementById('logo-img').src=logo;
+    document.getElementById('logo-img').style.display='block';
+    document.getElementById('logo-placeholder').style.display='none';
+  } else {
+    document.getElementById('logo-img').style.display='none';
+    document.getElementById('logo-placeholder').style.display='';
+  }
   document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);
   var th=LS.get('theme','light');
   document.getElementById('theme-tog').classList.toggle('on',th==='dark');
@@ -1804,10 +1766,10 @@ function saveReceive(){
     if(all[id]&&all[id].length)all[id][all[id].length-1].src='receive';
     LS.set('readings',all);
   }
-  document.getElementById('receive-confirm').innerHTML=
-    '<div class="hwok">✓ נוספו '+recvd+' '+unitL(it)+'. כמות עדכנית: '+(curQty+recvd)+' '+unitL(it)+'</div>';
   renderDash();
   if(activeSc==='screen-shelf-detail')renderSh(id);
+  closeModal('modal-receive');
+  document.getElementById('receive-qty').value='';
 }
 window.openReceive=openReceive;window.saveReceive=saveReceive;
 
