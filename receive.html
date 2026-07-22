@@ -73,6 +73,7 @@ input:focus,select:focus{outline:2px solid var(--accent);border-color:transparen
       <span class="search-icon">🔍</span>
       <input id="search-inp" placeholder="התחל להקליד שם / ברקוד / מק&quot;ט..." oninput="doSearch(this.value)" autocomplete="off" onkeydown="if(event.key==='Enter')doSearch(this.value)">
     </div>
+    <button class="btn" style="margin-top:10px;" onclick="doSearch(document.getElementById('search-inp').value)">חפש</button>
   </div>
   <div class="results" id="results-list"></div>
 
