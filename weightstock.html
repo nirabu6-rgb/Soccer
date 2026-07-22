@@ -157,6 +157,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   .modal-box{max-width:540px;}
 }
 
+/* ── PLANS ── */
+.plan-card{background:var(--card);border:2px solid var(--border);border-radius:16px;padding:14px 16px;cursor:pointer;position:relative;transition:border-color .15s;}
+.plan-card.selected{border-color:var(--accent);background:rgba(37,99,235,.04);}
+.plan-card:active{opacity:.85;}
+.plan-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.plan-name{font-size:17px;font-weight:800;}
+.plan-price{font-size:14px;font-weight:700;color:var(--accent);}
+.plan-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px;}
+.plan-list li{font-size:13px;color:var(--muted);padding-right:14px;position:relative;}
+.plan-list li::before{content:"✓";position:absolute;right:0;color:var(--ok);font-weight:700;}
+.plan-badge{position:absolute;top:-10px;right:16px;background:var(--accent);color:#fff;font-size:10px;font-weight:800;border-radius:20px;padding:3px 10px;letter-spacing:.5px;}
+
 /* ── PRINT ── */
 @media print{
   body>*:not(#modal-report){display:none!important;}
@@ -253,10 +265,63 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
         <input id="ob-pw2" type="password" placeholder="הכנס שוב את הסיסמה">
         <div class="row" style="margin-top:18px;">
           <button class="btn sec" onclick="obBack2()">חזור</button>
-          <button class="btn ok" onclick="obFinish()">סיום ✓</button>
+          <button class="btn ok" onclick="obToPlans()">הבא ›</button>
         </div>
       </div>
     </div>
+    <div class="ob-step" id="ob-s4">
+      <div class="ob-logo">💳</div>
+      <div class="ob-title">בחר מסלול</div>
+      <div class="ob-sub">14 ימי ניסיון חינם בכל מסלול</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <div class="plan-card" id="plan-basic" onclick="selectPlan('basic')">
+          <div class="plan-top"><span class="plan-name">מצומצם</span><span class="plan-price">₪49 / חודש</span></div>
+          <ul class="plan-list">
+            <li>עד 5 משטחי שקילה</li><li>עד 20 פריטים</li><li>עד 3 ספקים</li><li>דוח בסיסי</li>
+          </ul>
+        </div>
+        <div class="plan-card selected" id="plan-pro" onclick="selectPlan('pro')">
+          <div class="plan-badge">הכי פופולרי</div>
+          <div class="plan-top"><span class="plan-name">גדול</span><span class="plan-price">₪149 / חודש</span></div>
+          <ul class="plan-list">
+            <li>עד 25 משטחי שקילה</li><li>עד 100 פריטים</li><li>עד 20 ספקים</li><li>כל הדוחות + ייצוא</li>
+          </ul>
+        </div>
+        <div class="plan-card" id="plan-enterprise" onclick="selectPlan('enterprise')">
+          <div class="plan-top"><span class="plan-name">ענק</span><span class="plan-price">₪349 / חודש</span></div>
+          <ul class="plan-list">
+            <li>משטחים ופריטים ללא הגבלה</li><li>ספקים ללא הגבלה</li><li>כל הדוחות + ייצוא</li><li>תמיכה עדיפות</li>
+          </ul>
+        </div>
+      </div>
+      <button class="btn ok" style="margin-top:18px;" onclick="obFinish()">התחל ניסיון חינם ✓</button>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:10px;">לא נדרש כרטיס אשראי לניסיון</div>
+    </div>
+  </div>
+</div>
+
+<!-- modal שדרוג מנוי -->
+<div class="modal-overlay" id="modal-upgrade">
+  <div class="modal-box mid" style="width:calc(100% - 28px);text-align:center;">
+    <div style="font-size:48px;margin-bottom:10px;">🚀</div>
+    <h3 id="upgrade-title" style="margin:0 0 8px;">הגעת לגבול המנוי</h3>
+    <p id="upgrade-msg" class="muted" style="font-size:14px;margin-bottom:20px;line-height:1.5;"></p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn" onclick="closeModal('modal-upgrade');openUpgradePlans()">שדרג עכשיו</button>
+      <button class="btn sec" onclick="closeModal('modal-upgrade')">בטל</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal בחירת מנוי לשדרוג -->
+<div class="modal-overlay" id="modal-plans">
+  <div class="modal-box" style="width:calc(100% - 28px);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;">💳 המסלולים שלנו</h3>
+      <button class="modal-close" onclick="closeModal('modal-plans')">&#x2715;</button>
+    </div>
+    <div id="plans-current" style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;" id="plans-list-modal"></div>
   </div>
 </div>
 
@@ -579,6 +644,14 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <div class="card" style="margin:0;padding:0;overflow:hidden;">
         <button onclick="resetToOnboarding()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
           <div style="display:flex;align-items:center;gap:10px;font-weight:700;">🏷️ שנה תחום עסקי</div>
+          <span style="color:var(--muted);">›</span>
+        </button>
+      </div>
+
+      <!-- מנוי -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="openUpgradePlans()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">💳 מנוי<span id="settings-plan-badge" style="font-size:11px;background:rgba(37,99,235,.12);color:var(--accent);border-radius:20px;padding:2px 10px;font-weight:600;"></span></div>
           <span style="color:var(--muted);">›</span>
         </button>
       </div>
@@ -1144,7 +1217,7 @@ function showOnboarding(){
       '<div class="tc-name">'+t.name+'</div>'+
       '<div class="tc-desc">'+t.desc+'</div></div>';
   }).join('');
-  ['ob-s1','ob-s2','ob-s3'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  ['ob-s1','ob-s2','ob-s3','ob-s4'].forEach(function(id){document.getElementById(id).classList.remove('active');});
   document.getElementById('ob-s1').classList.add('active');
   document.getElementById('ob-overlay').classList.add('show');
 }
@@ -1161,6 +1234,98 @@ function showLogin(){
   lo.classList.add('show');
 }
 window.showLogin=showLogin;
+
+/* ── PLANS ── */
+var PLANS={
+  basic:{name:'מצומצם',price:49,shelves:5,items:20,suppliers:3,reports:'basic'},
+  pro:{name:'גדול',price:149,shelves:25,items:100,suppliers:20,reports:'full'},
+  enterprise:{name:'ענק',price:349,shelves:9999,items:9999,suppliers:9999,reports:'full'}
+};
+var _selectedPlan='pro';
+
+function selectPlan(key){
+  _selectedPlan=key;
+  ['basic','pro','enterprise'].forEach(function(k){
+    document.getElementById('plan-'+k).classList.toggle('selected',k===key);
+  });
+}
+window.selectPlan=selectPlan;
+
+function getPlan(){
+  var p=LS.get('plan',null);
+  return p&&PLANS[p.key]?p:{key:'pro',name:'גדול',trialEnd:Date.now()+14*86400000};
+}
+
+function getPlanLimits(){return PLANS[getPlan().key]||PLANS.pro;}
+
+function checkLimit(type,addCount){
+  if(isDemo())return true;
+  var lim=getPlanLimits(), cur=0;
+  if(type==='shelf')cur=getShelves().length;
+  else if(type==='item')cur=getItems().length;
+  else if(type==='supplier')cur=getSuppliers().length;
+  var max=type==='shelf'?lim.shelves:type==='item'?lim.items:lim.suppliers;
+  if(cur+(addCount||1)>max){
+    var el=document.getElementById('upgrade-msg');
+    var names={shelf:'משטחי שקילה',item:'פריטים',supplier:'ספקים'};
+    document.getElementById('upgrade-title').textContent='הגעת לגבול המנוי';
+    el.textContent='במסלול "'+getPlanLimits().name+'" אפשר עד '+max+' '+names[type]+'. שדרג כדי להוסיף עוד.';
+    openModal('modal-upgrade');
+    return false;
+  }
+  return true;
+}
+
+function openUpgradePlans(){
+  var cur=getPlan(), lim=getPlanLimits();
+  document.getElementById('plans-current').textContent='המסלול הנוכחי שלך: '+lim.name+' (₪'+PLANS[cur.key].price+'/חודש)';
+  var html='';
+  Object.keys(PLANS).forEach(function(k){
+    var p=PLANS[k], isCur=cur.key===k;
+    html+='<div class="plan-card'+(isCur?' selected':'')+'" style="'+(isCur?'opacity:.6;cursor:default;':'')+'">'+
+      (k==='pro'?'<div class="plan-badge">הכי פופולרי</div>':'')+
+      '<div class="plan-top"><span class="plan-name">'+p.name+'</span><span class="plan-price">₪'+p.price+'/חודש</span></div>'+
+      '<ul class="plan-list">'+
+      '<li>עד '+(p.shelves>999?'ללא הגבלה':p.shelves)+' משטחים</li>'+
+      '<li>עד '+(p.items>999?'ללא הגבלה':p.items)+' פריטים</li>'+
+      '<li>עד '+(p.suppliers>999?'ללא הגבלה':p.suppliers)+' ספקים</li>'+
+      '</ul>'+
+      (isCur?'<div style="margin-top:8px;font-size:12px;color:var(--accent);font-weight:700;">✓ המסלול הנוכחי</div>':
+        '<button class="btn" style="margin-top:10px;width:100%;" onclick="upgradeTo(\''+k+'\')">עבור למסלול '+p.name+'</button>')+
+      '</div>';
+  });
+  document.getElementById('plans-list-modal').innerHTML=html;
+  openModal('modal-plans');
+}
+window.openUpgradePlans=openUpgradePlans;
+
+function upgradeTo(key){
+  // כאן בעתיד יתחבר לתשלום — כרגע מאשר ישירות
+  var p=PLANS[key];
+  LS.set('plan',{key:key,name:p.name,since:Date.now(),trialEnd:Date.now()+14*86400000});
+  closeModal('modal-plans');
+  closeModal('modal-upgrade');
+  alert('עברת למסלול "'+p.name+'" ✓\nעלות: ₪'+p.price+'/חודש');
+}
+window.upgradeTo=upgradeTo;
+
+function obToPlans(){
+  // ולידציה של שלב ההרשמה
+  var idnum=document.getElementById('ob-idnum').value.trim();
+  var pw=document.getElementById('ob-pw').value;
+  var pw2=document.getElementById('ob-pw2').value;
+  var fullname=document.getElementById('ob-fullname').value.trim();
+  var phone=document.getElementById('ob-phone').value.trim();
+  var errEl=document.getElementById('reg-err');
+  errEl.style.display='none';
+  if(!fullname){errEl.textContent='הכנס שם מלא';errEl.style.display='block';return;}
+  if(!idnum||idnum.length<7){errEl.textContent='הכנס מספר תעודת זהות תקין';errEl.style.display='block';return;}
+  if(pw.length<4){errEl.textContent='הסיסמה חייבת לפחות 4 תווים';errEl.style.display='block';return;}
+  if(pw!==pw2){errEl.textContent='הסיסמאות לא תואמות';errEl.style.display='block';return;}
+  document.getElementById('ob-s3').classList.remove('active');
+  document.getElementById('ob-s4').classList.add('active');
+}
+window.obToPlans=obToPlans;
 
 function pwHash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h.toString(36);}
 
@@ -1199,15 +1364,8 @@ function obFinish(){
   if(!_obTmpl)return;
   var idnum=document.getElementById('ob-idnum').value.trim();
   var pw=document.getElementById('ob-pw').value;
-  var pw2=document.getElementById('ob-pw2').value;
   var fullname=document.getElementById('ob-fullname').value.trim();
   var phone=document.getElementById('ob-phone').value.trim();
-  var errEl=document.getElementById('reg-err');
-  errEl.style.display='none';
-  if(!fullname){errEl.textContent='הכנס שם מלא';errEl.style.display='block';return;}
-  if(!idnum||idnum.length<7){errEl.textContent='הכנס מספר תעודת זהות תקין';errEl.style.display='block';return;}
-  if(pw.length<4){errEl.textContent='הסיסמה חייבת לפחות 4 תווים';errEl.style.display='block';return;}
-  if(pw!==pw2){errEl.textContent='הסיסמאות לא תואמות';errEl.style.display='block';return;}
   LS.set('tmpl',_obTmpl);
   _DR=null;
   var biz=document.getElementById('ob-bizname').value.trim();
@@ -1215,6 +1373,7 @@ function obFinish(){
   var td=TEMPLATES[_obTmpl];
   LS.set('settings',{bizName:biz,bizType:td.bizType||'',currency:cur,defaultAlert:20,demo:true,bizNotes:''});
   LS.set('account',{fullname:fullname,idnum:idnum,phone:phone,pwHash:pwHash(pw)});
+  LS.set('plan',{key:_selectedPlan,name:PLANS[_selectedPlan].name,since:Date.now(),trialEnd:Date.now()+14*86400000});
   LS.set('session',true);
   document.getElementById('ob-overlay').classList.remove('show');
   renderDash(); updBell(); updateDashLogo();
@@ -1561,6 +1720,8 @@ window.openEditSupplier=openEditSupplier;
 function saveSupplier(){
   var name=document.getElementById('se-name').value.trim();
   if(!name){alert('הכנס שם ספק');return;}
+  var isNew=!document.getElementById('se-id').value;
+  if(isNew&&!checkLimit('supplier'))return;
   var sups=getSuppliers(), id=document.getElementById('se-id').value;
   var obj={id:id||'s'+Date.now(),name:name,tel:document.getElementById('se-tel').value.trim(),wa:document.getElementById('se-wa').value.trim(),email:document.getElementById('se-email').value.trim(),orderEmail:document.getElementById('se-ordermail').value.trim(),contact:document.getElementById('se-contact').value.trim(),notes:document.getElementById('se-notes').value.trim()};
   if(id){var idx=sups.findIndex(function(s){return s.id===id;});if(idx>=0)sups[idx]=obj;else sups.push(obj);}
@@ -1648,6 +1809,7 @@ function addItemForSupplier(supName){
 window.addItemForSupplier=addItemForSupplier;
 
 function openAddItem(){
+  if(!checkLimit('item'))return;
   document.getElementById('item-modal-title').textContent='פריט חדש';
   ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-supwa','im-supemail','im-ordermail','im-notes'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('im-id').value=''; document.getElementById('im-del').style.display='none';
@@ -1818,6 +1980,8 @@ function stToggle(id){
 }
 function openSettings(){
   var s=getSettings();
+  var pb=document.getElementById('settings-plan-badge');
+  if(pb){var pl=getPlan();pb.textContent=PLANS[pl.key]?PLANS[pl.key].name:'';}
   document.getElementById('st-biz').value=s.bizName||'';
   document.getElementById('st-type').value=s.bizType||'';
   document.getElementById('st-cur').value=s.currency||'₪';
@@ -1908,6 +2072,7 @@ window.updateDashLogo=updateDashLogo;
 ════════════════════════════════════════════════════ */
 var wD={}, wSI=null;
 function openSetupWizard(){
+  if(!checkLimit('shelf'))return;
   wD={}; wSI=null;
   document.querySelectorAll('.wstep').forEach(function(s){s.classList.remove('active');});
   document.getElementById('wiz-s1').classList.add('active');
