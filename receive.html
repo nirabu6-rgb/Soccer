@@ -71,18 +71,22 @@ input:focus,select:focus{outline:2px solid var(--accent);border-color:transparen
     <label>חפש פריט לקבלה</label>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input id="search-inp" placeholder="שם פריט / ברקוד / מק&quot;ט..." oninput="doSearch(this.value)" autocomplete="off">
+      <input id="search-inp" placeholder="שם פריט / ברקוד / מק&quot;ט..." oninput="doSearch(this.value)" autocomplete="off" onkeydown="if(event.key==='Enter')doSearch(this.value)">
     </div>
-    <div class="results" id="results-list"></div>
+    <button class="btn" style="margin-top:10px;" onclick="doSearch(document.getElementById('search-inp').value)">חפש</button>
+    <div class="results" id="results-list" style="margin-top:8px;"></div>
   </div>
 
   <div class="card" id="scan-card">
-    <label style="margin-bottom:8px;">או סרוק ברקוד</label>
-    <button class="btn sec" onclick="startScan()">📷 סריקת ברקוד</button>
+    <label style="margin-bottom:8px;">או סרוק / צלם ברקוד</label>
+    <div class="row">
+      <button class="btn sec" onclick="startScan()">📷 מצלמה</button>
+      <button class="btn sec" onclick="scanPhoto()">🖼️ תמונה מהגלריה</button>
+    </div>
   </div>
 
   <div class="note-wrap">
-    💡 הזן שם פריט, ברקוד או מק"ט כדי למצוא את המשטח לעדכון
+    💡 הזן שם פריט, ברקוד או מק"ט — או צלם את הברקוד עם המצלמה
   </div>
 </div>
 
@@ -251,6 +255,34 @@ function unitL(it){
   var UNITS=[{v:'unit',l:'יחידות'},{v:'kg',l:'ק"ג'},{v:'g',l:'גרם'},{v:'l',l:'ליטר'},{v:'m',l:'מטר'},{v:'box',l:'קופסאות'},{v:'bag',l:'שקיות'}];
   if(!it)return 'יחידות';
   var u=UNITS.find(function(x){return x.v===(it.unitType||'unit');}); return u?u.l:'יחידות';
+}
+
+function scanPhoto(){
+  if(!('BarcodeDetector' in window)){
+    var code=prompt('הזן ברקוד ידנית:');
+    if(code){document.getElementById('search-inp').value=code.trim();doSearch(code.trim());}
+    return;
+  }
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.onchange=function(){
+    var file=inp.files[0]; if(!file) return;
+    var img=new Image();
+    img.onload=function(){
+      var det=new BarcodeDetector();
+      det.detect(img).then(function(codes){
+        if(codes.length){
+          var code=codes[0].rawValue;
+          document.getElementById('search-inp').value=code;
+          doSearch(code);
+        } else {
+          alert('לא זוהה ברקוד בתמונה — נסה שוב עם תאורה טובה יותר');
+        }
+      }).catch(function(){alert('שגיאה בזיהוי ברקוד');});
+    };
+    img.src=URL.createObjectURL(file);
+  };
+  inp.click();
 }
 
 function startScan(){
