@@ -345,16 +345,46 @@ var COOLDOWN_LIBRARY = [
   {title:'סיכום קבוצתי', description:'סיכום קצר עם הקבוצה והתייחסות לאימון', duration_min:3}
 ];
 
-/* ---------------- AI-style plan wizard (fixed-step, no real AI) ---------------- */
-var WIZ_QUESTIONS = [
-  {key:'target', label:'בשביל מי בונים את התוכנית?'},
-  {key:'goal', label:'מה המטרה המרכזית?'},
-  {key:'freq', label:'כמה ימי אימון בשבוע?'},
-  {key:'injury', label:'מגבלה רפואית / פציעה שיש להתחשב בה?'}
-];
-var WIZ_GOALS = ['שיפור מהירות','טכניקה','כוח','משחק קבוצתי'];
-var WIZ_GOAL_TO_CATEGORY = {'שיפור מהירות':'חימום','טכניקה':'טכניקה','כוח':'כוח','משחק קבוצתי':'משחק'};
-var WIZ_STATE = {step:0, answers:{target:'',goal:WIZ_GOALS[0],freq:'3',injury:''}};
+/* ---------------- AI training-plan assistant ----------------
+   Deliberately a separate feature/entity (fc_aiplans) from the
+   board-drawn team training plans above (fc_trainingplans): it targets
+   one player or a whole group and generates exercises matched to the
+   topics the coach picks, with no pitch-sketch board involved. The
+   generation itself is a fixed curated bank for now (no real AI call
+   yet) but is isolated in buildAiPlanPhases() as the integration point
+   for a real model later. */
+var AI_PLANS = [];
+var AI_PLANS_LOADED = false;
+var currentAiPlanId = null;
+var AI_PLAN_TOPICS = ['מהירות','טכניקה אישית','כוח','קואורדינציה','משחק קבוצתי','סיומות לשער'];
+var AI_TOPIC_EXERCISE_BANK = {
+  'מהירות': [
+    {title:'ספרינטים 6x20 מ׳', description:'ריצות מהירות מקסימליות עם מנוחה מלאה בין חזרות', duration_min:12},
+    {title:'עבודת רגליים בסולם זריזות', description:'תרגילי קואורדינציה וזריזות עם סולם אימון', duration_min:8},
+    {title:'ריצות תגובה מיציאה', description:'ספרינטים קצרים מיציאה בשכיבה/ישיבה לשיפור זמן תגובה', duration_min:10}
+  ],
+  'טכניקה אישית': [
+    {title:'שליטה בכדור בחלל צר', description:'תרגול נגיעות כדור ושינויי כיוון בתוך משבצת קטנה', duration_min:10},
+    {title:'כדרור בין קונוסים', description:'סלאלום בין קונוסים בקצב עולה עם שתי הרגליים', duration_min:10},
+    {title:'מסירות דיוק לזוגות', description:'מסירות קצרות וארוכות עם דגש על דיוק ומשקל המסירה', duration_min:10}
+  ],
+  'כוח': [
+    {title:'תרגילי כוח פונקציונלי (משקל גוף)', description:'סקוואטים, לאנג׳ים ופלאנק בסטים קצרים', duration_min:12},
+    {title:'קפיצות פליומטריות', description:'קפיצות לקופסה/מכשולים לפיתוח כוח נפץ ברגליים', duration_min:8}
+  ],
+  'קואורדינציה': [
+    {title:'תרגול סולם זריזות מורכב', description:'רצפים מורכבים עם שינויי כיוון וקצב', duration_min:8},
+    {title:'זריקה-תפיסה עם עבודת רגליים', description:'תרגילי קואורדינציה יד-רגל בזוגות', duration_min:8}
+  ],
+  'משחק קבוצתי': [
+    {title:'משחק החזקה 5 נגד 2', description:'שמירה על החזקת כדור בחלל מוגבל', duration_min:12},
+    {title:'משחק מעברים 4 נגד 4 בשערים קטנים', description:'דגש על מעברי הגנה-התקפה מהירים', duration_min:15}
+  ],
+  'סיומות לשער': [
+    {title:'סיומות מול שוער אחרי מסירה', description:'רצף מסירה-קבלה-בעיטה לשער מזוויות שונות', duration_min:10},
+    {title:'סיומות ראש אחרי הגשה', description:'תרגול נגיחות שער אחרי הגשות מהאגפים', duration_min:8}
+  ]
+};
 
 var AGE_GROUPS = ['נוער','נערים א\'','נערים ב\'','נערים ג\'','ילדים א\'','ילדים ב\'','ילדים ג\'','טרום א\'','טרום ב\'','טרום ג\'','בית הספר לכדורגל'];
 var CLUB_TEAMS = {};
@@ -1256,6 +1286,7 @@ function enterApp(){
   loadPlayerMetrics();
   loadMatches();
   loadMatchEvents();
+  loadAiPlans();
 }
 function buildNav(){
   var list = document.getElementById('navBtnsList');
@@ -1301,28 +1332,40 @@ function renderTab(i){
 
 /* ---------------- Tab 0: Training plans library ---------------- */
 function tplPlans(){
-  if(!TRAINING_PLANS_LOADED){
+  if(!TRAINING_PLANS_LOADED || !AI_PLANS_LOADED){
     loadPlans();
+    loadAiPlans();
     return '<div class="section-title">📋 תוכניות אימון</div><div class="muted" style="text-align:center">טוען...</div>';
   }
   return ''+
   dashHeaderHtml()+
   dashStatsHtml()+
   '<div id="alertsBox">'+alertsSectionHtml()+'</div>'+
-  '<div class="section-title">📋 תוכניות אימון</div>'+
+  '<div class="section-title">📋 תוכניות אימון קבוצתיות</div>'+
   '<div class="muted" style="margin-bottom:10px">בנה תוכנית אימון עם סרטוטים אינטראקטיביים על המגרש ושמור אותה לשימוש חוזר</div>'+
   '<div class="action-row" style="margin-bottom:14px">'+
     '<button class="btn" id="btnNewPlan">+ תוכנית אימון חדשה</button>'+
     '<button class="btn ghost" id="btnOpenDrillLib">🗂 בנק תרגילים</button>'+
     '<button class="btn ghost" id="btnOpenCoachTrainingLib">📑 ספריית אימונים שלי</button>'+
   '</div>'+
-  '<button class="btn ghost" id="btnAiWizard" style="margin-bottom:14px">🤖 בנה תוכנית עם עוזר חכם</button>'+
   (TRAINING_PLANS.length===0
     ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוצרו תוכניות אימון</div>'
     : TRAINING_PLANS.map(function(p,i){
         return '<div class="card"><div class="row"><b>'+p.name+'</b><button class="logout-btn" data-delplan="'+i+'" title="מחק">🗑</button></div>'+
           '<div class="muted" style="margin-top:4px">'+(p.drills?p.drills.length:0)+' תרגילים</div>'+
           '<button class="btn ghost sm" data-viewplan="'+i+'" style="margin-top:8px">פתח</button>'+
+        '</div>';
+      }).join('')
+  )+
+  '<div class="section-title" style="margin-top:24px">🤖 תוכניות אימון מהעוזר החכם</div>'+
+  '<div class="muted" style="margin-bottom:10px">תוכנית נפרדת — לשחקן/ית בודד/ה או לקבוצה שלמה — שבה העוזר החכם בונה תרגילים ממוקדים בדיוק לנושאים שתבחר/י. אינה קשורה לתוכניות עם השרטוט שלמעלה</div>'+
+  '<button class="btn ghost" id="btnNewAiPlan" style="margin-bottom:14px">🤖 תוכנית AI חדשה</button>'+
+  (AI_PLANS.length===0
+    ? '<div class="card" style="text-align:center;color:var(--sub)">עדיין לא נוצרו תוכניות מהעוזר החכם</div>'
+    : AI_PLANS.slice().sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); }).map(function(p){
+        return '<div class="card" data-openaiplan="'+p.id+'" style="cursor:pointer">'+
+          '<div class="row"><b>'+(p.targetName||'')+'</b><span class="badge">'+(p.targetType==='player'?'שחקן/ית':'קבוצה')+'</span></div>'+
+          '<div class="muted" style="margin-top:4px">'+(p.topics||[]).join(' · ')+'</div>'+
         '</div>';
       }).join('')
   );
@@ -3094,8 +3137,6 @@ function wireTab(i){
     if(ndl) ndl.onclick = function(){ openDrillLib(); };
     var nctl = document.getElementById('btnOpenCoachTrainingLib');
     if(nctl) nctl.onclick = function(){ openCoachTrainingLib(); };
-    var nwz = document.getElementById('btnAiWizard');
-    if(nwz) nwz.onclick = function(){ openWizardModal(); };
     document.querySelectorAll('[data-viewplan]').forEach(function(btn){
       btn.onclick = function(){ openPlanBuilder(parseInt(btn.dataset.viewplan,10)); };
     });
@@ -3107,6 +3148,11 @@ function wireTab(i){
         TRAINING_PLANS.splice(idx,1);
         renderTab(0);
       };
+    });
+    var nap = document.getElementById('btnNewAiPlan');
+    if(nap) nap.onclick = function(){ openAiPlanModal(); };
+    document.querySelectorAll('[data-openaiplan]').forEach(function(el){
+      el.onclick = function(){ openAiPlanDetail(el.dataset.openaiplan); };
     });
   } else if(i===1){
     document.querySelectorAll('[data-openteam]').forEach(function(el){
@@ -3509,12 +3555,7 @@ function savePlan(){
   });
 }
 /* ---------------- AI-style plan wizard modal flow ---------------- */
-function openWizardModal(){
-  WIZ_STATE = {step:0, answers:{target:'',goal:WIZ_GOALS[0],freq:'3',injury:''}};
-  if(!CLUB_TEAMS_LOADED) loadClubTeams();
-  renderWizardModal();
-}
-function wizardAllPlayers(){
+function aiPlanAllPlayers(){
   var out = [];
   AGE_GROUPS.forEach(function(cat){
     var t = CLUB_TEAMS[cat];
@@ -3522,8 +3563,8 @@ function wizardAllPlayers(){
   });
   return out;
 }
-function wizardPrefillInjury(targetName){
-  var found = wizardAllPlayers().filter(function(x){ return x.name===targetName; })[0];
+function aiPlanPrefillInjury(targetName){
+  var found = aiPlanAllPlayers().filter(function(x){ return x.name===targetName; })[0];
   if(!found) return '';
   var pl = found.player;
   if(pl.injury_status==='injured' || pl.injury_status==='rehab'){
@@ -3531,99 +3572,141 @@ function wizardPrefillInjury(targetName){
   }
   return '';
 }
-function renderWizardModal(){
-  var step = WIZ_STATE.step;
-  var totalSteps = WIZ_QUESTIONS.length;
-  var html = '<h3>🤖 בניית תוכנית עם עוזר חכם</h3>'+
-    '<div class="muted" style="margin-bottom:14px">שאלה '+(Math.min(step+1,totalSteps))+' מתוך '+totalSteps+'</div>';
-  if(step >= totalSteps){
-    var a = WIZ_STATE.answers;
-    html += '<div class="card">'+
-      '<div class="row"><span>מטרה</span><span class="muted">'+a.target+'</span></div>'+
-      '<div class="row" style="margin-top:6px"><span>יעד</span><span class="muted">'+a.goal+'</span></div>'+
-      '<div class="row" style="margin-top:6px"><span>תדירות</span><span class="muted">'+a.freq+' בשבוע</span></div>'+
-      '<div class="row" style="margin-top:6px"><span>מגבלה רפואית</span><span class="muted">'+(a.injury||'אין')+'</span></div>'+
-    '</div>'+
-    '<button class="btn" id="wizCreatePlan" style="margin-top:10px">✅ צור תוכנית</button>'+
-    '<button class="btn ghost" id="wizBack" style="margin-top:8px">חזרה</button>';
-    openModal(html);
-    document.getElementById('wizBack').onclick = function(){ WIZ_STATE.step--; renderWizardModal(); };
-    document.getElementById('wizCreatePlan').onclick = function(){
-      var plan = buildPlanFromWizard(WIZ_STATE.answers);
-      closeModal();
-      var idx = TRAINING_PLANS.length;
-      TRAINING_PLANS.push(plan);
-      openPlanBuilder(idx);
-    };
-    return;
-  }
-  var q = WIZ_QUESTIONS[step];
-  var fieldHtml = '';
-  if(q.key==='target'){
-    var players = wizardAllPlayers();
-    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
-      '<option value="כל הקבוצה">כל הקבוצה</option>'+
-      players.map(function(x){ return '<option value="'+x.name+'">'+x.name+' ('+x.category+')</option>'; }).join('')+
-    '</select></div>';
-  } else if(q.key==='goal'){
-    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
-      WIZ_GOALS.map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('')+
-    '</select></div>';
-  } else if(q.key==='freq'){
-    fieldHtml = '<div class="field"><label>'+q.label+'</label><select id="wizInput">'+
-      [2,3,4,5,6].map(function(n){ return '<option value="'+n+'"'+(n===3?' selected':'')+'>'+n+' בשבוע</option>'; }).join('')+
-    '</select></div>';
-  } else if(q.key==='injury'){
-    var prefill = WIZ_STATE.answers.injury || wizardPrefillInjury(WIZ_STATE.answers.target);
-    fieldHtml = '<div class="field"><label>'+q.label+'</label><textarea id="wizInput" rows="2" placeholder="אין מגבלה">'+prefill+'</textarea></div>';
-  }
-  html += fieldHtml+
-    '<button class="btn" id="wizNext" style="margin-top:8px">הבא ›</button>'+
-    (step>0 ? '<button class="btn ghost" id="wizBack" style="margin-top:8px">‹ חזרה</button>' : '');
-  openModal(html);
-  document.getElementById('wizNext').onclick = function(){
-    var el = document.getElementById('wizInput');
-    WIZ_STATE.answers[q.key] = el.value.trim();
-    WIZ_STATE.step++;
-    renderWizardModal();
-  };
-  var backBtn = document.getElementById('wizBack');
-  if(backBtn) backBtn.onclick = function(){ WIZ_STATE.step--; renderWizardModal(); };
-}
-function wizardPhaseTitles(goal){
-  var titles = {
-    'שיפור מהירות':['חימום דינמי','ספרינטים וכוח נפץ','משחק תרגיל קצר'],
-    'טכניקה':['חימום עם כדור','תרגול שליטה ומסירות','משחק תרגיל יישומי'],
-    'כוח':['חימום ומוביליות','תרגילי כוח פונקציונלי','שחרור ומתיחות'],
-    'משחק קבוצתי':['חימום קבוצתי','תרגילי החזקה ומעברים','משחק קבוצתי מלא']
-  };
-  return titles[goal] || titles['טכניקה'];
-}
-function buildPlanFromWizard(a){
-  var category = WIZ_GOAL_TO_CATEGORY[a.goal] || 'טכניקה';
-  var phaseTitles = wizardPhaseTitles(a.goal);
-  var matchingDrills = DRILL_LIB_LOADED ? DRILL_LIB.filter(function(d){ return d.category===category; }) : [];
-  var phases = phaseTitles.map(function(title, i){
-    var items = [];
-    if(matchingDrills[i]){
-      var d = matchingDrills[i];
-      items.push({drillId:d.id, title:d.title, category:d.category, duration_min:d.duration_min||0, notes:''});
-    } else {
-      items.push({drillId:null, title:title, category:category, duration_min:15, notes:''});
-    }
-    return {name:title, items:items};
+function loadAiPlans(){
+  if(!ME.uid) return;
+  db.collection(P+'aiplans').where('coachUid','==',ME.uid).get().then(function(snap){
+    AI_PLANS = snap.docs.map(function(d){ return d.data(); });
+    AI_PLANS_LOADED = true;
+    if(TAB===0) renderTab(0);
+    if(currentAiPlanId) renderAiPlanDetail();
   });
-  var nameTarget = a.target && a.target!=='כל הקבוצה' ? a.target : 'הקבוצה';
-  var plan = {
-    id: genCode(8),
-    coachUid: ME.uid,
-    name: 'תוכנית עוזר חכם — '+nameTarget+' · '+a.goal,
-    drills: [],
-    phases: phases,
-    wizardMeta: {target:a.target, goal:a.goal, freq:a.freq, injury:a.injury}
+}
+function aiPlanById(id){
+  for(var i=0;i<AI_PLANS.length;i++) if(AI_PLANS[i].id===id) return AI_PLANS[i];
+  return null;
+}
+function openAiPlanModal(){
+  if(!CLUB_TEAMS_LOADED) loadClubTeams();
+  var cats = AGE_GROUPS.filter(function(c){ return categoryAllowed(c); });
+  var players = aiPlanAllPlayers().filter(function(x){ return categoryAllowed(x.category); });
+  var html = '<h3 style="margin-bottom:4px">🤖 תוכנית אימון מהעוזר החכם</h3>'+
+    '<div class="muted" style="margin-bottom:14px">תוכנית נפרדת מתוכניות השרטוט — העוזר בונה תרגילים ממוקדים לנושאים שתבחר/י</div>'+
+    '<div class="field"><label>למי מיועדת התוכנית?</label>'+
+      '<select id="aiTargetTypeInput"><option value="group">לקבוצה שלמה</option><option value="player">לשחקן/ית ספציפי/ת</option></select>'+
+    '</div>'+
+    '<div class="field" id="aiGroupField"><label>קבוצת גילאים</label><select id="aiCategoryInput">'+
+      cats.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field" id="aiPlayerField" style="display:none"><label>שחקן/ית</label><select id="aiPlayerInput">'+
+      players.map(function(x){ return '<option value="'+x.name+'" data-cat="'+x.category+'">'+x.name+' ('+x.category+')</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>נושאים לתרגול (ניתן לבחור כמה)</label>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+        AI_PLAN_TOPICS.map(function(t){
+          return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--card2);border-radius:8px;padding:5px 9px;font-size:12px">'+
+            '<input type="checkbox" class="aiTopicInput" value="'+t+'" style="width:auto">'+t+
+          '</label>';
+        }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="field"><label>תדירות אימונים בשבוע</label><select id="aiFreqInput">'+
+      [2,3,4,5,6].map(function(n){ return '<option value="'+n+'"'+(n===3?' selected':'')+'>'+n+'</option>'; }).join('')+
+    '</select></div>'+
+    '<div class="field"><label>מגבלה רפואית / הערה (אופציונלי)</label><textarea id="aiInjuryInput" rows="2"></textarea></div>'+
+    '<button class="btn" id="btnGenerateAiPlan">✅ בנה תוכנית</button>';
+  openModal(html);
+  var typeSel = document.getElementById('aiTargetTypeInput');
+  typeSel.onchange = function(){
+    var isPlayer = typeSel.value==='player';
+    document.getElementById('aiPlayerField').style.display = isPlayer ? 'block' : 'none';
+    document.getElementById('aiGroupField').style.display = isPlayer ? 'none' : 'block';
+    if(isPlayer){
+      var psel = document.getElementById('aiPlayerInput');
+      var prefill = aiPlanPrefillInjury(psel.value);
+      if(prefill) document.getElementById('aiInjuryInput').value = prefill;
+    }
   };
-  db.collection(P+'trainingplans').doc(plan.id).set(plan);
-  return plan;
+  document.getElementById('btnGenerateAiPlan').onclick = function(){
+    var topics = Array.prototype.slice.call(document.querySelectorAll('.aiTopicInput:checked')).map(function(el){ return el.value; });
+    if(topics.length===0){ alert('בחר/י לפחות נושא אחד'); return; }
+    var targetType = typeSel.value;
+    var category, targetName;
+    if(targetType==='player'){
+      var psel = document.getElementById('aiPlayerInput');
+      if(!psel.value){ alert('אין שחקנים זמינים — הוסף/י שחקנים לקבוצה תחילה'); return; }
+      targetName = psel.value;
+      category = psel.options[psel.selectedIndex].getAttribute('data-cat');
+    } else {
+      category = document.getElementById('aiCategoryInput').value;
+      targetName = category;
+    }
+    var plan = {
+      id: genCode(8),
+      coachUid: ME.uid,
+      targetType: targetType,
+      targetName: targetName,
+      category: category,
+      topics: topics,
+      freq: document.getElementById('aiFreqInput').value,
+      injury: document.getElementById('aiInjuryInput').value.trim(),
+      phases: buildAiPlanPhases(topics),
+      createdAt: Date.now()
+    };
+    db.collection(P+'aiplans').doc(plan.id).set(plan).then(function(){
+      AI_PLANS.push(plan);
+      if(TAB===0) renderTab(0);
+      closeModal();
+      openAiPlanDetail(plan.id);
+    });
+  };
+}
+/* Fixed curated exercise bank for now (no real AI call). Kept as a
+   single function so it can be swapped for a server-side AI-generated
+   plan later without touching the surrounding UI/data flow. */
+function buildAiPlanPhases(topics){
+  var phases = [];
+  var wu = WARMUP_LIBRARY[Math.floor(Math.random()*WARMUP_LIBRARY.length)];
+  phases.push({name:'חימום', items:[{title:wu.title, description:wu.description, duration_min:wu.duration_min}]});
+  topics.forEach(function(topic){
+    var bank = AI_TOPIC_EXERCISE_BANK[topic] || [];
+    var items = bank.slice(0,2).map(function(ex){ return {title:ex.title, description:ex.description, duration_min:ex.duration_min}; });
+    if(items.length===0) items.push({title:topic, description:'תרגול ממוקד בנושא '+topic, duration_min:15});
+    phases.push({name:topic, items:items});
+  });
+  var cd = COOLDOWN_LIBRARY[Math.floor(Math.random()*COOLDOWN_LIBRARY.length)];
+  phases.push({name:'שחרור וסיום', items:[{title:cd.title, description:cd.description, duration_min:cd.duration_min}]});
+  return phases;
+}
+function openAiPlanDetail(id){
+  currentAiPlanId = id;
+  renderAiPlanDetail();
+}
+function renderAiPlanDetail(){
+  var p = aiPlanById(currentAiPlanId);
+  if(!p) return;
+  var totalMin = 0;
+  p.phases.forEach(function(ph){ ph.items.forEach(function(it){ totalMin += (it.duration_min||0); }); });
+  var html = '<h3 style="margin-bottom:4px">🤖 '+(p.targetName||'')+'</h3>'+
+    '<div class="muted" style="margin-bottom:14px">'+(p.targetType==='player'?'שחקן/ית':'קבוצה')+' · '+p.topics.join(' · ')+' · '+p.freq+' אימונים בשבוע · סה"כ כ-'+totalMin+' דק׳</div>'+
+    (p.injury ? '<div class="card"><b>מגבלה/הערה:</b> '+p.injury+'</div>' : '')+
+    p.phases.map(function(ph){
+      return '<div class="phase-block"><b>'+ph.name+'</b>'+
+        ph.items.map(function(it){
+          return '<div class="phase-drill-row"><div><b>'+it.title+'</b>'+(it.description?'<div class="muted" style="font-size:11px">'+it.description+'</div>':'')+'</div><span class="badge">'+(it.duration_min||0)+' דק׳</span></div>';
+        }).join('')+
+      '</div>';
+    }).join('')+
+    '<button class="logout-btn" id="btnDeleteAiPlan" style="color:var(--bad);font-size:13px;margin-top:8px">🗑 מחק תוכנית</button>';
+  openModal(html);
+  document.getElementById('btnDeleteAiPlan').onclick = function(){
+    if(!confirm('למחוק את התוכנית?')) return;
+    db.collection(P+'aiplans').doc(p.id).delete().then(function(){
+      AI_PLANS = AI_PLANS.filter(function(x){ return x.id!==p.id; });
+      currentAiPlanId = null;
+      closeModal();
+      renderTab(0);
+    });
+  };
 }
 
 /* ---------------- Session builder phases (בונה אימונים) ---------------- */
