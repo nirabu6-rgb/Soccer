@@ -348,13 +348,79 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 
 <!-- modal בחירת מנוי לשדרוג -->
 <div class="modal-overlay" id="modal-plans">
-  <div class="modal-box" style="width:calc(100% - 28px);max-height:90vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="margin:0;">💳 המסלולים שלנו</h3>
+  <div class="modal-box" style="width:calc(100% - 28px);max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <h3 style="margin:0;">💳 מנוי WeightStock</h3>
       <button class="modal-close" onclick="closeModal('modal-plans')">&#x2715;</button>
     </div>
-    <div id="plans-current" style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
-    <div style="display:flex;flex-direction:column;gap:10px;" id="plans-list-modal"></div>
+
+    <!-- מסלול נוכחי -->
+    <div id="plans-current" style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;"></div>
+
+    <!-- טאבים -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:2px solid var(--border);padding-bottom:0;">
+      <button id="ptab-plans" onclick="showPlanTab('plans')" style="background:none;border:none;border-bottom:2px solid var(--accent);margin-bottom:-2px;padding:8px 16px;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer;">מסלולים</button>
+      <button id="ptab-compare" onclick="showPlanTab('compare')" style="background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:8px 16px;font-size:14px;color:var(--muted);cursor:pointer;">השוואה</button>
+      <button id="ptab-faq" onclick="showPlanTab('faq')" style="background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:8px 16px;font-size:14px;color:var(--muted);cursor:pointer;">שאלות</button>
+    </div>
+
+    <!-- תוכן טאב מסלולים -->
+    <div id="ptab-content-plans">
+      <div style="display:flex;flex-direction:column;gap:10px;" id="plans-list-modal"></div>
+      <div style="margin-top:14px;padding:12px;background:var(--card2);border-radius:12px;font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">
+        ✅ 14 ימי ניסיון חינם בכל מסלול<br>
+        ✅ ביטול בכל עת ללא קנס<br>
+        ✅ לא נדרש כרטיס אשראי לניסיון
+      </div>
+    </div>
+
+    <!-- תוכן טאב השוואה -->
+    <div id="ptab-content-compare" style="display:none;">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="text-align:right;padding:8px 6px;color:var(--muted);">תכונה</th>
+              <th style="padding:8px 6px;text-align:center;color:var(--muted);">מצומצם<br><span style="font-size:11px;color:var(--accent);">₪49/חודש</span></th>
+              <th style="padding:8px 6px;text-align:center;color:var(--accent);font-weight:800;">גדול<br><span style="font-size:11px;">₪149/חודש</span></th>
+              <th style="padding:8px 6px;text-align:center;color:var(--muted);">ענק<br><span style="font-size:11px;color:var(--accent);">₪349/חודש</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 6px;">משטחי שקילה</td><td style="text-align:center;">5</td><td style="text-align:center;font-weight:700;color:var(--accent);">25</td><td style="text-align:center;">∞</td></tr>
+            <tr style="border-bottom:1px solid var(--border);background:var(--card2);"><td style="padding:8px 6px;">פריטים</td><td style="text-align:center;">20</td><td style="text-align:center;font-weight:700;color:var(--accent);">100</td><td style="text-align:center;">∞</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 6px;">ספקים</td><td style="text-align:center;">3</td><td style="text-align:center;font-weight:700;color:var(--accent);">20</td><td style="text-align:center;">∞</td></tr>
+            <tr style="border-bottom:1px solid var(--border);background:var(--card2);"><td style="padding:8px 6px;">ייצוא CSV</td><td style="text-align:center;">—</td><td style="text-align:center;color:var(--ok);">✓</td><td style="text-align:center;color:var(--ok);">✓</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 6px;">דוח מלאי</td><td style="text-align:center;">בסיסי</td><td style="text-align:center;font-weight:700;color:var(--accent);">מלא</td><td style="text-align:center;color:var(--ok);">מלא+</td></tr>
+            <tr style="border-bottom:1px solid var(--border);background:var(--card2);"><td style="padding:8px 6px;">מסך TV</td><td style="text-align:center;">—</td><td style="text-align:center;color:var(--ok);">✓</td><td style="text-align:center;color:var(--ok);">✓</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 6px;">לוח מובילים</td><td style="text-align:center;">—</td><td style="text-align:center;color:var(--ok);">✓</td><td style="text-align:center;color:var(--ok);">✓</td></tr>
+            <tr style="background:var(--card2);"><td style="padding:8px 6px;">תמיכה</td><td style="text-align:center;">בסיסי</td><td style="text-align:center;font-weight:700;color:var(--accent);">עדיפות</td><td style="text-align:center;color:var(--ok);">VIP 24/7</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- תוכן טאב שאלות -->
+    <div id="ptab-content-faq" style="display:none;display:none;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:var(--card2);border-radius:12px;padding:14px;">
+          <div style="font-weight:700;margin-bottom:6px;">האם אפשר לבטל בכל עת?</div>
+          <div style="font-size:13px;color:var(--muted);">כן. ביטול בכל עת ללא קנס. המנוי יפקע בסוף תקופת החיוב הנוכחית.</div>
+        </div>
+        <div style="background:var(--card2);border-radius:12px;padding:14px;">
+          <div style="font-weight:700;margin-bottom:6px;">מה קורה לנתונים שלי?</div>
+          <div style="font-size:13px;color:var(--muted);">הנתונים נשמרים במכשיר שלך. לא נמחקים בביטול.</div>
+        </div>
+        <div style="background:var(--card2);border-radius:12px;padding:14px;">
+          <div style="font-weight:700;margin-bottom:6px;">אפשר לשדרג מסלול?</div>
+          <div style="font-size:13px;color:var(--muted);">כן, שדרוג מיידי בכל עת. המחיר מתחשב ביתרת התקופה.</div>
+        </div>
+        <div style="background:var(--card2);border-radius:12px;padding:14px;">
+          <div style="font-weight:700;margin-bottom:6px;">יש ניסיון חינם?</div>
+          <div style="font-size:13px;color:var(--muted);">14 ימי ניסיון חינם בכל מסלול. לא נדרש כרטיס אשראי.</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1460,9 +1526,23 @@ function checkLimit(type,addCount){
   return true;
 }
 
+function showPlanTab(tab){
+  ['plans','compare','faq'].forEach(function(t){
+    document.getElementById('ptab-content-'+t).style.display=t===tab?'block':'none';
+    var btn=document.getElementById('ptab-'+t);
+    btn.style.borderBottomColor=t===tab?'var(--accent)':'transparent';
+    btn.style.color=t===tab?'var(--accent)':'var(--muted)';
+    btn.style.fontWeight=t===tab?'700':'400';
+  });
+}
+window.showPlanTab=showPlanTab;
+
 function openUpgradePlans(){
+  showPlanTab('plans');
   var cur=getPlan(), lim=getPlanLimits();
-  document.getElementById('plans-current').textContent='המסלול הנוכחי שלך: '+lim.name+' (₪'+PLANS[cur.key].price+'/חודש)';
+  var daysLeft=cur.trialEnd?Math.max(0,Math.ceil((cur.trialEnd-Date.now())/86400000)):0;
+  var trialTxt=daysLeft>0?'<span style="color:var(--ok);font-weight:700;">ניסיון חינם — נותרו '+daysLeft+' ימים</span>':'פעיל';
+  document.getElementById('plans-current').innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:700;font-size:15px;">המסלול שלך: '+lim.name+'</div><div style="margin-top:3px;">'+trialTxt+'</div></div><div style="font-size:20px;font-weight:800;color:var(--accent);">₪'+PLANS[cur.key].price+'<span style="font-size:11px;font-weight:400;">/חודש</span></div></div>';
   var html='';
   Object.keys(PLANS).forEach(function(k){
     var p=PLANS[k], isCur=cur.key===k;
