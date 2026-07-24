@@ -342,6 +342,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div id="search-results"></div>
   </div>
   <div class="summary-row" id="db-summary"></div>
+  <div id="db-value-bar" style="margin-bottom:10px;"></div>
   <div id="db-shelves"></div>
 </div>
 
@@ -507,6 +508,12 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <label>מייל ספק</label><input id="im-supemail" type="email" placeholder="supplier@example.com">
       <label>מייל להזמנות</label><input id="im-ordermail" type="email" placeholder="orders@supplier.com">
       <label>הערות</label><textarea id="im-notes" placeholder="הערות על הפריט..."></textarea>
+      <div class="zone-h" style="margin-top:16px;">📍 מיקום במחסן</div>
+      <div class="row">
+        <div><label>שורה</label><input id="im-loc-row" placeholder="A, B, 1..."></div>
+        <div><label>מדף</label><input id="im-loc-shelf" placeholder="1, 2..."></div>
+        <div><label>תא</label><input id="im-loc-cell" placeholder="1, 2..."></div>
+      </div>
     </div>
     <input type="hidden" id="im-id">
     <div class="row" style="margin-top:14px;">
@@ -619,6 +626,15 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
             <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות כל 30 שניות</div></div>
             <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
+          </div>
+          <div style="margin-top:16px;">
+            <b>שפת ממשק</b>
+            <div class="muted" style="font-size:11px;margin-bottom:8px;">Language / لغة</div>
+            <div style="display:flex;gap:8px;">
+              <button id="lang-btn-he" onclick="applyLang('he')" style="flex:1;padding:8px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;font-size:13px;font-weight:700;">עברית</button>
+              <button id="lang-btn-en" onclick="applyLang('en')" style="flex:1;padding:8px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;font-size:13px;font-weight:700;">English</button>
+              <button id="lang-btn-ar" onclick="applyLang('ar')" style="flex:1;padding:8px;border-radius:10px;border:2px solid var(--border);background:var(--card2);cursor:pointer;font-size:13px;font-weight:700;">عربي</button>
+            </div>
           </div>
           <button class="btn" style="margin-top:14px;" onclick="saveSettings()">שמור</button>
         </div>
@@ -734,16 +750,18 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <h3 style="margin:0;">📊 דוח מלאי</h3>
       <div style="display:flex;gap:8px;">
         <button class="btn sm ok no-print" onclick="window.print()">🖨️ הדפס</button>
+        <button class="btn sm no-print" onclick="downloadReport()">⬇️ הורד</button>
         <button class="modal-close no-print" onclick="closeModal('modal-report')">&#x2715;</button>
       </div>
     </div>
     <div id="report-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
     <div style="overflow-x:auto;">
       <table class="ptable report-table" id="report-table" style="width:100%;font-size:13px;">
-        <thead><tr><th style="text-align:right;">משטח</th><th>אזור</th><th>פריט</th><th>כמות</th><th>יחידה</th><th>סטטוס</th></tr></thead>
+        <thead><tr><th style="text-align:right;">משטח</th><th>אזור</th><th>פריט</th><th>כמות</th><th>יחידה</th><th>ערך</th><th>סטטוס</th></tr></thead>
         <tbody id="report-tbody"></tbody>
       </table>
     </div>
+    <div id="report-cat-breakdown" style="margin-top:14px;"></div>
   </div>
 </div>
 
@@ -893,6 +911,29 @@ var LS={
   set:function(k,v){try{localStorage.setItem('ws3_'+k,JSON.stringify(v));}catch(e){}},
   del:function(k){try{localStorage.removeItem('ws3_'+k);}catch(e){}}
 };
+
+var LANG={
+  he:{dashboard:'דשבורד',items:'פריטים',categories:'קטגוריות',receive:'קבלת סחורה',alerts:'התראות',settings:'הגדרות',save:'שמור',cancel:'ביטול',search:'חיפוש'},
+  en:{dashboard:'Dashboard',items:'Items',categories:'Categories',receive:'Receive',alerts:'Alerts',settings:'Settings',save:'Save',cancel:'Cancel',search:'Search'},
+  ar:{dashboard:'لوحة القيادة',items:'العناصر',categories:'الفئات',receive:'استلام',alerts:'تنبيهات',settings:'الإعدادات',save:'حفظ',cancel:'إلغاء',search:'بحث'}
+};
+
+function applyLang(lang){
+  LS.set('lang',lang);
+  var L=LANG[lang]||LANG.he;
+  var html=document.documentElement;
+  if(lang==='en'){html.setAttribute('lang','en');html.setAttribute('dir','ltr');}
+  else if(lang==='ar'){html.setAttribute('lang','ar');html.setAttribute('dir','rtl');}
+  else{html.setAttribute('lang','he');html.setAttribute('dir','rtl');}
+  // update bottom nav labels
+  var nb=document.getElementById('nav-screen-dashboard'); if(nb){var ic=nb.querySelector('.ic');nb.innerHTML='';if(ic)nb.appendChild(ic);nb.appendChild(document.createTextNode(L.dashboard));}
+  var ni=document.getElementById('nav-screen-items'); if(ni){var ic2=ni.querySelector('.ic');ni.innerHTML='';if(ic2)ni.appendChild(ic2);ni.appendChild(document.createTextNode(L.items));}
+  var nc=document.getElementById('nav-screen-categories'); if(nc){var ic3=nc.querySelector('.ic');nc.innerHTML='';if(ic3)nc.appendChild(ic3);nc.appendChild(document.createTextNode(L.categories));}
+  var nr=document.getElementById('nav-screen-receive'); if(nr){var ic4=nr.querySelector('.ic');nr.innerHTML='';if(ic4)nr.appendChild(ic4);nr.appendChild(document.createTextNode(L.receive));}
+  // highlight active lang button
+  ['he','en','ar'].forEach(function(l){var b=document.getElementById('lang-btn-'+l);if(b){b.style.borderColor=l===lang?'var(--accent)':'var(--border)';b.style.color=l===lang?'var(--accent)':'var(--text)';}});
+}
+window.applyLang=applyLang;
 
 var HW={
   micro:{label:'Micro',range:'0-500g',acc:0.5,min:1,cost:'~30$'},
@@ -1430,11 +1471,27 @@ window.openModal=openModal;window.closeModal=closeModal;
 function renderDash(){
   var shs=getShelves(), its=getItems(), online=0, crit=0, warn=0;
   shs.forEach(function(s){var st=calcSt(s,latestR(s.id));if(st!=='offline')online++;if(st==='crit')crit++;if(st==='warn')warn++;});
+  // calc total inventory value
+  var totalVal=0;
+  shs.forEach(function(s){
+    var r=latestR(s.id); if(!r)return;
+    var it=its.find(function(i){return i.id===s.itemId;}); if(!it||!it.price)return;
+    totalVal+=r.qty*(parseFloat(it.price)||0);
+  });
+  var cur=getCurrency();
   document.getElementById('db-summary').innerHTML=
     '<div class="sum-tile"><div class="n">'+shs.length+'</div><div class="l">משטחים</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--warn);">'+warn+'</div><div class="l">אזהרות</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--crit);">'+crit+'</div><div class="l">קריטיים</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--ok);">'+online+'</div><div class="l">מחוברים</div></div>';
+  var vb=document.getElementById('db-value-bar');
+  if(vb){
+    vb.innerHTML=totalVal>0?'<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:10px 14px;">'+
+      '<span style="font-size:16px;">💰</span>'+
+      '<div style="flex:1;"><div style="font-size:11px;color:var(--muted);">ערך מלאי כולל</div></div>'+
+      '<span style="background:rgba(37,99,235,.12);color:var(--accent);border-radius:20px;padding:4px 14px;font-size:15px;font-weight:800;">'+cur+totalVal.toFixed(2)+'</span>'+
+      '</div>':'';
+  }
   var s=getSettings();
   document.getElementById('db-sub').textContent=s.bizName||(s.bizType||'מערכת מלאי חכם לפי משקל');
   if(!shs.length){
@@ -1812,7 +1869,7 @@ window.addItemForSupplier=addItemForSupplier;
 function openAddItem(){
   if(!checkLimit('item'))return;
   document.getElementById('item-modal-title').textContent='פריט חדש';
-  ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-supwa','im-supemail','im-ordermail','im-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['im-name','im-sku','im-bar','im-price','im-minord','im-sup','im-suptel','im-supwa','im-supemail','im-ordermail','im-notes','im-loc-row','im-loc-shelf','im-loc-cell'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('im-id').value=''; document.getElementById('im-del').style.display='none';
   document.getElementById('adv-wrap').classList.remove('open');
   document.querySelector('.adv-btn').textContent='פרטים נוספים (מק"ט, מחיר, ספק...)';
@@ -1838,9 +1895,13 @@ function openEditItem(id){
   document.getElementById('im-supwa').value=it.supplierWhatsApp||'';
   document.getElementById('im-supemail').value=it.supplierEmail||'';
   document.getElementById('im-ordermail').value=it.orderEmail||'';
+  var loc=it.location||{};
+  document.getElementById('im-loc-row').value=loc.row||'';
+  document.getElementById('im-loc-shelf').value=loc.shelf||'';
+  document.getElementById('im-loc-cell').value=loc.cell||'';
   document.getElementById('im-id').value=id;
   document.getElementById('im-del').style.display='';
-  var hasA=it.sku||it.barcode||it.price||it.minOrder||it.supplier||it.notes;
+  var hasA=it.sku||it.barcode||it.price||it.minOrder||it.supplier||it.notes||loc.row||loc.shelf||loc.cell;
   document.getElementById('adv-wrap').classList.toggle('open',!!hasA);
   document.querySelector('.adv-btn').textContent=hasA?'פרטים נוספים (פתוח)':'פרטים נוספים (מק"ט, מחיר, ספק...)';
   fillUS('im-utype',it.unitType||'unit'); fillCS('im-cat',it.categoryId||'');
@@ -1855,7 +1916,7 @@ function saveItem(){
   var name=document.getElementById('im-name').value.trim(), uw=parseFloat(document.getElementById('im-uwt').value);
   if(!name){alert('יש להזין שם פריט');return;} if(!uw||uw<=0){alert('יש להזין משקל סגולי');return;}
   switchToUser(); var its=getItems(), eid=document.getElementById('im-id').value;
-  var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),supplierWhatsApp:document.getElementById('im-supwa').value.trim(),supplierEmail:document.getElementById('im-supemail').value.trim(),orderEmail:document.getElementById('im-ordermail').value.trim(),notes:document.getElementById('im-notes').value.trim()};
+  var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),supplierWhatsApp:document.getElementById('im-supwa').value.trim(),supplierEmail:document.getElementById('im-supemail').value.trim(),orderEmail:document.getElementById('im-ordermail').value.trim(),notes:document.getElementById('im-notes').value.trim(),location:{row:document.getElementById('im-loc-row').value.trim(),shelf:document.getElementById('im-loc-shelf').value.trim(),cell:document.getElementById('im-loc-cell').value.trim()}};
   if(eid){var idx=its.findIndex(function(i){return i.id===eid;});if(idx>=0)Object.assign(its[idx],d);}else{d.id='i'+Date.now();its.push(d);}
   LS.set('items',its); closeModal('modal-item'); if(activeSc==='screen-items')renderItemsSc();
 }
@@ -2210,25 +2271,69 @@ window.toggleSearch=toggleSearch;window.closeSearch=closeSearch;window.runSearch
    INVENTORY REPORT
 ════════════════════════════════════════════════════ */
 function openReport(){
-  var shs=getShelves(), its=getItems();
-  var total=shs.length, ok=0, warn=0, crit=0, off=0;
-  shs.forEach(function(s){var st=calcSt(s,latestR(s.id));if(st==='ok')ok++;else if(st==='warn')warn++;else if(st==='crit')crit++;else off++;});
+  var shs=getShelves(), its=getItems(), cats=getCats();
+  var total=shs.length, ok=0, warn=0, crit=0, off=0, totalVal=0;
+  shs.forEach(function(s){
+    var st=calcSt(s,latestR(s.id));
+    if(st==='ok')ok++;else if(st==='warn')warn++;else if(st==='crit')crit++;else off++;
+    var r=latestR(s.id); if(!r)return;
+    var it=its.find(function(i){return i.id===s.itemId;}); if(!it||!it.price)return;
+    totalVal+=r.qty*(parseFloat(it.price)||0);
+  });
+  var cur=getCurrency();
   document.getElementById('report-summary').innerHTML=
     '<div class="sum-tile"><div class="n">'+total+'</div><div class="l">סה"כ משטחים</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--ok);">'+ok+'</div><div class="l">תקין</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--warn);">'+warn+'</div><div class="l">אזהרה</div></div>'+
     '<div class="sum-tile"><div class="n" style="color:var(--crit);">'+crit+'</div><div class="l">קריטי</div></div>'+
-    '<div class="sum-tile"><div class="n" style="color:var(--muted);">'+off+'</div><div class="l">לא מחובר</div></div>';
+    '<div class="sum-tile"><div class="n" style="color:var(--muted);">'+off+'</div><div class="l">לא מחובר</div></div>'+
+    '<div class="sum-tile" style="flex-basis:100%;"><div class="n" style="font-size:18px;">'+cur+totalVal.toFixed(2)+'</div><div class="l">סה"כ ערך מלאי</div></div>';
   var rows='';
   shs.forEach(function(s){
     var r=latestR(s.id), st=calcSt(s,r), it=its.find(function(i){return i.id===s.itemId;});
     var stLabel={ok:'<span class="badge ok">תקין</span>',warn:'<span class="badge warn">נמוך</span>',crit:'<span class="badge crit">קריטי</span>',offline:'<span class="badge off">לא מחובר</span>'}[st];
-    rows+='<tr><td style="text-align:right;font-weight:600;">'+s.name+'</td><td>'+( s.zone||'—')+'</td><td>'+(it?it.name:'—')+'</td><td style="font-variant-numeric:tabular-nums;">'+(r?r.qty:'—')+'</td><td>'+(it?unitL(it):'—')+'</td><td>'+stLabel+'</td></tr>';
+    var qty=r?r.qty:0, price=it?parseFloat(it.price)||0:0, val=qty*price;
+    rows+='<tr><td style="text-align:right;font-weight:600;">'+s.name+'</td><td>'+(s.zone||'—')+'</td><td>'+(it?it.name:'—')+'</td><td style="font-variant-numeric:tabular-nums;">'+(r?r.qty:'—')+'</td><td>'+(it?unitL(it):'—')+'</td><td>'+(val>0?cur+val.toFixed(2):'—')+'</td><td>'+stLabel+'</td></tr>';
   });
-  document.getElementById('report-tbody').innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--muted);">אין נתונים</td></tr>';
+  document.getElementById('report-tbody').innerHTML=rows||'<tr><td colspan="7" style="text-align:center;color:var(--muted);">אין נתונים</td></tr>';
+  // category value breakdown
+  var catVals={};
+  shs.forEach(function(s){
+    var r=latestR(s.id); if(!r)return;
+    var it=its.find(function(i){return i.id===s.itemId;}); if(!it||!it.price)return;
+    var catId=it.categoryId||'_none', val=r.qty*(parseFloat(it.price)||0);
+    catVals[catId]=(catVals[catId]||0)+val;
+  });
+  var catHtml='<div class="zone-h">ערך לפי קטגוריה</div>';
+  var hasCat=false;
+  Object.keys(catVals).forEach(function(cid){
+    if(!catVals[cid])return; hasCat=true;
+    var cat=cats.find(function(c){return c.id===cid;});
+    var nm=cat?(cat.icon+' '+cat.name):'ללא קטגוריה';
+    catHtml+='<div class="rrow"><span>'+nm+'</span><b>'+cur+catVals[cid].toFixed(2)+'</b></div>';
+  });
+  document.getElementById('report-cat-breakdown').innerHTML=hasCat?catHtml:'';
   openModal('modal-report');
 }
 window.openReport=openReport;
+
+function downloadReport(){
+  var html=document.getElementById('modal-report').querySelector('.modal-box').innerHTML;
+  var full='<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"><title>דוח מלאי</title>'+
+    '<style>body{font-family:Arial,sans-serif;padding:20px;direction:rtl;}table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #ccc;padding:6px 8px;}th{background:#f1f5f9;}'+
+    '.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}'+
+    '.badge.ok{background:#d1fae5;color:#065f46;}.badge.warn{background:#fef3c7;color:#92400e;}.badge.crit{background:#fee2e2;color:#991b1b;}.badge.off{background:#f1f5f9;color:#64748b;}'+
+    '.no-print{display:none;}.sum-tile{display:inline-block;margin:4px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;text-align:center;}.sum-tile .n{font-size:20px;font-weight:800;}.sum-tile .l{font-size:11px;color:#64748b;}'+
+    '.rrow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e2e8f0;}'+
+    '</style></head><body>'+html+'</body></html>';
+  var blob=new Blob([full],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='דוח-מלאי.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+window.downloadReport=downloadReport;
 
 /* ════════════════════════════════════════════════════
    ORDER HISTORY
