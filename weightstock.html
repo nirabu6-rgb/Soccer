@@ -193,6 +193,39 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
 #barcode-video-wrap{background:#000;border-radius:12px;overflow:hidden;margin:10px 0;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;}
 #barcode-video{width:100%;border-radius:12px;}
 #barcode-crosshair{position:absolute;width:60%;height:2px;background:rgba(37,99,235,.7);left:20%;top:50%;box-shadow:0 0 8px rgba(37,99,235,.5);}
+/* ── QUICKSCAN ── */
+#qs-video-wrap{background:#000;border-radius:16px;overflow:hidden;position:relative;min-height:220px;display:none;align-items:center;justify-content:center;margin-bottom:10px;}
+#qs-video{width:100%;border-radius:16px;display:block;}
+#qs-crosshair{position:absolute;width:60%;height:2px;background:rgba(37,99,235,.7);left:20%;top:50%;box-shadow:0 0 8px rgba(37,99,235,.5);}
+.qs-cam-btn{width:80px;height:80px;border-radius:50%;background:var(--accent);color:#fff;font-size:36px;border:none;margin:0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(37,99,235,.45);cursor:pointer;}
+/* ── TV MODE ── */
+#tv-overlay{position:fixed;inset:0;background:#0a0e14;z-index:500;display:none;flex-direction:column;color:#e2e8f0;font-family:'Segoe UI',Arial,sans-serif;}
+#tv-overlay.show{display:flex;}
+.tv-header{display:flex;justify-content:space-between;align-items:center;padding:20px 30px;border-bottom:2px solid #1e293b;}
+.tv-biz{font-size:28px;font-weight:800;color:#f1f5f9;}
+.tv-clock{font-size:36px;font-weight:800;color:#94a3b8;font-variant-numeric:tabular-nums;}
+.tv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:20px 30px;flex:1;overflow:auto;}
+.tv-tile{border-radius:20px;padding:20px;display:flex;flex-direction:column;justify-content:space-between;min-height:160px;border:3px solid transparent;}
+.tv-tile.ok{background:#052e16;border-color:#059669;}
+.tv-tile.warn{background:#451a03;border-color:#f59e0b;}
+.tv-tile.crit{background:#450a0a;border-color:#ef4444;}
+.tv-tile.offline{background:#0f172a;border-color:#334155;}
+.tv-qty{font-size:56px;font-weight:800;line-height:1;}
+.tv-tile.ok .tv-qty{color:#10b981;}
+.tv-tile.warn .tv-qty{color:#f59e0b;}
+.tv-tile.crit .tv-qty{color:#ef4444;}
+.tv-tile.offline .tv-qty{color:#334155;}
+.tv-name{font-size:16px;font-weight:600;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tv-shelf{font-size:12px;color:#475569;margin-top:4px;}
+.tv-exit{position:fixed;top:20px;left:20px;z-index:501;background:#1e293b;border:none;border-radius:12px;color:#94a3b8;padding:10px 20px;font-size:14px;cursor:pointer;font-family:inherit;}
+/* ── LEADERBOARD ── */
+.lb-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.lb-tab{flex:1;background:var(--card2);border:none;border-radius:10px;padding:8px 4px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;}
+.lb-tab.active{background:var(--accent);color:#fff;}
+.lb-panel{display:none;}.lb-panel.active{display:block;}
+/* ── ACCENT SWATCHES ── */
+.accent-swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .15s,transform .15s;display:inline-block;}
+.accent-swatch.on{border-color:var(--text);transform:scale(1.2);}
 </style>
 </head>
 <body>
@@ -331,6 +364,8 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <div style="display:flex;gap:8px;">
       <button class="icon-btn" onclick="toggleSearch()" id="search-btn" title="חיפוש">&#x1F50D;</button>
 <button class="icon-btn" id="bell-btn" onclick="navTo('screen-alerts')">&#x1F514;</button>
+      <button class="icon-btn" onclick="openLeaderboard()" title="לוח מובילים">&#x1F3C6;</button>
+      <button class="icon-btn" onclick="openOrderToday()" title="מה להזמין היום">&#x1F6D2;</button>
       <button class="icon-btn" onclick="openSettings()">&#x2699;&#xFE0F;</button>
     </div>
   </div>
@@ -382,12 +417,34 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
   <div id="alerts-list"></div>
 </div>
 
+<div class="screen" id="screen-quickscan">
+  <div class="topbar"><h2>&#x1F4F7; סריקה מהירה</h2></div>
+  <div id="qs-video-wrap">
+    <video id="qs-video" autoplay playsinline muted></video>
+    <div id="qs-crosshair"></div>
+  </div>
+  <div id="qs-status" class="muted" style="text-align:center;margin-bottom:14px;font-size:14px;min-height:20px;"></div>
+  <div style="text-align:center;margin-bottom:20px;">
+    <button class="qs-cam-btn" onclick="startQuickScan()">&#x1F4F7;</button>
+    <div class="muted" style="font-size:12px;margin-top:8px;">לחץ לסריקה עם המצלמה</div>
+  </div>
+  <div class="card" style="margin-bottom:12px;">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">או הכנס ברקוד ידנית:</div>
+    <div style="display:flex;gap:8px;">
+      <input id="qs-manual" placeholder='ברקוד / מק"ט...' style="flex:1;margin-top:0;">
+      <button class="btn sm" onclick="qsSearchBarcode(document.getElementById('qs-manual').value.trim())">חפש</button>
+    </div>
+  </div>
+  <div id="qs-result"></div>
+</div>
+
 </div><!-- /main-content -->
 <nav class="bottomnav">
   <button class="navbtn active" id="nav-screen-dashboard" onclick="navTo('screen-dashboard')"><span class="ic">&#x1F4CA;</span>דשבורד</button>
   <button class="navbtn" id="nav-screen-items" onclick="navTo('screen-items')"><span class="ic">&#x1F4E6;</span>פריטים</button>
   <button class="navbtn" id="nav-screen-categories" onclick="navTo('screen-categories')"><span class="ic">&#x1F3F7;&#xFE0F;</span>קטגוריות</button>
   <button class="navbtn" id="nav-screen-receive" onclick="openReceive()"><span class="ic">&#x1F4E5;</span>קבלת סחורה</button>
+  <button class="navbtn" id="nav-screen-quickscan" onclick="navTo('screen-quickscan')"><span class="ic">&#x1F4F7;</span>סריקה</button>
 </nav>
 <div id="fab-menu" style="display:none;position:fixed;bottom:140px;left:18px;z-index:60;background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.18);overflow:hidden;border:1px solid var(--border);min-width:180px;">
   <button onclick="closeFabMenu();openSetupWizard();" style="width:100%;background:none;border:none;border-bottom:1px solid var(--border);padding:14px 16px;text-align:right;font-size:15px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">⚖️ משטח שקילה חדש</button>
@@ -672,6 +729,33 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
         </button>
       </div>
 
+      <!-- TV Mode -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="openTVMode()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">&#x1F4FA; מסך TV</div>
+          <span style="color:var(--muted);">›</span>
+        </button>
+      </div>
+
+      <!-- Custom Theme -->
+      <div class="card" style="margin:0;padding:0;overflow:hidden;">
+        <button onclick="stToggle('st-theme-sec')" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);">
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700;">&#x1F3A8; עיצוב</div>
+          <span id="st-theme-sec-ic" style="color:var(--muted);">›</span>
+        </button>
+        <div id="st-theme-sec" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--muted);margin:12px 0 10px;">צבע הדגשה:</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="accent-swatch" style="background:#2563eb;" onclick="setAccent('#2563eb')"></div>
+            <div class="accent-swatch" style="background:#059669;" onclick="setAccent('#059669')"></div>
+            <div class="accent-swatch" style="background:#7c3aed;" onclick="setAccent('#7c3aed')"></div>
+            <div class="accent-swatch" style="background:#ea580c;" onclick="setAccent('#ea580c')"></div>
+            <div class="accent-swatch" style="background:#dc2626;" onclick="setAccent('#dc2626')"></div>
+            <div class="accent-swatch" style="background:#0891b2;" onclick="setAccent('#0891b2')"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- התנתק -->
       <div class="card" style="margin:0;padding:0;overflow:hidden;">
         <button onclick="logoutApp()" style="width:100%;background:none;border:none;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--crit);">
@@ -833,6 +917,45 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <button class="btn" onclick="confirmBarcode()">אישור</button>
     </div>
   </div>
+</div>
+
+<!-- MODAL: LEADERBOARD -->
+<div class="modal-overlay" id="modal-leaderboard">
+  <div class="modal-box mid" style="width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">&#x1F3C6; לוח מובילים</h3>
+      <button class="modal-close" onclick="closeModal('modal-leaderboard')">&#x2715;</button>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" onclick="lbTab(0)">פריטים פעילים</button>
+      <button class="lb-tab" onclick="lbTab(1)">ספקים מובילים</button>
+      <button class="lb-tab" onclick="lbTab(2)">מלאי נמוך</button>
+    </div>
+    <div class="lb-panel active" id="lb-panel-0"></div>
+    <div class="lb-panel" id="lb-panel-1"></div>
+    <div class="lb-panel" id="lb-panel-2"></div>
+  </div>
+</div>
+
+<!-- MODAL: ORDER TODAY -->
+<div class="modal-overlay" id="modal-order-today">
+  <div class="modal-box mid" style="width:calc(100% - 28px);max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--card);padding-bottom:8px;z-index:1;">
+      <h3 style="margin:0;">&#x1F6D2; מה להזמין היום</h3>
+      <button class="modal-close" onclick="closeModal('modal-order-today')">&#x2715;</button>
+    </div>
+    <div id="order-today-list"></div>
+  </div>
+</div>
+
+<!-- TV OVERLAY -->
+<div id="tv-overlay">
+  <button class="tv-exit" onclick="exitTVMode()">יציאה &#x2715;</button>
+  <div class="tv-header">
+    <div class="tv-biz" id="tv-biz-name">WeightStock</div>
+    <div class="tv-clock" id="tv-clock">00:00</div>
+  </div>
+  <div class="tv-grid" id="tv-grid"></div>
 </div>
 
 <!-- SIDEBAR NAV (desktop) -->
@@ -1446,6 +1569,7 @@ window.doLogin=doLogin;
 var activeSc='screen-dashboard', curSh=null;
 function navTo(id){
   closeFabMenu();
+  stopQuickScan();
   var im=document.getElementById('item-fab-menu'); if(im)im.style.display='none';
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
   document.getElementById(id).classList.add('active'); activeSc=id;
@@ -1459,6 +1583,7 @@ function navTo(id){
   if(id==='screen-items')renderItemsSc();
   if(id==='screen-categories')renderCatsSc();
   if(id==='screen-alerts')renderAlerts();
+  if(id==='screen-quickscan')initQuickScanScreen();
 }
 window.navTo=navTo;
 function openModal(id){document.getElementById(id).classList.add('show');}
@@ -2069,6 +2194,7 @@ function openSettings(){
   document.getElementById('theme-tog').classList.toggle('on',th==='dark');
   var curLang=LS.get('lang','he');
   ['he','en','ar'].forEach(function(l){var b=document.getElementById('lang-btn-'+l);if(b){b.style.borderColor=l===curLang?'var(--accent)':'var(--border)';b.style.color=l===curLang?'var(--accent)':'var(--text)';}});
+  applyAccent();
   openModal('modal-settings');
 }
 window.openSettings=openSettings;
@@ -2573,6 +2699,7 @@ document.addEventListener('click',function(e){
   renderDash();
   updBell();
   updateDashLogo();
+  applyAccent();
 })();
 
 setInterval(function(){
