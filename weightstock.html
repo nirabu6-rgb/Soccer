@@ -1564,6 +1564,7 @@ function renderSh(id){
       (it.supplier?'<div style="font-size:13px;margin-top:8px;"><div class="muted">ספק</div><b>'+it.supplier+(it.supplierPhone?' · '+it.supplierPhone:'')+'</b></div>':'')+
       '<div class="row" style="font-size:13px;margin-top:8px;"><div><div class="muted">טרה</div><b>'+(sh.tare||0)+'גרם</b></div><div><div class="muted">קריאה</div><b>'+(r?ago(r.ts):'—')+'</b></div><div><div class="muted">מקור</div><b>'+(r?(r.src==='auto'?'ESP32':'ידני'):'—')+'</b></div></div>'+
       (sh.notes?'<div style="font-size:12px;color:var(--muted);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">'+sh.notes+'</div>':'')+
+      (it&&it.location&&(it.location.row||it.location.shelf||it.location.cell)?'<div style="font-size:12px;color:var(--muted);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">📍 מיקום: '+(it.location.row?'שורה '+it.location.row+' ':'')+(it.location.shelf?'מדף '+it.location.shelf+' ':'')+(it.location.cell?'תא '+it.location.cell:'')+'</div>':'')+
       '</div>';
   }
   html+='<button class="btn sec" onclick="manualRead(\''+id+'\')">קרא עכשיו (ידני)</button>';
@@ -1653,6 +1654,7 @@ function renderItemsSc(){
       '<div style="font-weight:700;font-size:15px;">'+it.name+'</div>'+
       '<div class="muted">'+it.unitWeight+'גרם/'+ul+(it.sku?' · '+it.sku:'')+(it.price>0?' · '+cur+parseFloat(it.price).toFixed(2):'')+'</div>'+
       (it.supplier?'<div class="muted">'+it.supplier+(it.supplierPhone?' · '+it.supplierPhone:'')+'</div>':'')+
+      (it.location&&(it.location.row||it.location.shelf||it.location.cell)?'<div class="muted">📍 '+(it.location.row?'שורה '+it.location.row+' ':'')+(it.location.shelf?'מדף '+it.location.shelf+' ':'')+(it.location.cell?'תא '+it.location.cell:'')+'</div>':'')+
       '<div class="muted">'+used+' משטחים</div></div>'+
       '<button class="btn sec sm" onclick="openEditItem(\''+it.id+'\')" style="margin-right:8px;">ערוך</button></div>';
   }).join('');
@@ -2065,6 +2067,8 @@ function openSettings(){
   document.getElementById('demo-tog').classList.toggle('on',s.demo!==false);
   var th=LS.get('theme','light');
   document.getElementById('theme-tog').classList.toggle('on',th==='dark');
+  var curLang=LS.get('lang','he');
+  ['he','en','ar'].forEach(function(l){var b=document.getElementById('lang-btn-'+l);if(b){b.style.borderColor=l===curLang?'var(--accent)':'var(--border)';b.style.color=l===curLang?'var(--accent)':'var(--text)';}});
   openModal('modal-settings');
 }
 window.openSettings=openSettings;
@@ -2555,6 +2559,8 @@ document.addEventListener('click',function(e){
 
 (function boot(){
   applyTheme(LS.get('theme','light'));
+  var savedLang=LS.get('lang','he');
+  if(savedLang&&savedLang!=='he')applyLang(savedLang);
   setTimeout(function(){
     var sp=document.getElementById('splash');
     if(sp){sp.style.opacity='0';setTimeout(function(){sp.style.display='none';},500);}
