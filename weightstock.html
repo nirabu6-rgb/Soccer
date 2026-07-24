@@ -2683,6 +2683,324 @@ document.addEventListener('click',function(e){
   if(im&&im.style.display!=='none'&&!im.contains(e.target)&&e.target!==ti)im.style.display='none';
 });
 
+/* ════════════════════════════════════════════════════
+   QUICK SCAN
+════════════════════════════════════════════════════ */
+var _qsStream=null, _qsInterval=null;
+
+function initQuickScanScreen(){
+  var r=document.getElementById('qs-result'); if(r)r.innerHTML='';
+  var s=document.getElementById('qs-status'); if(s)s.textContent='';
+  var m=document.getElementById('qs-manual'); if(m)m.value='';
+  var vw=document.getElementById('qs-video-wrap'); if(vw)vw.style.display='none';
+}
+
+function startQuickScan(){
+  if(_qsStream){stopQuickScan();return;}
+  var qs=document.getElementById('qs-status');
+  if(typeof BarcodeDetector==='undefined'||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    if(qs)qs.textContent='המצלמה אינה נתמכת — הזן ברקוד ידנית';
+    return;
+  }
+  var vw=document.getElementById('qs-video-wrap'), vid=document.getElementById('qs-video');
+  if(vw)vw.style.display='block';
+  if(qs)qs.textContent='מפעיל מצלמה...';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream){
+    _qsStream=stream;
+    vid.srcObject=stream;
+    vid.play();
+    if(qs)qs.textContent='מצלמה פעילה — מחפש ברקוד...';
+    var bd=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code','upc_a']});
+    _qsInterval=setInterval(function(){
+      bd.detect(vid).then(function(codes){
+        if(codes.length){
+          var code=codes[0].rawValue;
+          stopQuickScan();
+          var m=document.getElementById('qs-manual'); if(m)m.value=code;
+          qsSearchBarcode(code);
+        }
+      }).catch(function(){});
+    },300);
+  }).catch(function(){
+    if(vw)vw.style.display='none';
+    if(qs)qs.textContent='לא ניתן לגשת למצלמה — הזן ברקוד ידנית';
+  });
+}
+window.startQuickScan=startQuickScan;
+
+function stopQuickScan(){
+  if(_qsInterval){clearInterval(_qsInterval);_qsInterval=null;}
+  if(_qsStream){_qsStream.getTracks().forEach(function(t){t.stop();});_qsStream=null;}
+  var vid=document.getElementById('qs-video'); if(vid)vid.srcObject=null;
+  var vw=document.getElementById('qs-video-wrap'); if(vw)vw.style.display='none';
+}
+window.stopQuickScan=stopQuickScan;
+
+function qsSearchBarcode(code){
+  if(!code)return;
+  var shs=getShelves(), its=getItems();
+  var matchItem=its.find(function(i){return i.barcode===code||i.sku===code;});
+  var el=document.getElementById('qs-result'); if(!el)return;
+  if(!matchItem){
+    el.innerHTML='<div class="card" style="text-align:center;padding:24px;">'+
+      '<div style="font-size:40px;margin-bottom:8px;">&#x2753;</div>'+
+      '<div style="font-weight:700;font-size:16px;margin-bottom:6px;">פריט לא נמצא</div>'+
+      '<div class="muted" style="margin-bottom:14px;">ברקוד: '+code+'</div>'+
+      '<button class="btn" onclick="openAddItem()">+ הוסף פריט חדש</button></div>';
+    return;
+  }
+  var sh=shs.find(function(s){return s.itemId===matchItem.id;});
+  var r=sh?latestR(sh.id):null, ul=unitL(matchItem);
+  var st=sh?calcSt(sh,r):'offline';
+  var stBdg={ok:'<span class="badge ok">&#x2713; תקין</span>',warn:'<span class="badge warn">&#x26A0; נמוך</span>',crit:'<span class="badge crit">&#x1F534; קריטי</span>',offline:'<span class="badge off">לא מחובר</span>'}[st]||'';
+  el.innerHTML='<div class="card">'+stBdg+
+    '<div style="font-weight:700;font-size:18px;margin:8px 0 2px;">'+matchItem.name+'</div>'+
+    (sh?'<div class="muted" style="font-size:12px;margin-bottom:8px;">'+sh.name+'</div>':'')+
+    '<div style="font-size:40px;font-weight:800;color:var(--accent);margin:8px 0 4px;">'+(r?r.qty:'&#x2014;')+'</div>'+
+    '<div class="muted">'+ul+' במלאי</div>'+
+    (sh?'<button class="btn ok" style="margin-top:16px;font-size:17px;padding:15px;" onclick="openReceive(\''+sh.id+'\')">&#x1F4E5; קבלת סחורה +</button>':
+      '<div class="muted" style="margin-top:12px;font-size:13px;">פריט לא משויך למשטח</div>')+
+    '</div>';
+}
+window.qsSearchBarcode=qsSearchBarcode;
+window.initQuickScanScreen=initQuickScanScreen;
+
+/* ════════════════════════════════════════════════════
+   LEADERBOARD
+════════════════════════════════════════════════════ */
+var _lbTab=0;
+
+function openLeaderboard(){
+  _lbTab=0;
+  document.querySelectorAll('.lb-tab').forEach(function(b,i){b.classList.toggle('active',i===0);});
+  document.querySelectorAll('.lb-panel').forEach(function(p,i){p.classList.toggle('active',i===0);});
+  renderLB(0);
+  openModal('modal-leaderboard');
+}
+window.openLeaderboard=openLeaderboard;
+
+function lbTab(n){
+  _lbTab=n;
+  document.querySelectorAll('.lb-tab').forEach(function(b,i){b.classList.toggle('active',i===n);});
+  document.querySelectorAll('.lb-panel').forEach(function(p,i){p.classList.toggle('active',i===n);});
+  renderLB(n);
+}
+window.lbTab=lbTab;
+
+function renderLB(n){
+  var shs=getShelves(), its=getItems();
+  if(n===0){
+    var itemData=its.map(function(it){
+      var shsForItem=shs.filter(function(s){return s.itemId===it.id;});
+      var totalReads=shsForItem.reduce(function(acc,s){return acc+getReadings(s.id).length;},0);
+      var sh=shsForItem[0], r=sh?latestR(sh.id):null;
+      return {it:it,count:totalReads,r:r};
+    }).filter(function(x){return x.count>0;}).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+    var html='';
+    if(!itemData.length){html='<div class="empty"><div class="ic">&#x1F4E6;</div><div class="muted">אין נתוני קריאות עדיין</div></div>';}
+    else{
+      itemData.forEach(function(x,i){
+        var ul=unitL(x.it);
+        html+='<div class="rrow">'+
+          '<div style="font-size:18px;font-weight:800;color:var(--muted);width:28px;">'+(i+1)+'.</div>'+
+          '<div style="flex:1;"><div style="font-weight:700;">'+x.it.name+'</div>'+
+          '<div class="muted">'+x.count+' קריאות'+(x.r?' · '+x.r.qty+' '+ul+' במלאי':'')+'</div></div>'+
+        '</div>';
+      });
+    }
+    document.getElementById('lb-panel-0').innerHTML=html;
+  } else if(n===1){
+    var supMap={};
+    its.forEach(function(it){var s=it.supplier||'ללא ספק';if(!supMap[s])supMap[s]=0;supMap[s]++;});
+    var supArr=Object.keys(supMap).map(function(s){return {name:s,count:supMap[s]};}).sort(function(a,b){return b.count-a.count;});
+    var html2='';
+    if(!supArr.length){html2='<div class="empty"><div class="ic">&#x1F3ED;</div><div class="muted">אין ספקים</div></div>';}
+    else{
+      supArr.forEach(function(x,i){
+        html2+='<div class="rrow">'+
+          '<div style="font-size:18px;font-weight:800;color:var(--muted);width:28px;">'+(i+1)+'.</div>'+
+          '<div style="flex:1;"><div style="font-weight:700;">'+x.name+'</div>'+
+          '<div class="muted">'+x.count+' פריטים</div></div>'+
+        '</div>';
+      });
+    }
+    document.getElementById('lb-panel-1').innerHTML=html2;
+  } else if(n===2){
+    var lowItems=[];
+    shs.forEach(function(sh){
+      var r=latestR(sh.id); if(!r)return;
+      var it=its.find(function(i){return i.id===sh.itemId;}); if(!it)return;
+      var av=parseFloat(sh.alertValue)||0; if(!av)return;
+      var v=sh.alertType==='weight'?r.netWeight:r.qty;
+      if(v<=av){lowItems.push({sh:sh,it:it,r:r,av:av,v:v,ratio:v/av,st:calcSt(sh,r)});}
+    });
+    lowItems.sort(function(a,b){return a.ratio-b.ratio;});
+    var html3='';
+    if(!lowItems.length){html3='<div class="empty"><div class="ic">&#x2705;</div><div class="muted">אין פריטים במלאי נמוך</div></div>';}
+    else{
+      lowItems.forEach(function(x){
+        var ul=unitL(x.it);
+        var stBdg=x.st==='crit'?'<span class="badge crit">קריטי</span>':'<span class="badge warn">נמוך</span>';
+        html3+='<div class="rrow">'+
+          '<div style="flex:1;"><div style="font-weight:700;">'+x.it.name+'</div>'+
+          '<div class="muted">'+x.sh.name+' &middot; '+x.v+'/'+x.av+' '+ul+'</div></div>'+
+          stBdg+'</div>';
+      });
+    }
+    document.getElementById('lb-panel-2').innerHTML=html3;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   ORDER TODAY
+════════════════════════════════════════════════════ */
+function openOrderToday(){
+  var shs=getShelves(), its=getItems();
+  var alertShelves=shs.filter(function(sh){
+    var r=latestR(sh.id); if(!r)return false;
+    var st=calcSt(sh,r); return st==='warn'||st==='crit';
+  });
+  var bySupplier={};
+  alertShelves.forEach(function(sh){
+    var it=its.find(function(i){return i.id===sh.itemId;}); if(!it)return;
+    var sup=it.supplier||'ללא ספק';
+    if(!bySupplier[sup])bySupplier[sup]={items:[],tel:it.supplierPhone||'',wa:it.supplierWhatsApp||it.supplierPhone||''};
+    bySupplier[sup].items.push({sh:sh,it:it,r:latestR(sh.id)});
+  });
+  var biz=getSettings().bizName||'', html='';
+  if(!alertShelves.length){
+    html='<div class="empty"><div class="ic">&#x2705;</div><div style="font-weight:700;margin:8px 0;">הכל תקין!</div><div class="muted">אין פריטים הדורשים הזמנה כרגע</div></div>';
+  } else {
+    Object.keys(bySupplier).forEach(function(supName){
+      var grp=bySupplier[supName];
+      var waNum=fmtPhone(grp.wa||grp.tel);
+      var msg='שלום, הזמנה'+(biz?' מ-'+biz:'')+' :\n';
+      grp.items.forEach(function(x){
+        var ul=unitL(x.it);
+        msg+='&#x2022; '+x.it.name+' &#x2014; במלאי: '+(x.r?x.r.qty:0)+' '+ul+(x.it.minOrder?' | הזמנה מינ\': '+x.it.minOrder+' '+ul:'')+'\n';
+      });
+      msg+='אנא אשר הזמנה בהקדם, תודה!';
+      var msgEnc=encodeURIComponent(msg.replace(/&#x2022;/g,'•').replace(/&#x2014;/g,'—'));
+      html+='<div class="card" style="margin-bottom:12px;">'+
+        '<div style="font-size:16px;font-weight:800;margin-bottom:10px;">&#x1F3ED; '+supName+'</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:12px;">';
+      if(grp.tel)html+='<a href="tel:'+grp.tel+'" style="flex:1;text-align:center;background:rgba(5,150,105,.12);color:var(--ok);border-radius:10px;padding:8px;text-decoration:none;font-size:13px;font-weight:700;">&#x1F4DE; שיחה</a>';
+      if(waNum)html+='<a href="https://wa.me/'+waNum+'?text='+msgEnc+'" target="_blank" style="flex:1;text-align:center;background:rgba(37,211,102,.12);color:#0a7a6e;border-radius:10px;padding:8px;text-decoration:none;font-size:13px;font-weight:700;">&#x1F4AC; WhatsApp</a>';
+      html+='</div>';
+      grp.items.forEach(function(x){
+        var ul=unitL(x.it), r=x.r, st=calcSt(x.sh,r);
+        var stBdg=st==='crit'?'<span class="badge crit">קריטי</span>':'<span class="badge warn">נמוך</span>';
+        html+='<div class="rrow">'+
+          '<div style="flex:1;"><div style="font-weight:600;">'+x.it.name+'</div>'+
+          '<div class="muted" style="font-size:12px;">'+(r?r.qty:0)+' '+ul+' במלאי'+(x.it.minOrder?' &middot; מינ\' '+x.it.minOrder:'')+'</div></div>'+
+          stBdg+'</div>';
+      });
+      if(waNum)html+='<a href="https://wa.me/'+waNum+'?text='+msgEnc+'" target="_blank" class="btn" style="margin-top:10px;display:flex;justify-content:center;align-items:center;gap:6px;text-decoration:none;color:#fff;">&#x1F4AC; הזמן הכל מספק זה</a>';
+      html+='</div>';
+    });
+  }
+  document.getElementById('order-today-list').innerHTML=html;
+  openModal('modal-order-today');
+}
+window.openOrderToday=openOrderToday;
+
+/* ════════════════════════════════════════════════════
+   TV MODE
+════════════════════════════════════════════════════ */
+var _tvRefreshInt=null, _tvClockInt=null;
+
+function openTVMode(){
+  closeModal('modal-settings');
+  var ov=document.getElementById('tv-overlay');
+  ov.classList.add('show');
+  var s=getSettings();
+  document.getElementById('tv-biz-name').textContent=s.bizName||'WeightStock';
+  renderTVGrid();
+  _tvRefreshInt=setInterval(renderTVGrid,30000);
+  _tvClockInt=setInterval(updateTVClock,1000);
+  updateTVClock();
+  if(document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen().catch(function(){});
+  }
+}
+window.openTVMode=openTVMode;
+
+function updateTVClock(){
+  var el=document.getElementById('tv-clock'); if(!el)return;
+  var now=new Date();
+  var h=String(now.getHours()).padStart(2,'0'), m=String(now.getMinutes()).padStart(2,'0');
+  el.textContent=h+':'+m;
+}
+
+function renderTVGrid(){
+  var shs=getShelves(), its=getItems(), html='';
+  shs.forEach(function(sh){
+    var it=its.find(function(i){return i.id===sh.itemId;});
+    var r=latestR(sh.id), st=calcSt(sh,r);
+    html+='<div class="tv-tile '+st+'">'+
+      '<div class="tv-qty">'+(r?r.qty:'&#x2014;')+'</div>'+
+      '<div><div class="tv-name">'+(it?it.name:'&#x2014;')+'</div>'+
+      '<div class="tv-shelf">'+sh.name+'</div></div>'+
+    '</div>';
+  });
+  if(!html)html='<div style="color:#475569;font-size:24px;text-align:center;grid-column:1/-1;margin-top:40px;">אין משטחי שקילה</div>';
+  var g=document.getElementById('tv-grid'); if(g)g.innerHTML=html;
+}
+window.renderTVGrid=renderTVGrid;
+
+function exitTVMode(){
+  var ov=document.getElementById('tv-overlay');
+  ov.classList.remove('show');
+  if(_tvRefreshInt){clearInterval(_tvRefreshInt);_tvRefreshInt=null;}
+  if(_tvClockInt){clearInterval(_tvClockInt);_tvClockInt=null;}
+  if(document.exitFullscreen&&document.fullscreenElement){
+    document.exitFullscreen().catch(function(){});
+  }
+}
+window.exitTVMode=exitTVMode;
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var ov=document.getElementById('tv-overlay');
+    if(ov&&ov.classList.contains('show'))exitTVMode();
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   CUSTOM THEME COLORS
+════════════════════════════════════════════════════ */
+function setAccent(color){
+  document.documentElement.style.setProperty('--accent',color);
+  LS.set('accent',color);
+  updateAccentSwatches(color);
+}
+window.setAccent=setAccent;
+
+function updateAccentSwatches(color){
+  document.querySelectorAll('.accent-swatch').forEach(function(el){
+    var bg=el.style.backgroundColor||el.style.background||'';
+    var hexBg=rgbToHex(bg);
+    el.classList.toggle('on',hexBg===color||bg===color);
+  });
+}
+
+function rgbToHex(rgb){
+  if(!rgb)return '';
+  if(rgb.charAt(0)==='#')return rgb;
+  var m=rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if(!m)return rgb;
+  return '#'+[m[1],m[2],m[3]].map(function(x){return ('0'+parseInt(x).toString(16)).slice(-2);}).join('');
+}
+
+function applyAccent(){
+  var saved=LS.get('accent',null);
+  if(saved){
+    document.documentElement.style.setProperty('--accent',saved);
+    updateAccentSwatches(saved);
+  }
+}
+window.applyAccent=applyAccent;
+
 (function boot(){
   applyTheme(LS.get('theme','light'));
   var savedLang=LS.get('lang','he');
