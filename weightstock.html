@@ -365,6 +365,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <button class="icon-btn" onclick="toggleSearch()" id="search-btn" title="חיפוש">&#x1F50D;</button>
 <button class="icon-btn" id="bell-btn" onclick="navTo('screen-alerts')">&#x1F514;</button>
       <button class="icon-btn" onclick="openLeaderboard()" title="לוח מובילים">&#x1F3C6;</button>
+      <button class="icon-btn" onclick="copyInventory()" title="העתק מלאי">&#x1F4CB;</button>
       <button class="icon-btn" onclick="openOrderToday()" title="מה להזמין היום">&#x1F6D2;</button>
       <button class="icon-btn" onclick="openSettings()">&#x2699;&#xFE0F;</button>
     </div>
@@ -564,6 +565,10 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <label>WhatsApp ספק</label><input id="im-supwa" type="tel" placeholder="050-0000000">
       <label>מייל ספק</label><input id="im-supemail" type="email" placeholder="supplier@example.com">
       <label>מייל להזמנות</label><input id="im-ordermail" type="email" placeholder="orders@supplier.com">
+      <div class="row">
+        <div><label>תאריך תפוגה</label><input id="im-expiry" type="date"></div>
+        <div><label>כמות הזמנה קבועה</label><input id="im-reorderqty" type="number" placeholder="50"></div>
+      </div>
       <label>הערות</label><textarea id="im-notes" placeholder="הערות על הפריט..."></textarea>
       <div class="zone-h" style="margin-top:16px;">📍 מיקום במחסן</div>
       <div class="row">
@@ -575,6 +580,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <input type="hidden" id="im-id">
     <div class="row" style="margin-top:14px;">
       <button class="btn danger sm" id="im-del" onclick="deleteItem()" style="display:none;">מחק</button>
+      <button class="btn sec sm" onclick="printItemLabel()">&#x1F5A8;&#xFE0F; תווית</button>
       <button class="btn" onclick="saveItem()">שמור פריט</button>
     </div>
   </div>
@@ -683,6 +689,10 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
             <div><b>מצב דמו</b><div class="muted" style="font-size:11px;">מדמה קריאות כל 30 שניות</div></div>
             <button class="toggle on" id="demo-tog" onclick="toggleDemo()"><span class="knob"></span></button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+            <div><b>🌙 מצב כהה אוטומטי לפי שעה</b><div class="muted" style="font-size:11px;">19:00–07:00 = מצב כהה</div></div>
+            <button class="toggle" id="autotheme-tog" onclick="toggleAutoTheme()"><span class="knob"></span></button>
           </div>
           <div style="margin-top:16px;">
             <b>שפת ממשק</b>
@@ -795,6 +805,14 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
     <label>מייל להזמנות</label><input id="se-ordermail" type="email" placeholder="orders@supplier.co.il">
     <label>איש קשר</label><input id="se-contact" placeholder="שם איש הקשר">
     <label>הערות</label><textarea id="se-notes" placeholder="מידע נוסף על הספק..."></textarea>
+    <label>תנאי תשלום</label>
+    <select id="se-payment">
+      <option value="">— בחר —</option>
+      <option value="מזומן">מזומן</option>
+      <option value="ת30">ת30</option>
+      <option value="ת60">ת60</option>
+      <option value="ת90">ת90</option>
+    </select>
     <input type="hidden" id="se-id">
     <div class="row" style="margin-top:14px;">
       <button class="btn danger sm" id="se-del" onclick="deleteSupplier()" style="display:none;">מחק ספק</button>
@@ -834,6 +852,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-top:12px;}
       <h3 style="margin:0;">📊 דוח מלאי</h3>
       <div style="display:flex;gap:8px;">
         <button class="btn sm ok no-print" onclick="window.print()">🖨️ הדפס</button>
+        <button class="btn sm no-print" onclick="exportCSV()">📁 CSV</button>
         <button class="btn sm no-print" onclick="downloadReport()">⬇️ הורד</button>
         <button class="modal-close no-print" onclick="closeModal('modal-report')">&#x2715;</button>
       </div>
