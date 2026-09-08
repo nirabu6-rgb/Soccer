@@ -2044,7 +2044,7 @@ function addReading(shelfId,rawW){
   var sh=getShelves().find(function(s){return s.id===shelfId;}); if(!sh)return null;
   var it=getItems().find(function(i){return i.id===sh.itemId;});
   var uw=it?parseFloat(it.unitWeight)||1:1, tare=parseFloat(sh.tare)||0;
-  var net=Math.max(0,rawW-tare), qty=Math.round((net/uw)*100)/100
+  var net=Math.max(0,rawW-tare), qty=Math.floor(net/uw)
   var r={ts:Date.now(),rawWeight:rawW,netWeight:Math.round(net*10)/10,qty:qty,src:'auto'};
   var all=LS.get('readings',{}); if(!all[shelfId])all[shelfId]=[];
   all[shelfId].push(r); if(all[shelfId].length>500)all[shelfId]=all[shelfId].slice(-500);
