@@ -2912,7 +2912,7 @@ function openEditShelf(){
 }
 window.openEditShelf=openEditShelf;
 function saveEditShelf(){
-  var id=document.getElementById('es-id').value; switchToUser();
+  var id=document.getElementById('es-id').value; 
   var shs=getShelves(), idx=shs.findIndex(function(s){return s.id===id;}); if(idx<0)return;
   shs[idx].name=document.getElementById('es-name').value.trim()||shs[idx].name;
   shs[idx].zone=document.getElementById('es-zone').value.trim();
