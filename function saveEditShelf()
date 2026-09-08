@@ -2921,7 +2921,7 @@ function saveEditShelf(){
   shs[idx].notes=document.getElementById('es-notes').value.trim();
    shs[idx].scaleId=document.getElementById('es-scaleid').value.trim();
   LS.set('shelves',shs);
-saveShelvesToFirebase();
+saveShelvesToFirebase(); saveBusinessToFirebase();
 closeModal('modal-eshelf'); renderSh(id);
 }
 window.saveEditShelf=saveEditShelf;
