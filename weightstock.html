@@ -2798,7 +2798,7 @@ window.toggleAdv=toggleAdv;
 function saveItem(){
   var name=document.getElementById('im-name').value.trim(), uw=parseFloat(document.getElementById('im-uwt').value);
   if(!name){alert('יש להזין שם פריט');return;} if(!uw||uw<=0){alert('יש להזין משקל סגולי');return;}
-  switchToUser(); var its=getItems(), eid=document.getElementById('im-id').value;
+   var its=getItems(), eid=document.getElementById('im-id').value;
   var expiryEl=document.getElementById('im-expiry'), rqEl2=document.getElementById('im-reorderqty');
   var d={name:name,unitType:document.getElementById('im-utype').value||'unit',unitWeight:uw,categoryId:document.getElementById('im-cat').value||'',sku:document.getElementById('im-sku').value.trim(),barcode:document.getElementById('im-bar').value.trim(),price:parseFloat(document.getElementById('im-price').value)||0,minOrder:parseInt(document.getElementById('im-minord').value)||0,reorderQty:parseInt(rqEl2?rqEl2.value:0)||0,expiry:expiryEl?expiryEl.value.trim():'',supplier:document.getElementById('im-sup').value.trim(),supplierPhone:document.getElementById('im-suptel').value.trim(),supplierWhatsApp:document.getElementById('im-supwa').value.trim(),supplierEmail:document.getElementById('im-supemail').value.trim(),orderEmail:document.getElementById('im-ordermail').value.trim(),notes:document.getElementById('im-notes').value.trim(),location:{row:document.getElementById('im-loc-row').value.trim(),shelf:document.getElementById('im-loc-shelf').value.trim(),cell:document.getElementById('im-loc-cell').value.trim()}};
   if(eid){var idx=its.findIndex(function(i){return i.id===eid;});if(idx>=0)Object.assign(its[idx],d);}else{d.id='i'+Date.now();its.push(d);}
