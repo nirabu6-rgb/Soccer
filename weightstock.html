@@ -2041,7 +2041,6 @@ function switchToUser(){
 }
 
 function addReading(shelfId,rawW){
-  switchToUser();
   var sh=getShelves().find(function(s){return s.id===shelfId;}); if(!sh)return null;
   var it=getItems().find(function(i){return i.id===sh.itemId;});
   var uw=it?parseFloat(it.unitWeight)||1:1, tare=parseFloat(sh.tare)||0;
