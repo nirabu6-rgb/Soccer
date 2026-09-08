@@ -1255,6 +1255,7 @@ label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-top
     <select id="es-atype"><option value="qty">כמות יחידות</option><option value="weight">משקל (גרם)</option></select>
     <label>סף מינימלי</label><input id="es-aval" type="number">
     <label>הערות</label><textarea id="es-notes"></textarea>
+    <label>פריט במשטח</label><select id="es-item"></select>
      <label>משקל מחובר</label><select id="es-scaleid"><option value="">ללא משקל</option><option value="scale1">משקל 1</option><option value="scale2">משקל 2</option><option value="scale3">משקל 3</option></select>
      <input type="hidden" id="es-id">
     <div class="row" style="margin-top:14px;">
@@ -2906,6 +2907,7 @@ function openEditShelf(){
   document.getElementById('es-zone').value=sh.zone||''; document.getElementById('es-tare').value=sh.tare||0;
   document.getElementById('es-atype').value=sh.alertType||'qty'; document.getElementById('es-aval').value=sh.alertValue||'';
   document.getElementById('es-notes').value=sh.notes||''; 
+   var ei=document.getElementById('es-item'); ei.innerHTML=getItems().map(function(i){return '<option value="'+i.id+'">'+i.name+' ('+(i.unitWeight||0)+' גרם)</option>';}).join(''); ei.value=sh.itemId||'';
    document.getElementById('es-scaleid').value=sh.scaleId||'';
    openModal('modal-eshelf');
 }
@@ -2920,7 +2922,8 @@ function saveEditShelf(){
   shs[idx].alertValue=parseFloat(document.getElementById('es-aval').value)||0;
   shs[idx].notes=document.getElementById('es-notes').value.trim();
    shs[idx].scaleId=document.getElementById('es-scaleid').value.trim();
-  LS.set('shelves',shs);
+ shs[idx].itemId=document.getElementById('es-item').value;
+   LS.set('shelves',shs);
 saveShelvesToFirebase(); saveBusinessToFirebase();
 closeModal('modal-eshelf'); renderSh(id);
 }
