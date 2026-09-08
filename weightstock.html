@@ -3999,8 +3999,8 @@ window.printItemLabel=printItemLabel;
   var sess=LS.get('session',false);
   if(!acc||!vm){showLogin();return;}  // הרשמה ראשונה
  if(!sess){showLogin();return;}         // יש חשבון, צריך להתחבר
- await loadBusinessFromFirebase();
-   renderDash();
+await loadBusinessFromFirebase();
+renderDash();
   updBell();
   updateDashLogo();
   applyAccent();
@@ -4025,7 +4025,7 @@ function getBusinessId(){
 
 function getBusinessUrl(){
   var id=getBusinessId();
-  return id ? FIREBASE_BUSINESS_BASE+encodeURIComponent(id)+".json" : "";
+ return id ? "https://weightstock-1422c-default-rtdb.firebaseio.com/businesses/"+encodeURIComponent(id)+".json" : "";
 }
 
 async function loadBusinessFromFirebase(){
